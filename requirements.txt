@@ -1,0 +1,21 @@
+# Core Web Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic-settings>=2.0.0
+slowapi>=0.1.9  # Rate limiting
+logfire>=0.20.0  # Monitoring & observability
+httpx>=0.25.0  # HTTP client for Logfire API
+
+# Database
+psycopg2-binary>=2.9.9
+
+# AI & Embeddings
+google-generativeai>=0.3.0
+groq>=0.4.0  # Ultra-fast LLM inference
+
+# Crawling & RSS
+feedparser>=6.0.10
+
+# Utilities
+python-dotenv>=1.0.0
+APScheduler>=3.10.4  # Auto-scheduling for crawling

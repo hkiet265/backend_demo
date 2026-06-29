@@ -1,0 +1,71 @@
+"""
+Chat Models
+Request/Response models for chat functionality
+"""
+from pydantic import BaseModel, Field
+from typing import Optional, List
+
+
+class ActionButton(BaseModel):
+    """Action button for quick responses"""
+    id: str = Field(..., description="Button ID")
+    label: str = Field(..., description="Button label")
+    emoji: str = Field(..., description="Button emoji")
+
+
+class ChatRequest(BaseModel):
+    """Chat request from user"""
+    message: str = Field(..., min_length=1, description="User message")
+    action_button_id: Optional[str] = Field(None, description="Clicked action button ID")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "message": "tin về vàng",
+                "action_button_id": None
+            }
+        }
+
+
+class NewsItem(BaseModel):
+    """Single news item"""
+    tieu_de: str
+    tom_tat: str
+    chuyen_muc: str
+    nha_dai: Optional[str] = None
+    similarity: Optional[float] = None
+
+
+class BusinessItem(BaseModel):
+    """Single business item"""
+    id: int
+    name: str
+    phone: Optional[str] = None
+    region: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+
+
+class ChatResponse(BaseModel):
+    """Chat response with RAG information"""
+    answer: str = Field(..., description="AI-generated answer")
+    suggested_news: List[NewsItem] = Field(default_factory=list)
+    suggested_businesses: List[BusinessItem] = Field(default_factory=list)
+    action_buttons: List[ActionButton] = Field(default_factory=list)
+    
+    # RAG Metrics
+    rag_used: bool = Field(default=False, description="Whether RAG was used")
+    tokens_saved: Optional[int] = Field(None, description="Estimated tokens saved by RAG")
+    response_time_ms: Optional[float] = Field(None, description="Response time in milliseconds")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "answer": "Theo 3 nguồn tin gần đây, giá vàng...",
+                "suggested_news": [],
+                "suggested_businesses": [],
+                "action_buttons": [],
+                "rag_used": True,
+                "tokens_saved": 498500
+            }
+        }

@@ -1,0 +1,342 @@
+import { RefreshCw, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+
+function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearchQuery, setNewsSearchQuery, onNewsClick }) {
+  const [selectedNews, setSelectedNews] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const itemsPerPage = 8;
+
+  // Sync external newsSearchQuery with internal searchQuery
+  useEffect(() => {
+    if (newsSearchQuery) {
+      setSearchQuery(newsSearchQuery);
+      setCurrentPage(1);
+      // Reset external query after using
+      if (setNewsSearchQuery) {
+        setTimeout(() => setNewsSearchQuery(''), 100);
+      }
+    }
+  }, [newsSearchQuery, setNewsSearchQuery]);
+
+  // Hàm chuẩn hóa tên category sang Title Case
+  const normalizeCategory = (text) => {
+    if (!text) return '';
+    return text
+      .trim()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
+  // Lọc tin tức theo tìm kiếm và chuyên mục
+  const filteredNews = allNews.filter((news) => {
+    const matchSearch = searchQuery === '' || 
+      news.tieu_de.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (news.tom_tat && news.tom_tat.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    // So sánh case-insensitive cho category
+    const matchCategory = selectedCategory === 'all' || 
+      (news.chuyen_muc && news.chuyen_muc.trim().toLowerCase() === selectedCategory.toLowerCase());
+    
+    return matchSearch && matchCategory;
+  });
+
+  // Lấy danh sách chuyên mục unique - chuẩn hóa tên sang Title Case
+  const categoryMap = new Map();
+  allNews.forEach(news => {
+    if (news.chuyen_muc) {
+      const normalized = normalizeCategory(news.chuyen_muc);
+      const lowerKey = normalized.toLowerCase();
+      // Giữ lại tên đã chuẩn hóa cho mỗi lowercase key
+      if (!categoryMap.has(lowerKey)) {
+        categoryMap.set(lowerKey, normalized);
+      }
+    }
+  });
+  
+  const uniqueCategories = Array.from(categoryMap.values()).sort();
+  const categories = ['all', ...uniqueCategories];
+
+  // Tính toán phân trang dựa trên filteredNews
+  const totalPages = Math.ceil(filteredNews.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentNews = filteredNews.slice(startIndex, endIndex);
+
+  // Reset về trang 1 khi search hoặc filter
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory]);
+
+  // Reset về trang 1 khi có tin tức mới
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [allNews.length]);
+
+  const openModal = (news) => {
+    setSelectedNews(news);
+    // Đóng chatbox khi mở modal
+    if (onNewsClick) {
+      onNewsClick();
+    }
+    // Scroll modal về đầu khi mở
+    setTimeout(() => {
+      const modalContent = document.querySelector('.modal-content');
+      if (modalContent) {
+        modalContent.scrollTop = 0;
+      }
+    }, 0);
+  };
+
+  const closeModal = () => {
+    setSelectedNews(null);
+  };
+
+  // Khóa scroll khi modal mở
+  useEffect(() => {
+    if (selectedNews) {
+      const scrollContainer = document.querySelector('.main-content-area');
+      if (scrollContainer) {
+        scrollContainer.style.overflow = 'hidden';
+      }
+    } else {
+      const scrollContainer = document.querySelector('.main-content-area');
+      if (scrollContainer) {
+        scrollContainer.style.overflow = 'auto';
+      }
+    }
+  }, [selectedNews]);
+
+  const goToPage = (page) => {
+    setCurrentPage(page);
+    // Scroll lên đầu danh sách tin tức
+    const newsGrid = document.querySelector('.news-grid');
+    if (newsGrid) {
+      newsGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const goToPrevPage = () => {
+    if (currentPage > 1) {
+      goToPage(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      goToPage(currentPage + 1);
+    }
+  };
+
+  return (
+    <>
+      <div className="main-content-area fade-in-effect">
+        <div className="section-header">
+          <div className="header-title-block">
+            <h3 className="news-view-title">Xem tin tức cùng em Tư </h3>
+            <p className="sub-header-text">Cập nhật những tin tức hot nhất hiện tại!</p>
+          </div>
+          <div className="header-actions">
+            <div className="news-count">
+              <span className="count-number">{filteredNews.length}</span>
+              <span className="count-label">tin tức</span>
+            </div>
+            <button onClick={fetchAllNews} className="refresh-btn" title={`Làm mới kho (${allNews.length})`}>
+              <RefreshCw size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Thanh tìm kiếm và filter */}
+        <div className="news-filters">
+          <div className="search-box">
+            <Search size={18} className="search-icon" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm tin tức tại đây..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                }
+              }}
+            />
+            {searchQuery && (
+              <button className="clear-search" onClick={() => setSearchQuery('')}>✕</button>
+            )}
+            <button className="search-submit-btn">Tìm kiếm</button>
+          </div>
+
+          <div className="category-filters">
+            <button
+              className={`category-filter-btn ${selectedCategory === 'all' ? 'active' : ''}`}
+              onClick={() => setSelectedCategory('all')}
+            >
+              Tất cả
+            </button>
+            {categories.slice(1).map((category) => (
+              <button
+                key={category}
+                className={`category-filter-btn ${selectedCategory === category ? 'active' : ''}`}
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {isFetchNewsLoading ? (
+          <div className="loading-state">
+            <div className="spinner"></div>
+            <p>Em Tư đang lùng sục tin tức khắp nơi cho bạn...</p>
+          </div>
+        ) : filteredNews.length === 0 ? (
+          <div className="empty-state">
+            <p>
+              {searchQuery || selectedCategory !== 'all' 
+                ? `em Tư Không tìm thấy tin tức phù hợp với "${searchQuery || selectedCategory}"`
+                : 'Kho tin tức trống'}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="news-grid">
+              {currentNews.map((news) => (
+                <div key={news.id} className="database-news-card"
+                  onClick={() => openModal(news)}
+                >
+                  {news.chuyen_muc && news.chuyen_muc !== 'Tin mới' && (
+                    <div className="card-meta">
+                      <span className="badge category">{normalizeCategory(news.chuyen_muc)}</span>
+                    </div>
+                  )}
+                  <h3>{news.tieu_de}</h3>
+                  <p>{news.tom_tat}</p>
+                  <div className="card-footer">
+                    <span className="read-more">Đọc thêm →</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Phân trang */}
+            {totalPages > 1 && (
+              <div className="pagination">
+                <button 
+                  className="pagination-btn" 
+                  onClick={goToPrevPage}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft size={18} />
+                  Trước
+                </button>
+
+                <div className="pagination-numbers">
+                  {(() => {
+                    const pages = [];
+                    const showEllipsisStart = currentPage > 3;
+                    const showEllipsisEnd = currentPage < totalPages - 2;
+                    
+                    // Luôn hiển thị trang 1
+                    pages.push(
+                      <button
+                        key={1}
+                        className={`pagination-number ${1 === currentPage ? 'active' : ''}`}
+                        onClick={() => goToPage(1)}
+                      >
+                        1
+                      </button>
+                    );
+                    
+                    // Ellipsis đầu nếu cần
+                    if (showEllipsisStart) {
+                      pages.push(<span key="ellipsis-start" className="pagination-ellipsis">...</span>);
+                    }
+                    
+                    // Các trang xung quanh trang hiện tại
+                    const start = Math.max(2, currentPage - 1);
+                    const end = Math.min(totalPages - 1, currentPage + 1);
+                    
+                    for (let i = start; i <= end; i++) {
+                      pages.push(
+                        <button
+                          key={i}
+                          className={`pagination-number ${i === currentPage ? 'active' : ''}`}
+                          onClick={() => goToPage(i)}
+                        >
+                          {i}
+                        </button>
+                      );
+                    }
+                    
+                    // Ellipsis cuối nếu cần
+                    if (showEllipsisEnd) {
+                      pages.push(<span key="ellipsis-end" className="pagination-ellipsis">...</span>);
+                    }
+                    
+                    // Luôn hiển thị trang cuối (nếu có nhiều hơn 1 trang)
+                    if (totalPages > 1) {
+                      pages.push(
+                        <button
+                          key={totalPages}
+                          className={`pagination-number ${totalPages === currentPage ? 'active' : ''}`}
+                          onClick={() => goToPage(totalPages)}
+                        >
+                          {totalPages}
+                        </button>
+                      );
+                    }
+                    
+                    return pages;
+                  })()}
+                </div>
+
+                <button 
+                  className="pagination-btn" 
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Sau
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Modal chi tiết bài viết - Render ra ngoài body */}
+      {selectedNews && createPortal(
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={closeModal}>✕</button>
+            {selectedNews.chuyen_muc && selectedNews.chuyen_muc !== 'Tin mới' && (
+              <div className="modal-header">
+                <span className="badge category">{normalizeCategory(selectedNews.chuyen_muc)}</span>
+              </div>
+            )}
+            <h2 className="modal-title">{selectedNews.tieu_de}</h2>
+            <div className="modal-body">
+              <p className="modal-summary">{selectedNews.tom_tat}</p>
+              {selectedNews.nha_dai && (
+                <div className="modal-detail">
+                  <h4>Nội dung chi tiết:</h4>
+                  <p>{selectedNews.nha_dai}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
+export default NewsStorageView;
