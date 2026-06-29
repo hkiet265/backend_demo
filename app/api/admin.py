@@ -29,7 +29,6 @@ async def get_admin_stats(request: Request):
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Total counts
         cur.execute("SELECT COUNT(*) as total FROM station_news")
         total_news = cur.fetchone()['total']
         
@@ -39,7 +38,6 @@ async def get_admin_stats(request: Request):
         cur.execute("SELECT COUNT(*) as total FROM app_users")
         total_users = cur.fetchone()['total']
         
-        # News by source
         cur.execute("""
             SELECT nha_dai, COUNT(*) as count 
             FROM station_news 
@@ -49,7 +47,6 @@ async def get_admin_stats(request: Request):
         """)
         news_by_source = cur.fetchall()
         
-        # News by region
         cur.execute("""
             SELECT vung_mien, COUNT(*) as count 
             FROM station_news 
@@ -58,7 +55,6 @@ async def get_admin_stats(request: Request):
         """)
         news_by_region = cur.fetchall()
         
-        # News today (since 00:00)
         cur.execute("""
             SELECT COUNT(*) as count 
             FROM station_news 
@@ -66,7 +62,6 @@ async def get_admin_stats(request: Request):
         """)
         news_today = cur.fetchone()['count']
         
-        # Recent users (last 7 days)
         cur.execute("""
             SELECT COUNT(*) as count 
             FROM app_users 
@@ -74,7 +69,6 @@ async def get_admin_stats(request: Request):
         """)
         new_users_week = cur.fetchone()['count']
         
-        # Latest news
         cur.execute("""
             SELECT tieu_de, nha_dai, chuyen_muc, created_at 
             FROM station_news 
@@ -83,7 +77,6 @@ async def get_admin_stats(request: Request):
         """)
         latest_news = cur.fetchall()
         
-        # Businesses by region
         cur.execute("""
             SELECT vung_mien, COUNT(*) as count 
             FROM businesses_demo 
@@ -146,14 +139,12 @@ async def get_monitoring_stats(request: Request):
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Database size info (still from database)
         cur.execute("""
             SELECT 
                 pg_size_pretty(pg_database_size(current_database())) as db_size
         """)
         db_info = cur.fetchone()
         
-        # Table sizes
         cur.execute("""
             SELECT 
                 'station_news' as table_name,
@@ -172,7 +163,6 @@ async def get_monitoring_stats(request: Request):
         cur.close()
         conn.close()
         
-        # Get REAL metrics from Logfire API
         if logfire.is_enabled():
             logger.info("📊 Fetching real-time metrics from Logfire...")
             api_metrics = await logfire.get_request_metrics(hours=24)
@@ -180,7 +170,6 @@ async def get_monitoring_stats(request: Request):
             system_health = await logfire.get_system_health()
         else:
             logger.warning("⚠️ Logfire read token not configured, using fallback data")
-            # Fallback to simulated data
             api_metrics = {
                 "total_requests_today": 0,
                 "avg_response_time_ms": 0,
@@ -235,7 +224,6 @@ async def get_users(request: Request):
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Get all users
         cur.execute("""
             SELECT id, email, full_name, phone, role, created_at
             FROM app_users
@@ -243,7 +231,6 @@ async def get_users(request: Request):
         """)
         users = cur.fetchall()
         
-        # Get user count by role
         cur.execute("""
             SELECT role, COUNT(*) as count
             FROM app_users

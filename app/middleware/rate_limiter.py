@@ -10,12 +10,11 @@ from fastapi.responses import JSONResponse
 import logging
 
 logger = logging.getLogger(__name__)
-
-# Initialize rate limiter
+ 
 limiter = Limiter(
-    key_func=get_remote_address,  # Rate limit by IP address
-    default_limits=["100/minute"],  # Default: 100 requests per minute
-    storage_uri="memory://",  # In-memory storage (simple, no Redis needed)
+    key_func=get_remote_address,
+    default_limits=["100/minute"],
+    storage_uri="memory://",
 )
 
 
@@ -33,11 +32,9 @@ def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Res
             "retry_after": "60 seconds"
         }
     )
-
-
-# Rate limit decorators for different endpoints
-CHAT_RATE_LIMIT = "10/minute"  # Chat: 10 requests/minute
-NEWS_RATE_LIMIT = "30/minute"  # News API: 30 requests/minute
-AUTH_RATE_LIMIT = "5/minute"   # Login/Register: 5 requests/minute (prevent brute force)
-CRAWLER_RATE_LIMIT = "1/minute"  # Manual crawler: 1 request/minute
-GENERAL_RATE_LIMIT = "60/minute"  # General API: 60 requests/minute
+ 
+CHAT_RATE_LIMIT = "10/minute"
+NEWS_RATE_LIMIT = "30/minute"
+AUTH_RATE_LIMIT = "5/minute"
+CRAWLER_RATE_LIMIT = "1/minute"
+GENERAL_RATE_LIMIT = "60/minute"

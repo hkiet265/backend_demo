@@ -31,7 +31,7 @@ class RAGService:
             chat_model: Chat model name
             use_groq: Use Groq for generation (ultra-fast)
         """
-        # Sử dụng API Key Manager thay vì key trực tiếp
+
         self.api_key_manager = get_api_key_manager()
         self.api_key_manager.configure_genai()
         
@@ -39,8 +39,7 @@ class RAGService:
         self.model = genai.GenerativeModel(chat_model)
         self.vector_service = vector_service
         self.use_groq = use_groq
-        
-        # Initialize Groq service if enabled
+
         if use_groq:
             from .groq_service import get_groq_service
             self.groq_service = get_groq_service()
@@ -74,8 +73,7 @@ class RAGService:
             Dict with answer, documents, and metrics
         """
         start_time = time.time()
-        
-        # Step 1: Retrieve relevant documents
+
         logger.info(f"RAG Query: {query}")
         documents = self.vector_service.similarity_search(
             query=query,
@@ -91,14 +89,11 @@ class RAGService:
                 'tokens_saved': 0,
                 'response_time_ms': (time.time() - start_time) * 1000
             }
-        
-        # Step 2: Build compact context
+
         context = self._build_context(documents)
-        
-        # Step 3: Generate response
+
         answer = self._generate_response(query, context)
-        
-        # Step 4: Calculate metrics
+
         tokens_saved = self._estimate_token_savings(len(documents))
         response_time = (time.time() - start_time) * 1000
         
@@ -141,7 +136,7 @@ class RAGService:
         Returns:
             Generated answer
         """
-        # System prompt định nghĩa nhân cách AI
+
         system_prompt = """Bạn là Em Tư, trợ lý AI thông minh và thân thiện của hệ thống tin tức.
 
 Nhiệm vụ:
@@ -156,16 +151,13 @@ Quy tắc:
 - Nếu không có thông tin, nói rõ "Em không tìm thấy tin tức về..."
 - Độ dài: 2-4 câu ngắn gọn
 """
-        
-        # User prompt với context
+
         user_prompt = f"""Câu hỏi: {query}
 
 Thông tin tin tức liên quan:
 {context}
 
-Hãy trả lời câu hỏi dựa trên thông tin trên."""
-
-        # Try Groq first (nhanh, miễn phí)
+Hãy trả lời câu hỏi dựa trên thông tin trên.""" 
         if self.use_groq and self.groq_service:
             logger.info("🚀 Using Groq for generation...")
             answer = self.groq_service.generate(
@@ -179,8 +171,7 @@ Hãy trả lời câu hỏi dựa trên thông tin trên."""
                 return answer
             
             logger.warning("⚠️ Groq failed, falling back to Gemini...")
-        
-        # Fallback to Gemini (chậm nhưng reliable)
+
         logger.info("🐢 Using Gemini for generation...")
         max_retries = 3
         
@@ -196,8 +187,7 @@ Hãy trả lời câu hỏi dựa trên thông tin trên."""
                 )
                 
                 answer = response.text.strip()
-                
-                # Fallback nếu AI không trả lời
+
                 if not answer or len(answer) < 10:
                     return "Dưới đây là thông tin bạn muốn tìm kiếm:"
                 
@@ -205,13 +195,11 @@ Hãy trả lời câu hỏi dựa trên thông tin trên."""
                 
             except Exception as e:
                 error_str = str(e)
-                
-                # Check nếu là quota exceeded
+
                 if "429" in error_str or "quota" in error_str.lower():
                     logger.warning(f"⚠️ Quota exceeded (attempt {attempt + 1}/{max_retries})")
-                    
-                    # Extract retry_after nếu có
-                    retry_after = 60  # Default 60s
+
+                    retry_after = 60
                     if "retry in" in error_str.lower():
                         try:
                             import re
@@ -220,28 +208,23 @@ Hãy trả lời câu hỏi dựa trên thông tin trên."""
                                 retry_after = int(float(match.group(1)))
                         except:
                             pass
-                    
-                    # Mark key và rotate
+
                     current_key = self.api_key_manager.get_current_key()
                     self.api_key_manager.mark_key_quota_exceeded(current_key, retry_after)
-                    
-                    # Reconfigure với key mới
+
                     self.api_key_manager.configure_genai()
                     self.model = genai.GenerativeModel(self.chat_model)
                     
                     logger.info(f"🔄 Rotated to new key, retrying...")
-                    continue  # Retry với key mới
-                
-                # Lỗi khác (không phải quota)
+                    continue
+
                 logger.error(f"AI generation error: {e}")
                 if attempt < max_retries - 1:
                     logger.info(f"Retrying... (attempt {attempt + 2}/{max_retries})")
                     continue
-                
-                # Hết retries, fallback
+
                 return "Dưới đây là thông tin bạn muốn tìm kiếm:"
-        
-        # Không nên tới đây, nhưng just in case
+
         return "Dưới đây là thông tin bạn muốn tìm kiếm:"
     
     def _estimate_token_savings(self, num_docs: int) -> int:
@@ -254,11 +237,7 @@ Hãy trả lời câu hỏi dựa trên thông tin trên."""
         Returns:
             Estimated tokens saved
         """
-        # Assumptions:
-        # - Full database: ~1000 documents
-        # - Average tokens per doc: 500
-        # - RAG: only send top_k docs
-        
+    
         full_db_size = 1000
         avg_tokens_per_doc = 500
         

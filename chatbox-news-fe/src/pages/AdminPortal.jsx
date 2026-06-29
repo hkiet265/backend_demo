@@ -17,8 +17,7 @@ const AdminPortal = ({ currentUser, onLogout }) => {
   const handleBackToHome = () => {
     navigate('/');
   };
-
-  // Check if user is admin
+ 
   if (!currentUser || currentUser.role !== 'admin') {
     return (
       <div className="admin-portal-error">
@@ -33,7 +32,7 @@ const AdminPortal = ({ currentUser, onLogout }) => {
 
   return (
     <div className="admin-portal">
-      {/* Sidebar Navigation */}
+
       <aside className="admin-sidebar">
         <div className="admin-sidebar-header">
           <div className="admin-logo">
@@ -78,20 +77,9 @@ const AdminPortal = ({ currentUser, onLogout }) => {
             <LogOut size={18} />
             <span>Đăng xuất</span>
           </button>
-        </div>
-
-        <div className="admin-user-badge">
-          <div className="user-avatar">
-            {currentUser.full_name.charAt(0).toUpperCase()}
-          </div>
-          <div className="user-info">
-            <span className="user-name">{currentUser.full_name}</span>
-            <span className="user-role">Administrator</span>
-          </div>
-        </div>
+        </div> 
       </aside>
-
-      {/* Main Content */}
+ 
       <main className="admin-content">
         {activeSection === 'dashboard' && <AdminDashboardView />}
         {activeSection === 'users' && <AdminUsersView />}

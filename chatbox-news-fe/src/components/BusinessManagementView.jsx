@@ -3,8 +3,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 const PAGE_SIZE = 10;
-
-// Map lĩnh vực → emoji icon
+ 
 const FIELD_ICON = {
   'công nghệ': '💻', 'thông tin': '💻', 'phần mềm': '💻', 'ai': '🤖',
   'fintech': '💳', 'tài chính': '💳', 'ngân hàng': '💳',
@@ -25,8 +24,7 @@ function getBizIcon(name = '', description = '') {
   }
   return '🏢';
 }
-
-// Skeleton card hiện khi đang load
+ 
 function BusinessCardSkeleton() {
   return (
     <div className="biz-card skeleton-card">
@@ -56,25 +54,22 @@ function BusinessManagementView({
   const [currentPage, setCurrentPage] = useState(1);
   const [isEnrichingAll, setIsEnrichingAll] = useState(false);
   const csvInputRef = useRef(null);
-
-  // Helper: normalize text (remove diacritics for comparison)
+ 
   const normalizeText = (text) => {
     if (!text) return '';
     return text.toString().toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Remove diacritics
   };
-
-  // Filter theo search + vùng miền
+ 
   const businesses = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     const normalizedQ = normalizeText(q);
     
     return allBusinesses.filter(biz => {
-      // Match region: normalize both sides for comparison
+      
       const matchRegion = regionFilter === 'all' || 
         normalizeText(biz.region).includes(normalizeText(regionFilter));
-      
-      // Match search
+
       const matchSearch = !q ||
         normalizeText(biz.name).includes(normalizedQ) ||
         normalizeText(biz.region).includes(normalizedQ) ||
@@ -182,7 +177,7 @@ function BusinessManagementView({
 
   const formatPhone = (phone) => {
     if (!phone) return '';
-    // Keep leading + if present, remove other non-digit characters
+    
     const cleaned = phone.toString().trim().replace(/[^\d+]/g, '');
     return cleaned;
   };
@@ -196,7 +191,7 @@ function BusinessManagementView({
 
   return (
     <div className="main-content-area fade-in-effect">
-      {/* Thanh tìm kiếm */}
+  
       <div className="news-filters">
         <div className="search-box">
           <Search size={18} className="search-icon" />
@@ -214,8 +209,7 @@ function BusinessManagementView({
             Tìm kiếm
           </button>
         </div>
-
-        {/* Pill filter vùng miền */}
+ 
         <div className="category-filters">
           {['all', 'Bac', 'Trung', 'Nam'].map(r => (
             <button
@@ -229,7 +223,7 @@ function BusinessManagementView({
         </div>
       </div>
 
-      {/* Header bảng */}
+ 
       <div className="data-table-card" style={{ border: 'none', background: 'transparent', padding: '0', boxShadow: 'none' }}>
         <div className="table-header-action" style={{ marginBottom: '16px' }}>
           <div className="table-title">
@@ -268,7 +262,7 @@ function BusinessManagementView({
           </button>
         </div>
 
-        {/* Skeleton khi đang load */}
+ 
         {isLoading ? (
           <div className="biz-card-grid">
             {Array.from({ length: 12 }).map((_, i) => <BusinessCardSkeleton key={i} />)}
@@ -282,12 +276,11 @@ function BusinessManagementView({
             <div className="biz-card-grid">
               {pagedBusinesses.map((biz) => (
                 <div key={biz.id} className="biz-card" onClick={() => openModal(biz)}>
-                  {/* Icon */}
+  
                   <div className="biz-card-icon">
                     {getBizIcon(biz.name, biz.description)}
                   </div>
-
-                  {/* Nội dung chính */}
+ 
                   <div className="biz-card-body">
                     <h4 className="biz-card-name">{biz.name}</h4>
                     <p className="biz-card-location">
@@ -306,14 +299,12 @@ function BusinessManagementView({
                       )}
                     </div>
                   </div>
-
-                  {/* Arrow */}
+ 
                   <ChevronRight size={18} className="biz-card-arrow" />
                 </div>
               ))}
             </div>
-
-            {/* Phân trang */}
+ 
             {totalPages > 1 && (
               <div className="pagination">
                 <button className="pagination-btn" onClick={goToPrevPage} disabled={currentPage === 1}>
@@ -324,8 +315,7 @@ function BusinessManagementView({
                     const pages = [];
                     const showEllipsisStart = currentPage > 3;
                     const showEllipsisEnd = currentPage < totalPages - 2;
-                    
-                    // Luôn hiển thị trang 1
+
                     pages.push(
                       <button
                         key={1}
@@ -335,13 +325,11 @@ function BusinessManagementView({
                         1
                       </button>
                     );
-                    
-                    // Ellipsis đầu nếu cần
+
                     if (showEllipsisStart) {
                       pages.push(<span key="ellipsis-start" className="pagination-ellipsis">...</span>);
                     }
-                    
-                    // Các trang xung quanh trang hiện tại
+
                     const start = Math.max(2, currentPage - 1);
                     const end = Math.min(totalPages - 1, currentPage + 1);
                     
@@ -356,13 +344,11 @@ function BusinessManagementView({
                         </button>
                       );
                     }
-                    
-                    // Ellipsis cuối nếu cần
+
                     if (showEllipsisEnd) {
                       pages.push(<span key="ellipsis-end" className="pagination-ellipsis">...</span>);
                     }
-                    
-                    // Luôn hiển thị trang cuối (nếu có nhiều hơn 1 trang)
+
                     if (totalPages > 1) {
                       pages.push(
                         <button
@@ -386,14 +372,12 @@ function BusinessManagementView({
           </>
         )}
       </div>
-
-      {/* Modal chi tiết đầy đủ */}
+ 
       {selectedBusiness && createPortal(
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content biz-modal-wide" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={closeModal}><X size={20} /></button>
-
-            {/* Header: badge vùng miền + trust score */}
+ 
             <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               {selectedBusiness.region && (
                 <span className={`biz-tag ${regionColor(selectedBusiness.region)}`}>{selectedBusiness.region}</span>
@@ -417,7 +401,7 @@ function BusinessManagementView({
 
             <div className="modal-body">
               <div className="business-info-grid">
-                {/* Liên hệ */}
+ 
                 {(selectedBusiness.address || selectedBusiness.location) && (
                   <div className="business-info-item">
                     <strong>📍 Địa chỉ:</strong>
@@ -461,7 +445,7 @@ function BusinessManagementView({
                     <span>{selectedBusiness.scale}</span>
                   </div>
                 )}
-                {/* Mạng xã hội */}
+ 
                 {(selectedBusiness.facebook || selectedBusiness.zalo || selectedBusiness.linkedin) && (
                   <div className="business-info-item" style={{ gridColumn: '1 / -1' }}>
                     <strong>🔗 Mạng xã hội:</strong>
@@ -499,8 +483,7 @@ function BusinessManagementView({
                   <p>{selectedBusiness.description}</p>
                 </div>
               )}
-
-              {/* Quick actions */}
+ 
               <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
                 {selectedBusiness.phone && (
                   <a href={`tel:${formatPhone(selectedBusiness.phone)}`} className="neon-search-btn"

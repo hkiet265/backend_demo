@@ -15,18 +15,15 @@ import logfire
 from app.config import settings
 from app.api import chat, business, news, auth, crawler, admin
 from app.middleware import limiter, rate_limit_exceeded_handler
-
-# Configure logging
+ 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-# Global scheduler instance
+ 
 scheduler = None
-
-# Create FastAPI app
+ 
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
@@ -34,13 +31,11 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
-
-# Initialize Logfire (monitoring & observability)
+ 
 try:
     if settings.LOGFIRE_TOKEN:
         logfire.configure(token=settings.LOGFIRE_TOKEN)
-        # Temporarily disable instrumentation due to compatibility issue
-        # logfire.instrument_fastapi(app)
+        
         logger.info("🔥 Logfire monitoring enabled (instrumentation disabled)")
         logger.info(f"🔗 Logfire project: https://logfire-us.pydantic.dev/kiethk/emtu")
     else:
@@ -48,20 +43,17 @@ try:
 except Exception as e:
     logger.warning(f"⚠️ Logfire initialization failed: {e}")
     logger.info("💡 App will continue without Logfire monitoring")
-
-# Add rate limiter state
+ 
 app.state.limiter = limiter
-
-# Add rate limit exception handler
+ 
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
-
-# CORS middleware - MUST be added before routes
+ 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "http://localhost:5174",  # Vite sometimes uses this
+        "http://localhost:5174",
         "http://127.0.0.1:5174"
     ],
     allow_credentials=True,
@@ -69,16 +61,14 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"]
 )
-
-# Include routers
+ 
 app.include_router(chat.router)
 app.include_router(business.router)
 app.include_router(news.router)
 app.include_router(auth.router)
 app.include_router(crawler.router)
 app.include_router(admin.router)
-
-# Root endpoint
+ 
 @app.get("/")
 async def root():
     """API root endpoint"""
@@ -89,8 +79,7 @@ async def root():
         "docs": "/docs",
         "rag_enabled": True
     }
-
-# Health check
+ 
 @app.get("/health")
 async def health():
     """Health check endpoint"""
@@ -113,8 +102,7 @@ async def health():
             "interval": "30 minutes"
         }
     }
-
-# Global exception handler
+ 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Global exception handler"""
@@ -126,8 +114,7 @@ async def global_exception_handler(request, exc):
             "detail": str(exc) if settings.DEBUG else "An error occurred"
         }
     )
-
-# Startup event
+ 
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup"""
@@ -137,19 +124,17 @@ async def startup_event():
     logger.info(f"📊 RAG enabled with {settings.RAG_TOP_K} top results")
     logger.info(f"🔍 Embedding model: {settings.EMBEDDING_MODEL}")
     logger.info(f"💬 Chat model: {settings.CHAT_MODEL}")
-    
-    # Initialize and start scheduler for auto-crawling
+
     try:
         scheduler = BackgroundScheduler(timezone="Asia/Ho_Chi_Minh")
-        
-        # Job 1: Auto-crawl news every 15 minutes
+
         scheduler.add_job(
             func=auto_crawl_news,
             trigger=IntervalTrigger(minutes=30),
             id='news_crawler',
             name='Auto News Crawler',
             replace_existing=True,
-            next_run_time=datetime.now()  # Chạy ngay khi khởi động
+            next_run_time=datetime.now()
         )
         
         scheduler.start()
@@ -157,8 +142,7 @@ async def startup_event():
         
     except Exception as e:
         logger.error(f"❌ Failed to start scheduler: {e}")
-
-# Shutdown event
+ 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Run on application shutdown"""

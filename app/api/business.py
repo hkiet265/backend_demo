@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/businesses", tags=["business"])
 enrichment_service = get_enrichment_service()
 
 
-# Pydantic models
+
 class BusinessCreate(BaseModel):
     ten_doanh_nghiep: str = Field(..., description="Tên doanh nghiệp")
     nganh_nghe: Optional[str] = None
@@ -96,7 +96,7 @@ async def get_all_businesses(
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
         
-        # Build WHERE clause
+        
         conditions = []
         params = []
         
@@ -110,11 +110,11 @@ async def get_all_businesses(
         
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         
-        # Get total count
+        
         cur.execute(f"SELECT COUNT(*) FROM businesses_demo {where_clause};", params)
         total = cur.fetchone()[0]
         
-        # Get paginated data
+        
         offset = (page - 1) * page_size
         params.extend([page_size, offset])
         
@@ -197,11 +197,11 @@ async def search_businesses(
         
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         
-        # Get total
+        
         cur.execute(f"SELECT COUNT(*) FROM businesses_demo {where_clause};", params)
         total = cur.fetchone()[0]
         
-        # Get data
+        
         offset = (page - 1) * page_size
         params.extend([page_size, offset])
         
@@ -242,7 +242,7 @@ async def search_businesses(
             "total": total,
             "page": page,
             "page_size": page_size,
-            "total_pages": (total + page_size - 1) // page_size
+            "total_pages": (total + page_size - 1) 
         }
         
     except Exception as e:
@@ -357,8 +357,7 @@ async def update_business(business_id: int, business: BusinessUpdate):
     try:
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
-        
-        # Build dynamic update query
+
         update_fields = []
         params = []
         
@@ -438,8 +437,7 @@ async def export_csv(
     try:
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
-        
-        # Build WHERE clause
+
         conditions = []
         params = []
         
@@ -452,8 +450,7 @@ async def export_csv(
             params.append(f"%{industry}%")
         
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
-        
-        # Get all data
+
         cur.execute(f"""
             SELECT id, ten_doanh_nghiep, nganh_nghe, vung_mien, tinh_thanh, quan_huyen,
                    dia_chi, website, email, so_dien_thoai, facebook, zalo, linkedin,
@@ -467,20 +464,17 @@ async def export_csv(
         rows = cur.fetchall()
         cur.close()
         conn.close()
-        
-        # Create CSV
+
         output = io.StringIO()
         writer = csv.writer(output)
-        
-        # Header
+
         writer.writerow([
             'id', 'ten_doanh_nghiep', 'nganh_nghe', 'vung_mien', 'tinh_thanh', 'quan_huyen',
             'dia_chi', 'website', 'email', 'so_dien_thoai', 'facebook', 'zalo', 'linkedin',
             'lat', 'lng', 'quy_mo', 'ma_so_thue', 'ngay_thanh_lap', 'trang_thai',
             'nguon_du_lieu', 'do_tin_cay', 'tags', 'ghi_chu', 'mo_ta'
         ])
-        
-        # Data
+
         writer.writerows(rows)
         
         output.seek(0)
@@ -511,7 +505,7 @@ async def bulk_import(data: BulkImportRequest):
         
         for record in data.records:
             try:
-                # Check duplicate by name + phone/email
+
                 name = record.get('ten_doanh_nghiep', '').strip()
                 if not name:
                     skipped += 1
@@ -519,8 +513,7 @@ async def bulk_import(data: BulkImportRequest):
                 
                 phone = record.get('so_dien_thoai', '').strip()
                 email = record.get('email', '').strip()
-                
-                # Simple duplicate check
+
                 if phone or email:
                     check_conditions = ["ten_doanh_nghiep ILIKE %s"]
                     check_params = [f"%{name}%"]
@@ -541,8 +534,7 @@ async def bulk_import(data: BulkImportRequest):
                     if cur.fetchone():
                         skipped += 1
                         continue
-                
-                # Insert
+
                 cur.execute("""
                     INSERT INTO businesses_demo (
                         ten_doanh_nghiep, nganh_nghe, vung_mien, tinh_thanh, quan_huyen,
@@ -592,7 +584,7 @@ async def bulk_import(data: BulkImportRequest):
             "status": "success",
             "inserted": inserted,
             "skipped": skipped,
-            "errors": errors[:10]  # Only first 10 errors
+            "errors": errors[:10]
         }
         
     except Exception as e:
@@ -654,8 +646,7 @@ async def enrich_business(business_id: int):
     try:
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
-        
-        # Get business
+
         cur.execute("""
             SELECT id, ten_doanh_nghiep, website, mo_ta, so_dien_thoai, 
                    email, tinh_thanh, vung_mien, nganh_nghe
@@ -677,15 +668,12 @@ async def enrich_business(business_id: int):
             "vung_mien": row[7],
             "nganh_nghe": row[8]
         }
-        
-        # Normalize data
+
         normalized = enrichment_service.normalize_business_data(business_data)
-        
-        # Summarize description if long
+    
         if normalized.get('mo_ta') and len(normalized['mo_ta']) > 200:
             normalized['mo_ta_summary'] = await enrichment_service.summarize_description(normalized['mo_ta'])
-        
-        # Update database
+
         cur.execute("""
             UPDATE businesses_demo 
             SET so_dien_thoai = %s, email = %s, website = %s, 
@@ -730,8 +718,7 @@ async def enrich_all_businesses(
     try:
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
-        
-        # Get businesses that need enrichment
+
         cur.execute("""
             SELECT id, ten_doanh_nghiep, website, mo_ta, so_dien_thoai, 
                    email, tinh_thanh, vung_mien, nganh_nghe

@@ -16,17 +16,16 @@ class APIKeyManager:
     
     def __init__(self):
         """Initialize với danh sách keys từ .env"""
-        # Load .env trực tiếp (không qua Pydantic Settings)
+
         from dotenv import load_dotenv
         load_dotenv(override=True)
         
         self.keys: List[str] = []
         self.current_index: int = 0
-        self.failed_keys: set = set()  # Lưu keys đã fail
-        self.key_cooldown: dict = {}  # Lưu thời gian cooldown của mỗi key
-        
-        # Load tất cả keys từ environment
-        for i in range(1, 11):  # GEMINI_API_KEY_1 đến GEMINI_API_KEY_10
+        self.failed_keys: set = set()
+        self.key_cooldown: dict = {}
+
+        for i in range(1, 11):
             key = os.getenv(f"GEMINI_API_KEY_{i}", "").strip()
             if key:
                 self.keys.append(key)
@@ -40,13 +39,13 @@ class APIKeyManager:
     
     def get_current_key(self) -> str:
         """Lấy key hiện tại đang dùng"""
-        # Kiểm tra xem key hiện tại có trong cooldown không
+
         current_key = self.keys[self.current_index]
         
         if current_key in self.key_cooldown:
             cooldown_until = self.key_cooldown[current_key]
             if datetime.now() < cooldown_until:
-                # Key vẫn đang cooldown, đổi sang key khác
+                
                 logger.warning(f"⏰ Key {self.current_index + 1} still in cooldown, rotating...")
                 return self.rotate_key()
         
@@ -67,11 +66,11 @@ class APIKeyManager:
         max_attempts = len(self.keys)
         
         while attempts < max_attempts:
-            # Đổi sang key tiếp theo (circular)
+           
             self.current_index = (self.current_index + 1) % len(self.keys)
             new_key = self.keys[self.current_index]
             
-            # Kiểm tra xem key mới có trong cooldown không
+            
             if new_key in self.key_cooldown:
                 cooldown_until = self.key_cooldown[new_key]
                 if datetime.now() < cooldown_until:
@@ -79,13 +78,13 @@ class APIKeyManager:
                     attempts += 1
                     continue
             
-            # Key này OK, dùng được
+            
             logger.info(f"🔄 Rotated from Key {old_index + 1} to Key {self.current_index + 1} (reason: {reason})")
             return new_key
         
-        # Tất cả keys đều trong cooldown
+        
         logger.error("❌ All API keys are in cooldown or failed!")
-        # Trả về key hiện tại và hy vọng nó đã hết cooldown
+        
         return self.keys[self.current_index]
     
     def mark_key_quota_exceeded(self, key: str, retry_after_seconds: int = 60):
@@ -100,7 +99,7 @@ class APIKeyManager:
         self.key_cooldown[key] = cooldown_until
         logger.warning(f"🚫 Key {key[:20]}... quota exceeded, cooldown until {cooldown_until}")
         
-        # Tự động rotate sang key khác
+        
         self.rotate_key(reason="quota_exceeded")
     
     def mark_key_failed(self, key: str):
@@ -108,7 +107,7 @@ class APIKeyManager:
         self.failed_keys.add(key)
         logger.error(f"❌ Key {key[:20]}... marked as FAILED (invalid/revoked)")
         
-        # Rotate sang key khác
+        
         self.rotate_key(reason="key_failed")
     
     def get_stats(self) -> dict:
@@ -146,9 +145,7 @@ class APIKeyManager:
         except Exception as e:
             logger.error(f"❌ Failed to configure Gemini API: {e}")
             return False
-
-
-# Singleton instance
+ 
 _api_key_manager: Optional[APIKeyManager] = None
 
 

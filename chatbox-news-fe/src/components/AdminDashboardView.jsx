@@ -4,14 +4,12 @@ import { BarChart, Activity, Database, Users, TrendingUp, RefreshCw, AlertCircle
 const AdminDashboardView = () => {
   const [stats, setStats] = useState(null);
   const [monitoring, setMonitoring] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState(null);
+  const [loading, setLoading] = useState(true); 
 
   const fetchStats = async () => {
     try {
       setLoading(true);
-      
-      // Fetch both stats and monitoring data
+
       const [statsRes, monitoringRes] = await Promise.all([
         fetch('http://127.0.0.1:8000/api/admin/stats'),
         fetch('http://127.0.0.1:8000/api/admin/monitoring')
@@ -26,9 +24,7 @@ const AdminDashboardView = () => {
       
       if (monitoringData.status === 'success') {
         setMonitoring(monitoringData.data);
-      }
-      
-      setLastUpdate(new Date().toLocaleTimeString('vi-VN'));
+      } 
     } catch (error) {
       console.error('Failed to fetch admin data:', error);
     } finally {
@@ -38,9 +34,8 @@ const AdminDashboardView = () => {
 
   useEffect(() => {
     fetchStats();
-    
-    // Auto refresh every 30 seconds
-    const interval = setInterval(fetchStats, 30000);
+
+    const interval = setInterval(fetchStats, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -63,23 +58,14 @@ const AdminDashboardView = () => {
   const { overview, news_stats, business_stats, latest_news, system } = stats;
 
   return (
-    <div className="admin-dashboard">
-      {/* Header */}
+    <div className="admin-dashboard"> 
       <div className="dashboard-header">
         <div>
-          <h2>📊 Admin Dashboard</h2>
+          <h2>📊 Dashboard</h2>
           <p className="subtitle">Tổng quan hệ thống & Monitoring</p>
-        </div>
-        <div className="header-actions">
-          <span className="last-update">Cập nhật: {lastUpdate}</span>
-          <button onClick={fetchStats} className="refresh-button" disabled={loading}>
-            <RefreshCw size={16} />
-            {loading ? 'Đang tải...' : 'Làm mới'}
-          </button>
-        </div>
+        </div> 
       </div>
-
-      {/* Overview Cards */}
+ 
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon news">
@@ -124,15 +110,13 @@ const AdminDashboardView = () => {
           </div>
         </div>
       </div>
-
-      {/* Monitoring Section */}
+ 
       {monitoring && (
         <>
           <div className="section-divider">
             <h3>🔍 API Monitoring & Performance</h3>
           </div>
-
-          {/* API Metrics Cards */}
+ 
           <div className="stats-grid">
             <div className="stat-card monitoring">
               <div className="stat-icon api">
@@ -178,8 +162,7 @@ const AdminDashboardView = () => {
               </div>
             </div>
           </div>
-
-          {/* API Endpoints Performance */}
+ 
           <div className="charts-grid">
             <div className="chart-card monitoring-card">
               <h3><Zap size={20} /> Top API Endpoints (hôm nay)</h3>
@@ -200,8 +183,7 @@ const AdminDashboardView = () => {
                 ))}
               </div>
             </div>
-
-            {/* Recent Errors/Warnings */}
+ 
             <div className="chart-card monitoring-card">
               <h3><AlertCircle size={20} /> Recent Logs</h3>
               <div className="latest-list">
@@ -220,8 +202,7 @@ const AdminDashboardView = () => {
                 ))}
               </div>
             </div>
-
-            {/* Database Tables */}
+ 
             <div className="chart-card monitoring-card">
               <h3><Database size={20} /> Database Tables</h3>
               <div className="bar-chart">
@@ -239,8 +220,7 @@ const AdminDashboardView = () => {
                 ))}
               </div>
             </div>
-
-            {/* System Health */}
+ 
             <div className="chart-card monitoring-card">
               <h3><Activity size={20} /> System Health</h3>
               <div className="health-grid">
@@ -277,14 +257,12 @@ const AdminDashboardView = () => {
           </div>
         </>
       )}
-
-      {/* Data Overview Charts */}
+ 
       <div className="section-divider">
         <h3>📈 Data Overview</h3>
       </div>
 
-      <div className="charts-grid">
-        {/* News by Source */}
+      <div className="charts-grid"> 
         <div className="chart-card">
           <h3><BarChart size={20} /> Tin tức theo nguồn</h3>
           <div className="bar-chart">
@@ -302,8 +280,7 @@ const AdminDashboardView = () => {
             ))}
           </div>
         </div>
-
-        {/* News by Region */}
+ 
         <div className="chart-card">
           <h3><BarChart size={20} /> Tin tức theo vùng</h3>
           <div className="bar-chart">
@@ -321,8 +298,7 @@ const AdminDashboardView = () => {
             ))}
           </div>
         </div>
-
-        {/* Businesses by Region */}
+ 
         <div className="chart-card">
           <h3><BarChart size={20} /> Doanh nghiệp theo vùng</h3>
           <div className="bar-chart">
@@ -340,8 +316,7 @@ const AdminDashboardView = () => {
             ))}
           </div>
         </div>
-
-        {/* Latest News */}
+ 
         <div className="chart-card">
           <h3>📰 Tin tức mới nhất</h3>
           <div className="latest-list">
@@ -359,8 +334,7 @@ const AdminDashboardView = () => {
           </div>
         </div>
       </div>
-
-      {/* System Info */}
+ 
       <div className="system-info">
         <h3>🔧 Thông tin hệ thống</h3>
         <div className="info-grid">

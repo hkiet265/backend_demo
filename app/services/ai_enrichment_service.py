@@ -27,20 +27,16 @@ class AIEnrichmentService:
         """
         if not phone:
             return None
-        
-        # Remove all non-digit except +
+
         cleaned = re.sub(r'[^\d+]', '', phone.strip())
-        
-        # Remove leading 0 and add +84
+
         if cleaned.startswith('0'):
             cleaned = '+84' + cleaned[1:]
         elif cleaned.startswith('84'):
             cleaned = '+' + cleaned
-        elif not cleaned.startswith('+84'):
-            # Assume Vietnamese number
+        elif not cleaned.startswith('+84'): 
             cleaned = '+84' + cleaned
-        
-        # Validate length (Vietnamese phone: 10-11 digits after +84)
+
         if len(cleaned) >= 12 and len(cleaned) <= 13:
             return cleaned
         
@@ -57,8 +53,7 @@ class AIEnrichmentService:
             return None
         
         cleaned = email.strip().lower()
-        
-        # Basic email validation
+
         pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         if re.match(pattern, cleaned):
             return cleaned
@@ -76,15 +71,12 @@ class AIEnrichmentService:
             return None
         
         cleaned = website.strip().lower()
-        
-        # Add protocol if missing
+
         if not cleaned.startswith(('http://', 'https://')):
             cleaned = 'https://' + cleaned
-        
-        # Remove trailing slash
+
         cleaned = cleaned.rstrip('/')
-        
-        # Basic validation
+
         if '.' in cleaned and len(cleaned) > 10:
             return cleaned
         
@@ -101,8 +93,7 @@ class AIEnrichmentService:
             return None
         
         location_lower = location.lower()
-        
-        # Miền Bắc
+
         bac_keywords = [
             'hà nội', 'hanoi', 'hải phòng', 'haiphong', 'quảng ninh',
             'bắc ninh', 'bắc giang', 'hải dương', 'hưng yên', 'nam định',
@@ -111,16 +102,14 @@ class AIEnrichmentService:
             'bắc kạn', 'thái nguyên', 'lạng sơn', 'điện biên', 'lai châu',
             'sơn la', 'hòa bình'
         ]
-        
-        # Miền Trung
+
         trung_keywords = [
             'đà nẵng', 'danang', 'huế', 'hue', 'quảng nam', 'quảng ngãi',
             'bình định', 'phú yên', 'khánh hòa', 'nha trang', 'quảng bình',
             'quảng trị', 'thừa thiên', 'ninh thuận', 'bình thuận', 'kon tum',
             'gia lai', 'đắk lắk', 'đắk nông', 'lâm đồng'
         ]
-        
-        # Miền Nam
+
         nam_keywords = [
             'hồ chí minh', 'sài gòn', 'saigon', 'hcm', 'bình dương',
             'đồng nai', 'bà rịa', 'vũng tàu', 'long an', 'tiền giang',
@@ -208,8 +197,7 @@ class AIEnrichmentService:
         - Email
         - Website domain
         """
-        # This would typically query database with similarity search
-        # For now, return structure
+
         return {
             "is_duplicate": False,
             "confidence": 0.0,
@@ -225,7 +213,7 @@ class AIEnrichmentService:
         - Social links
         (Cần implement web scraping với respect robots.txt)
         """
-        # TODO: Implement web scraping
+       
         return {
             "title": None,
             "description": None,
@@ -267,30 +255,25 @@ Tóm tắt (tiếng Việt, {max_sentences} câu):"""
         - Có địa chỉ cụ thể không (10 điểm)
         """
         score = 0
-        
-        # Basic info completeness (40 points)
+
         required_fields = ['ten_doanh_nghiep', 'so_dien_thoai', 'email', 'tinh_thanh', 'nganh_nghe']
         filled = sum(1 for field in required_fields if business_data.get(field))
         score += int((filled / len(required_fields)) * 40)
-        
-        # Website (20 points)
+
         if business_data.get('website'):
             score += 20
-        
-        # Email domain matches website (20 points)
+
         email = business_data.get('email', '')
         website = business_data.get('website', '')
         if email and website and '@' in email:
             email_domain = email.split('@')[1]
             if email_domain in website:
                 score += 20
-        
-        # Social media (10 points)
+
         social = [business_data.get('facebook'), business_data.get('linkedin'), business_data.get('zalo')]
         if any(social):
             score += 10
-        
-        # Full address (10 points)
+
         if business_data.get('dia_chi'):
             score += 10
         
@@ -301,8 +284,7 @@ Tóm tắt (tiếng Việt, {max_sentences} câu):"""
         Chuẩn hóa toàn bộ dữ liệu doanh nghiệp
         """
         normalized = data.copy()
-        
-        # Normalize contact info
+
         if 'so_dien_thoai' in normalized:
             normalized['so_dien_thoai'] = self.normalize_phone(normalized['so_dien_thoai'])
         
@@ -311,25 +293,20 @@ Tóm tắt (tiếng Việt, {max_sentences} câu):"""
         
         if 'website' in normalized:
             normalized['website'] = self.normalize_website(normalized['website'])
-        
-        # Infer region from location
+ 
         if 'tinh_thanh' in normalized and not normalized.get('vung_mien'):
             normalized['vung_mien'] = self.infer_region_from_location(normalized['tinh_thanh'])
-        
-        # Auto-classify industry
+
         if not normalized.get('nganh_nghe'):
             normalized['nganh_nghe'] = self.auto_classify_industry(
                 normalized.get('ten_doanh_nghiep', ''),
                 normalized.get('mo_ta', '')
             )
-        
-        # Calculate trust score
+
         normalized['do_tin_cay'] = self.calculate_trust_score(normalized)
         
         return normalized
-
-
-# Singleton instance
+        
 _enrichment_service = None
 
 def get_enrichment_service() -> AIEnrichmentService:

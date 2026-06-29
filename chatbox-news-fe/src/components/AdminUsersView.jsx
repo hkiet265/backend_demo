@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Users, RefreshCw, Shield, UserCheck, Calendar, Mail, Phone } from 'lucide-react';
+import { Users, Shield, UserCheck, Calendar, Mail, Phone } from 'lucide-react';
 
 const AdminUsersView = () => {
   const [users, setUsers] = useState([]);
   const [roleStats, setRoleStats] = useState([]);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState(null);
+  const [loading, setLoading] = useState(true); 
+
+  const adminUsers = users.filter(u => u.role === 'admin');
+  const regularUsers = users.filter(u => u.role === 'user'); 
 
   const fetchUsers = async () => {
     try {
@@ -17,8 +19,7 @@ const AdminUsersView = () => {
       if (data.status === 'success') {
         setUsers(data.data.users);
         setTotal(data.data.total);
-        setRoleStats(data.data.role_stats);
-        setLastUpdate(new Date().toLocaleTimeString('vi-VN'));
+        setRoleStats(data.data.role_stats); 
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -29,6 +30,9 @@ const AdminUsersView = () => {
 
   useEffect(() => {
     fetchUsers();
+
+    const interval = setInterval(fetchUsers, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   if (loading && users.length === 0) {
@@ -40,23 +44,14 @@ const AdminUsersView = () => {
   }
 
   return (
-    <div className="admin-users-view">
-      {/* Header */}
+    <div className="admin-users-view"> 
       <div className="dashboard-header">
         <div>
           <h2>👥 User Management</h2>
           <p className="subtitle">Quản lý người dùng đã đăng ký</p>
         </div>
-        <div className="header-actions">
-          <span className="last-update">Cập nhật: {lastUpdate}</span>
-          <button onClick={fetchUsers} className="refresh-button" disabled={loading}>
-            <RefreshCw size={16} />
-            {loading ? 'Đang tải...' : 'Làm mới'}
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
+     </div>
+ 
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon users">
@@ -80,11 +75,10 @@ const AdminUsersView = () => {
           </div>
         ))}
       </div>
-
-      {/* Users Table */}
+ 
       <div className="users-table-container">
         <div className="table-header">
-          <h3>📋 Danh sách Users</h3>
+          <h3> Admin Users</h3>
         </div>
         
         <div className="users-table">
@@ -100,17 +94,10 @@ const AdminUsersView = () => {
               </tr>
             </thead>
             <tbody>
-              {users.map((user) => (
+              {adminUsers.map((user) => (
                 <tr key={user.id}>
                   <td>{user.id}</td>
-                  <td>
-                    <div className="user-cell">
-                      <div className="user-avatar-small">
-                        {user.full_name.charAt(0).toUpperCase()}
-                      </div>
-                      <span>{user.full_name}</span>
-                    </div>
-                  </td>
+                  <td>{user.full_name}</td>
                   <td>
                     <div className="email-cell">
                       <Mail size={14} />
@@ -130,8 +117,8 @@ const AdminUsersView = () => {
                     </div>
                   </td>
                   <td>
-                    <span className={`role-badge ${user.role}`}>
-                      {user.role === 'admin' ? '👑 Admin' : '👤 User'}
+                    <span className="role-badge admin">
+                      Admin
                     </span>
                   </td>
                   <td>
@@ -146,10 +133,75 @@ const AdminUsersView = () => {
           </table>
         </div>
 
-        {users.length === 0 && !loading && (
+        {adminUsers.length === 0 && !loading && (
+          <div className="empty-state">
+            <Shield size={64} />
+            <p>Chưa có admin nào</p>
+          </div>
+        )}
+      </div>
+
+      <div className="users-table-container" style={{ marginTop: '32px' }}>
+        <div className="table-header">
+          <h3>Regular Users</h3>
+        </div>
+        
+        <div className="users-table">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tên đầy đủ</th>
+                <th>Email</th>
+                <th>Số điện thoại</th>
+                <th>Role</th>
+                <th>Ngày đăng ký</th>
+              </tr>
+            </thead>
+            <tbody>
+              {regularUsers.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.id}</td>
+                  <td>{user.full_name}</td>
+                  <td>
+                    <div className="email-cell">
+                      <Mail size={14} />
+                      {user.email}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="phone-cell">
+                      {user.phone ? (
+                        <>
+                          <Phone size={14} />
+                          {user.phone}
+                        </>
+                      ) : (
+                        <span className="no-data">—</span>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    <span className="role-badge user">
+                     User
+                    </span>
+                  </td>
+                  <td>
+                    <div className="date-cell">
+                      <Calendar size={14} />
+                      {new Date(user.created_at).toLocaleDateString('vi-VN')}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {regularUsers.length === 0 && !loading && (
           <div className="empty-state">
             <Users size={64} />
-            <p>Chưa có users nào đăng ký</p>
+            <p>Chưa có user nào đăng ký</p>
           </div>
         )}
       </div>

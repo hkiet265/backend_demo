@@ -21,14 +21,14 @@ class CrawlResponse(BaseModel):
 
 
 @router.post("/start")
-@limiter.limit(CRAWLER_RATE_LIMIT)  # 1 request/minute (prevent spam crawling)
+@limiter.limit(CRAWLER_RATE_LIMIT)
 async def start_crawling(request: Request, background_tasks: BackgroundTasks):
     """
     Bắt đầu crawl tin tức từ RSS feeds
     Chạy background để không block request
     """
     try:
-        # Chạy crawling trong background
+        
         background_tasks.add_task(crawler_service.crawl_all_sources)
         
         return CrawlResponse(
@@ -42,7 +42,7 @@ async def start_crawling(request: Request, background_tasks: BackgroundTasks):
 
 
 @router.post("/start-sync")
-@limiter.limit(CRAWLER_RATE_LIMIT)  # 1 request/minute
+@limiter.limit(CRAWLER_RATE_LIMIT)
 async def start_crawling_sync(request: Request):
     """
     Crawl đồng bộ (chờ kết quả)
@@ -95,12 +95,10 @@ async def get_crawler_stats():
         
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
-        
-        # Tổng tin từ RSS
+
         cur.execute("SELECT COUNT(*) FROM station_news WHERE nha_dai IN ('VTV', 'VTC', 'VOV');")
         total = cur.fetchone()[0]
-        
-        # Theo nhà đài
+
         cur.execute("""
             SELECT nha_dai, COUNT(*) as count 
             FROM station_news 
@@ -109,8 +107,7 @@ async def get_crawler_stats():
             ORDER BY count DESC;
         """)
         by_source = [{"source": row[0], "count": row[1]} for row in cur.fetchall()]
-        
-        # Theo vùng miền
+
         cur.execute("""
             SELECT vung_mien, COUNT(*) as count 
             FROM station_news 
@@ -119,8 +116,7 @@ async def get_crawler_stats():
             ORDER BY count DESC;
         """)
         by_region = [{"region": row[0], "count": row[1]} for row in cur.fetchall()]
-        
-        # Tin mới nhất
+    
         cur.execute("""
             SELECT tieu_de, nha_dai, created_at 
             FROM station_news 

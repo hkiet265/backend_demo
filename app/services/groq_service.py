@@ -27,8 +27,7 @@ class GroqService:
         self.model = model
         self.current_key_index = 0
         self.clients = {}
-        
-        # Initialize clients for each key
+
         for i, key in enumerate(self.api_keys):
             try:
                 self.clients[i] = Groq(api_key=key)
@@ -70,7 +69,7 @@ class GroqService:
         Returns:
             Generated text or None if all keys failed
         """
-        max_retries = len(self.clients)  # Try all keys
+        max_retries = len(self.clients)
         
         for attempt in range(max_retries):
             try:
@@ -96,25 +95,21 @@ class GroqService:
                 
             except Exception as e:
                 error_str = str(e)
-                
-                # Check if quota exceeded (429 or rate limit)
+
                 if "429" in error_str or "rate_limit" in error_str.lower() or "quota" in error_str.lower():
                     logger.warning(f"⚠️ Groq key #{self.current_key_index+1} quota exceeded, rotating...")
                     self._rotate_key()
                     
                     if attempt < max_retries - 1:
-                        continue  # Try next key
+                        continue
                 else:
-                    # Other errors
+                    
                     logger.error(f"❌ Groq error (key #{self.current_key_index+1}): {error_str[:100]}")
                     return None
-        
-        # All keys failed
+
         logger.error("❌ All Groq keys exhausted!")
         return None
-
-
-# Singleton
+ 
 _groq_service = None
 
 def get_groq_service() -> Optional[GroqService]:
@@ -122,15 +117,13 @@ def get_groq_service() -> Optional[GroqService]:
     global _groq_service
     if _groq_service is None:
         from app.config import settings
-        
-        # Collect all Groq API keys
+
         api_keys = [
             settings.GROQ_API_KEY_1,
             settings.GROQ_API_KEY_2,
             settings.GROQ_API_KEY_3,
         ]
-        
-        # Filter out empty keys
+
         valid_keys = [key for key in api_keys if key]
         
         if not valid_keys:

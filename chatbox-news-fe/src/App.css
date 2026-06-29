@@ -1,5 +1,4 @@
-/* App.css - Bản Thiết Kế Gộp Navbar Cho Hệ Thống Em Tư AI Master - Giao Diện Kem Vani */
-:root {
+:root { 
   --bg-dark-core: #FFF9E6;
   --bg-panel: #FFF4D9;
   --bg-input: #FFFBF0;
@@ -30,8 +29,7 @@ html, body, #root {
   overflow: hidden;
   box-sizing: border-box;
 }
-
-/* --- THANH NAVBAR ĐIỀU HƯỚNG MỚI TOANH TRÊN ĐỈNH --- */
+ 
 .premium-navbar {
   height: 70px;
   background-color: var(--bg-panel);
@@ -141,8 +139,7 @@ html, body, #root {
   align-items: center;
   gap: 12px;
 }
-
-/* User Dropdown */
+ 
 .nav-user-dropdown {
   position: relative;
 }
@@ -341,8 +338,7 @@ html, body, #root {
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
-
-/* Khu vực hiển thị nội dung động chiếm trọn phần không gian bên dưới */
+ 
 .dynamic-workspace-layout {
   flex: 1;
   width: 100%;
@@ -362,8 +358,7 @@ html, body, #root {
   background: radial-gradient(circle at 5% 5%, #FFF4D9 0%, var(--bg-dark-core) 60%);
   box-sizing: border-box;
 }
-
-/* --- HIỆU ỨNG CHUYỂN TAB FADE IN MƯỢT MÀ --- */
+ 
 .fade-in-effect {
   animation: tabFadeIn 0.3s ease-out both;
 }
@@ -371,8 +366,7 @@ html, body, #root {
   0% { opacity: 0; transform: translateY(4px); }
   100% { opacity: 1; transform: translateY(0); }
 }
-
-/* --- MÔ-ĐUN 1: CSS DOANH NGHIỆP --- */
+ 
 .search-box-container {
   background-color: var(--bg-panel); 
   border: 1px solid var(--border-neon);
@@ -487,14 +481,12 @@ html, body, #root {
 .table-badge.region-Trung { background: rgba(255, 200, 124, 0.35); color: #C87A2E; }
 .table-badge.region-Toàn\ quốc { background: rgba(255, 140, 66, 0.3); color: #B85C20; }
 .table-badge.status-active { background: rgba(255, 140, 66, 0.25); color: var(--color-secondary); }
-
-/* --- MÔ-ĐUN 2: KHO TIN TỨC SUPABASE TRỞ LẠI PHẲNG SẠCH --- */
+ 
 .section-header {
   display: flex; justify-content: space-between; align-items: center;
   border-bottom: 1px solid var(--border-neon); padding-bottom: 16px;
 }
-
-/* --- THANH TÌM KIẾM VÀ FILTER --- */
+ 
 .news-filters {
   display: flex;
   flex-direction: column;
@@ -588,8 +580,7 @@ html, body, #root {
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(255, 122, 47, 0.4);
 }
-
-/* CATEGORY FILTERS */
+ 
 .category-filters {
   display: flex;
   flex-wrap: wrap;
@@ -763,8 +754,7 @@ html, body, #root {
 .badge.source { background: rgba(255, 169, 77, 0.25); color: var(--color-warm); }
 .database-news-card h3 { margin: 0; font-size: 17px; font-weight: 600; color: var(--text-main); line-height: 1.4; }
 .database-news-card p { font-size: 13.5px; color: var(--text-dim); line-height: 1.55; margin: 0; }
-
-/* --- MÔ-ĐUN 3: PHÒNG CHAT ĐIỀU HÀNH FULL MÀN HÌNH --- */
+ 
 .full-chat-workspace {
   width: 100%; height: 100%; display: flex; flex-direction: column;
   background: linear-gradient(to bottom, #FFFBF0, #FFF4D9);
@@ -786,8 +776,7 @@ html, body, #root {
   border-bottom-left-radius: 2px; 
   border: 2px solid var(--border-neon); 
 }
-
-/* Action Buttons Container */
+ 
 .action-buttons-container {
   margin-top: 16px;
   display: flex;
@@ -867,8 +856,7 @@ html, body, #root {
 .chat-action-btn:active {
   transform: translateY(0) scale(0.98);
 }
-
-/* Responsive cho mobile */
+ 
 @media (max-width: 768px) {
   .action-buttons-grid {
     grid-template-columns: 1fr;
@@ -883,8 +871,7 @@ html, body, #root {
     font-size: 24px;
   }
 }
-
-/* Tin tức gợi ý trong chat */
+ 
 .suggested-news-list {
   margin-top: 16px;
   display: flex;
@@ -967,8 +954,7 @@ html, body, #root {
   color: var(--color-secondary);
   align-self: flex-start;
 }
-
-/* --- CHATBOX POPUP --- */
+ 
 .chat-popup-container {
   position: fixed;
   bottom: 24px;
@@ -1094,8 +1080,7 @@ html, body, #root {
   color: white; border: none; padding: 0 20px; border-radius: 10px; cursor: pointer;
   box-shadow: 0 4px 12px rgba(255, 122, 47, 0.3);
 }
-
-/* Nút cuộn xuống cuối - Kiểu đơn giản màu đen */
+ 
 .scroll-to-bottom-btn {
   position: absolute;
   bottom: 100px;
@@ -1126,17 +1111,14 @@ html, body, #root {
 .scroll-to-bottom-btn:active {
   transform: scale(0.95);
 }
-
-/* Các thành phần hiệu ứng phụ trợ vòng xoay loading */
+ 
 .loading-state, .empty-state { text-align: center; padding: 100px 20px; color: var(--text-dim); }
 .spinner { width: 32px; height: 32px; border: 3px solid rgba(255, 228, 181, 0.4); border-radius: 50%; border-top-color: var(--color-primary); margin: 0 auto 16px auto; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-state-text .bubble-text { color: var(--text-dim); font-style: italic; background: transparent; border: none; padding: 0; }
 .shadow-pulse { animation: text-blink 1s infinite alternate; }
 @keyframes text-blink { 0% { opacity: 0.5; } 100% { opacity: 1; } }
-
-
-/* --- MODAL CHI TIẾT BÀI VIẾT --- */
+ 
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -1261,8 +1243,7 @@ html, body, #root {
     transform: translateY(0);
   }
 }
-
-/* Scrollbar cho modal */
+ 
 .modal-content::-webkit-scrollbar {
   width: 8px;
 }
@@ -1280,9 +1261,7 @@ html, body, #root {
 .modal-content::-webkit-scrollbar-thumb:hover {
   background: var(--color-secondary);
 }
-
-
-/* --- PHÂN TRANG --- */
+ 
 .pagination {
   display: flex;
   align-items: center;
@@ -1360,9 +1339,7 @@ html, body, #root {
   border-color: var(--color-primary);
   box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
 }
-
-
-/* --- BUSINESS INFO GRID --- */
+ 
 .business-info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -1391,8 +1368,7 @@ html, body, #root {
   color: var(--text-main);
   font-weight: 500;
 }
-
-/* Hover effect for table rows */
+ 
 .table-row-fade:hover {
   background: rgba(255, 140, 66, 0.08);
   transition: all 0.2s ease;
@@ -1401,11 +1377,7 @@ html, body, #root {
 .badge.region-Bắc { background: rgba(255, 169, 77, 0.3); color: #CC6A29; }
 .badge.region-Nam { background: rgba(255, 179, 102, 0.35); color: #D47231; }
 .badge.region-Trung { background: rgba(255, 200, 124, 0.35); color: #C87A2E; }
-
-
-/* =====================================================
-   BUSINESS CARD GRID — horizontal layout
-   ===================================================== */
+ 
 .biz-card-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1445,8 +1417,7 @@ html, body, #root {
 }
 
 .biz-card:hover::before { transform: scaleY(1); }
-
-/* Icon */
+ 
 .biz-card-icon {
   font-size: 28px;
   width: 48px;
@@ -1459,8 +1430,7 @@ html, body, #root {
   justify-content: center;
   line-height: 1;
 }
-
-/* Body */
+ 
 .biz-card-body {
   flex: 1;
   min-width: 0;
@@ -1488,8 +1458,7 @@ html, body, #root {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-/* Tags row */
+ 
 .biz-card-tags {
   display: flex;
   flex-wrap: wrap;
@@ -1520,8 +1489,7 @@ html, body, #root {
   color: var(--text-dim);
   font-weight: 400;
 }
-
-/* Arrow */
+ 
 .biz-card-arrow {
   color: var(--text-dim);
   min-width: 18px;
@@ -1532,10 +1500,7 @@ html, body, #root {
   transform: translateX(3px);
   color: var(--color-primary);
 }
-
-/* =====================================================
-   SKELETON LOADER
-   ===================================================== */
+ 
 .skeleton-card {
   pointer-events: none;
   opacity: 0.7;
@@ -1553,10 +1518,7 @@ html, body, #root {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
-
-/* =====================================================
-   TYPING INDICATOR
-   ===================================================== */
+ 
 .typing-indicator-bubble {
   display: flex;
   align-items: center;
@@ -1582,10 +1544,7 @@ html, body, #root {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
   30%            { transform: translateY(-6px); opacity: 1; }
 }
-
-/* =====================================================
-   CHAT BIZ CARD HINT
-   ===================================================== */
+ 
 .chat-biz-card { cursor: pointer; }
 .chat-biz-card:hover { border-color: var(--color-primary); }
 
@@ -1601,8 +1560,7 @@ html, body, #root {
   color: #276749;
   font-weight: 700;
 }
-
-/* Simple Business List - Chỉ hiện tên + SĐT */
+ 
 .simple-business-list {
   display: flex;
   flex-direction: column;
@@ -1649,8 +1607,7 @@ html, body, #root {
   color: var(--text-dim);
   margin-top: 2px;
 }
-
-/* Modal rộng hơn cho doanh nghiệp */
+ 
 .biz-modal-wide {
   max-width: 640px;
   width: 95vw;
@@ -1659,12 +1616,7 @@ html, body, #root {
 .biz-modal-wide .business-info-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
-
-
-/* =====================================================
-   AUTHENTICATION STYLES
-   ===================================================== */
-
+ 
 .auth-modal-overlay {
   position: fixed;
   top: 0;
@@ -1995,8 +1947,7 @@ html, body, #root {
   cursor: not-allowed;
   background: #f5f5f5;
 }
-
-/* Quick Actions Compact - 2 nút nhỏ gọn luôn hiển thị */
+ 
 .quick-actions-compact {
   display: flex;
   gap: 8px;
@@ -2029,14 +1980,7 @@ html, body, #root {
   transform: translateY(0);
   box-shadow: 0 2px 6px rgba(255, 140, 66, 0.4);
 }
-
-
-
-/* =====================================================
-   🎨 CUSTOM ANIMATION EFFECTS - Advanced UI
-   ===================================================== */
-
-/* 🌊 EFFECT #4: Ripple Click Animation */
+ 
 .action-btn,
 .neon-search-btn,
 .search-submit-btn,
@@ -2073,9 +2017,7 @@ html, body, #root {
   opacity: 0;
   transition: width 0.6s, height 0.6s, opacity 0.6s;
 }
-
-
-/* 🎭 EFFECT #7: Stagger Animation for Lists */
+ 
 @keyframes staggerFadeIn {
   from {
     opacity: 0;
@@ -2091,8 +2033,7 @@ html, body, #root {
 .database-news-card {
   animation: staggerFadeIn 0.5s ease-out backwards;
 }
-
-/* Stagger delay cho từng card */
+ 
 .biz-card:nth-child(1),
 .database-news-card:nth-child(1) {
   animation-delay: 0s;
@@ -2142,15 +2083,12 @@ html, body, #root {
 .database-news-card:nth-child(10) {
   animation-delay: 0.45s;
 }
-
-/* Reset animation khi scroll/filter */
+ 
 .biz-card-grid,
 .news-grid {
   animation: none;
 }
-
-
-/* 🎨 BONUS: Hover glow effect cho buttons */
+ 
 .action-btn:hover,
 .refresh-btn:hover {
   box-shadow: 0 0 20px rgba(255, 140, 66, 0.5),
@@ -2162,9 +2100,7 @@ html, body, #root {
   box-shadow: 0 0 25px rgba(255, 140, 66, 0.6),
               0 6px 16px rgba(255, 122, 47, 0.4);
 }
-
-
-/* 🌟 BONUS: Smooth entrance for modal */
+ 
 .modal-overlay {
   backdrop-filter: blur(8px);
   background: rgba(0, 0, 0, 0.3);
@@ -2174,11 +2110,7 @@ html, body, #root {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3),
               0 0 40px rgba(255, 140, 66, 0.15);
 }
-
-
-/* =====================================================
-   EDIT PROFILE MODAL
-   ===================================================== */
+ 
 .edit-profile-modal {
   max-width: 500px;
 }
@@ -2327,12 +2259,7 @@ html, body, #root {
   cursor: not-allowed;
   transform: none;
 }
-
-
-/* =====================================================
-   Admin Dashboard Styles
-   ===================================================== */
-
+ 
 .admin-dashboard {
   padding: 20px;
   max-width: 1400px;
@@ -2394,8 +2321,7 @@ html, body, #root {
   opacity: 0.6;
   cursor: not-allowed;
 }
-
-/* Stats Grid */
+ 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -2470,8 +2396,7 @@ html, body, #root {
   background: #d4edda;
   color: #155724;
 }
-
-/* Charts Grid */
+ 
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -2494,8 +2419,7 @@ html, body, #root {
   align-items: center;
   gap: 8px;
 }
-
-/* Bar Chart */
+ 
 .bar-chart {
   display: flex;
   flex-direction: column;
@@ -2827,7 +2751,7 @@ html, body, #root {
   top: 0;
   z-index: 1000;
   box-shadow: 4px 0 20px rgba(0,0,0,0.1);
-  overflow-y: auto; /* Allow scrolling */
+  overflow: visible;
 }
 
 .admin-sidebar-header {
@@ -2958,6 +2882,14 @@ html, body, #root {
   display: flex;
   align-items: center;
   gap: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  position: relative;
+  overflow: visible;
+}
+
+.admin-user-badge:hover {
+  background: rgba(0,0,0,0.15);
 }
 
 .user-avatar {
@@ -2988,6 +2920,73 @@ html, body, #root {
 .user-role {
   font-size: 12px;
   opacity: 0.8;
+}
+
+/* User Dropdown Backdrop */
+.dropdown-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  z-index: 1500;
+}
+
+/* User Dropdown Menu */
+.admin-user-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 10px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+  overflow: hidden;
+  animation: slideUp 0.2s ease-out;
+  z-index: 1600;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 20px;
+  background: white;
+  border: none;
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-item:hover {
+  background: #f8f9fa;
+  color: #FF8C42;
+}
+
+.dropdown-item.logout:hover {
+  background: #fff5f5;
+  color: #ef4444;
 }
 
 /* Main Content */

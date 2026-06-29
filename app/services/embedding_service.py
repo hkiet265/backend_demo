@@ -47,7 +47,7 @@ class EmbeddingService:
             return result['embedding']
         except Exception as e:
             logger.error(f"Embedding generation failed: {e}")
-            # Return zero vector as fallback
+
             return [0.0] * self.dimension
     
     def generate_query_embedding(self, query: str) -> List[float]:
