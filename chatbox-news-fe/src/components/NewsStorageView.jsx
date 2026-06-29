@@ -8,20 +8,18 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const itemsPerPage = 8;
-
-  // Sync external newsSearchQuery with internal searchQuery
+ 
   useEffect(() => {
     if (newsSearchQuery) {
       setSearchQuery(newsSearchQuery);
       setCurrentPage(1);
-      // Reset external query after using
+
       if (setNewsSearchQuery) {
         setTimeout(() => setNewsSearchQuery(''), 100);
       }
     }
   }, [newsSearchQuery, setNewsSearchQuery]);
-
-  // Hàm chuẩn hóa tên category sang Title Case
+ 
   const normalizeCategory = (text) => {
     if (!text) return '';
     return text
@@ -30,27 +28,23 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
   };
-
-  // Lọc tin tức theo tìm kiếm và chuyên mục
+ 
   const filteredNews = allNews.filter((news) => {
     const matchSearch = searchQuery === '' || 
       news.tieu_de.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (news.tom_tat && news.tom_tat.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    // So sánh case-insensitive cho category
+
     const matchCategory = selectedCategory === 'all' || 
       (news.chuyen_muc && news.chuyen_muc.trim().toLowerCase() === selectedCategory.toLowerCase());
     
     return matchSearch && matchCategory;
   });
-
-  // Lấy danh sách chuyên mục unique - chuẩn hóa tên sang Title Case
+ 
   const categoryMap = new Map();
   allNews.forEach(news => {
     if (news.chuyen_muc) {
       const normalized = normalizeCategory(news.chuyen_muc);
-      const lowerKey = normalized.toLowerCase();
-      // Giữ lại tên đã chuẩn hóa cho mỗi lowercase key
+      const lowerKey = normalized.toLowerCase(); 
       if (!categoryMap.has(lowerKey)) {
         categoryMap.set(lowerKey, normalized);
       }
@@ -59,30 +53,25 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
   
   const uniqueCategories = Array.from(categoryMap.values()).sort();
   const categories = ['all', ...uniqueCategories];
-
-  // Tính toán phân trang dựa trên filteredNews
+ 
   const totalPages = Math.ceil(filteredNews.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentNews = filteredNews.slice(startIndex, endIndex);
-
-  // Reset về trang 1 khi search hoặc filter
+ 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedCategory]);
-
-  // Reset về trang 1 khi có tin tức mới
+ 
   useEffect(() => {
     setCurrentPage(1);
   }, [allNews.length]);
 
   const openModal = (news) => {
-    setSelectedNews(news);
-    // Đóng chatbox khi mở modal
+    setSelectedNews(news); 
     if (onNewsClick) {
       onNewsClick();
-    }
-    // Scroll modal về đầu khi mở
+    } 
     setTimeout(() => {
       const modalContent = document.querySelector('.modal-content');
       if (modalContent) {
@@ -94,8 +83,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
   const closeModal = () => {
     setSelectedNews(null);
   };
-
-  // Khóa scroll khi modal mở
+ 
   useEffect(() => {
     if (selectedNews) {
       const scrollContainer = document.querySelector('.main-content-area');
@@ -112,7 +100,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
 
   const goToPage = (page) => {
     setCurrentPage(page);
-    // Scroll lên đầu danh sách tin tức
+
     const newsGrid = document.querySelector('.news-grid');
     if (newsGrid) {
       newsGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -148,9 +136,8 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
               <RefreshCw size={18} />
             </button>
           </div>
-        </div>
+        </div> 
 
-        {/* Thanh tìm kiếm và filter */}
         <div className="news-filters">
           <div className="search-box">
             <Search size={18} className="search-icon" />
@@ -224,8 +211,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                 </div>
               ))}
             </div>
-
-            {/* Phân trang */}
+ 
             {totalPages > 1 && (
               <div className="pagination">
                 <button 
@@ -242,8 +228,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                     const pages = [];
                     const showEllipsisStart = currentPage > 3;
                     const showEllipsisEnd = currentPage < totalPages - 2;
-                    
-                    // Luôn hiển thị trang 1
+
                     pages.push(
                       <button
                         key={1}
@@ -253,13 +238,11 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                         1
                       </button>
                     );
-                    
-                    // Ellipsis đầu nếu cần
+
                     if (showEllipsisStart) {
                       pages.push(<span key="ellipsis-start" className="pagination-ellipsis">...</span>);
                     }
-                    
-                    // Các trang xung quanh trang hiện tại
+
                     const start = Math.max(2, currentPage - 1);
                     const end = Math.min(totalPages - 1, currentPage + 1);
                     
@@ -274,13 +257,11 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                         </button>
                       );
                     }
-                    
-                    // Ellipsis cuối nếu cần
+
                     if (showEllipsisEnd) {
                       pages.push(<span key="ellipsis-end" className="pagination-ellipsis">...</span>);
                     }
-                    
-                    // Luôn hiển thị trang cuối (nếu có nhiều hơn 1 trang)
+
                     if (totalPages > 1) {
                       pages.push(
                         <button
@@ -309,9 +290,8 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
             )}
           </>
         )}
-      </div>
-
-      {/* Modal chi tiết bài viết - Render ra ngoài body */}
+      </div> 
+      
       {selectedNews && createPortal(
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>

@@ -21,11 +21,9 @@ logger = logging.getLogger(__name__)
 
 class NewsCrawlerService:
     """RSS-based news crawler with minimal AI usage"""
-    
-    # Giới hạn số bài viết crawl mỗi lần (tránh quá tải)
-    MAX_ENTRIES_PER_RSS = 50  # Chỉ lấy 50 bài mới nhất
-    
-    # RSS feeds của các nhà đài Việt Nam
+
+    MAX_ENTRIES_PER_RSS = 50
+
     RSS_SOURCES = {
         "VTV": [
             "https://vtv.vn/rss/trong-nuoc.rss",
@@ -44,8 +42,7 @@ class NewsCrawlerService:
             "https://vov.vn/rss/xa-hoi.rss",
         ]
     }
-    
-    # Mapping chuyên mục từ RSS sang DB
+
     CATEGORY_MAP = {
         "trong-nuoc": "Thời sự",
         "thoi-su": "Thời sự",
@@ -58,10 +55,9 @@ class NewsCrawlerService:
         "cong-nghe": "Công nghệ",
         "suc-khoe": "Sức khỏe"
     }
-    
-    # Mapping địa danh -> vùng miền (Rules-based, không tốn token)
+
     REGION_MAP = {
-        # Bắc
+
         "hà nội": "Bac", "ha noi": "Bac", "hanoi": "Bac",
         "hải phòng": "Bac", "hai phong": "Bac",
         "quảng ninh": "Bac", "quang ninh": "Bac",
@@ -69,8 +65,7 @@ class NewsCrawlerService:
         "thái nguyên": "Bac", "thai nguyen": "Bac",
         "bắc ninh": "Bac", "bac ninh": "Bac",
         "bắc giang": "Bac", "bac giang": "Bac",
-        
-        # Trung
+
         "đà nẵng": "Trung", "da nang": "Trung", "danang": "Trung",
         "huế": "Trung", "hue": "Trung",
         "quảng nam": "Trung", "quang nam": "Trung",
@@ -80,8 +75,7 @@ class NewsCrawlerService:
         "khánh hòa": "Trung", "khanh hoa": "Trung",
         "nghệ an": "Trung", "nghe an": "Trung",
         "hà tĩnh": "Trung", "ha tinh": "Trung",
-        
-        # Nam
+
         "tp.hcm": "Nam", "hồ chí minh": "Nam", "ho chi minh": "Nam", 
         "sài gòn": "Nam", "saigon": "Nam", "sai gon": "Nam",
         "cần thơ": "Nam", "can tho": "Nam",
@@ -111,10 +105,9 @@ class NewsCrawlerService:
         """
         should_close = False
         try:
-            # Tạo hash từ URL hoặc title
+
             content_hash = self.generate_hash(url + title)
-            
-            # Sử dụng connection được truyền vào hoặc tạo mới
+
             if conn is None:
                 conn = psycopg2.connect(**settings.database_url)
                 should_close = True
@@ -153,8 +146,7 @@ class NewsCrawlerService:
             return None
         
         text_lower = text.lower()
-        
-        # Tìm địa danh trong text
+
         for location, region in self.REGION_MAP.items():
             if location in text_lower:
                 return region
@@ -166,17 +158,15 @@ class NewsCrawlerService:
         for key, value in self.CATEGORY_MAP.items():
             if key in rss_category.lower():
                 return value
-        return "Thời sự"  # Default
+        return "Thời sự"
     
     def clean_text(self, text: str) -> str:
         """Làm sạch text, loại bỏ HTML tags"""
         if not text:
             return ""
-        
-        # Remove HTML tags
+
         text = re.sub(r'<[^>]+>', '', text)
-        
-        # Remove extra whitespace
+
         text = re.sub(r'\s+', ' ', text).strip()
         
         return text
@@ -193,19 +183,17 @@ class NewsCrawlerService:
         """
         try:
             logger.info(f"Crawling RSS: {source_name} - {rss_url}")
-            
-            # Parse RSS
+
             feed = feedparser.parse(rss_url)
             
-            if feed.bozo:  # RSS parsing error
+            if feed.bozo: 
                 logger.warning(f"RSS parse error: {rss_url}")
                 return []
             
             news_list = []
             total_checked = 0
             duplicates_found = 0
-            
-            # Mở connection một lần cho toàn bộ batch
+
             conn = None
             try:
                 if batch_check_duplicates:
@@ -213,48 +201,39 @@ class NewsCrawlerService:
             except Exception as e:
                 logger.warning(f"Cannot create DB connection for batch check: {e}")
                 conn = None
-            
-            # Giới hạn số entries để xử lý (lấy mới nhất)
+
             entries_to_process = feed.entries[:self.MAX_ENTRIES_PER_RSS]
             
             for entry in entries_to_process:
                 total_checked += 1
-                
-                # Lấy thông tin cơ bản từ RSS
+
                 title = self.clean_text(entry.get('title', ''))
                 url = entry.get('link', '')
-                
-                # Skip nếu không có title hoặc url
+
                 if not title or not url:
                     continue
-                
-                # Check duplicate trước (dùng connection chung)
+
                 if self.check_duplicate(url, title, conn=conn):
                     duplicates_found += 1
                     continue
-                
-                # Lấy summary (RSS thường có sẵn)
+
                 summary = self.clean_text(entry.get('summary', '') or entry.get('description', ''))
-                
-                # Chuẩn hóa category từ RSS URL
+
                 category = self.normalize_category(rss_url)
-                
-                # Phát hiện vùng miền từ title + summary (rules-based)
+
                 region = self.detect_region_from_text(title + " " + summary)
-                
-                # Published date
+
                 published_at = None
                 if hasattr(entry, 'published_parsed') and entry.published_parsed:
                     try:
                         published_at = datetime(*entry.published_parsed[:6])
                     except:
                         pass
-                
-                # Tạo hash
+
                 content_hash = self.generate_hash(url + title)
                 
                 news_item = {
-                    'tieu_de': title[:500],  # Giới hạn độ dài
+                    'tieu_de': title[:500],
                     'tom_tat': summary[:1000] if summary else None,
                     'url': url,
                     'nha_dai': source_name,
@@ -262,13 +241,12 @@ class NewsCrawlerService:
                     'chuyen_muc': category,
                     'thoi_gian_dang': published_at or datetime.now(),
                     'hash_noi_dung': content_hash,
-                    'do_tin_cay': 90,  # RSS từ nhà đài chính thống = tin cậy cao
-                    'trang_thai': 'Cho_duyet'  # Admin duyệt trước khi publish
+                    'do_tin_cay': 90,
+                    'trang_thai': 'Cho_duyet'
                 }
                 
                 news_list.append(news_item)
-            
-            # Đóng connection nếu đã mở
+
             if conn:
                 try:
                     conn.close()
@@ -293,13 +271,13 @@ class NewsCrawlerService:
             return {"inserted": 0, "skipped": 0, "errors": []}
         
         max_retries = 3
-        retry_delay = 2  # seconds
+        retry_delay = 2 
         
         for attempt in range(max_retries):
             try:
                 conn = psycopg2.connect(
                     **settings.database_url,
-                    connect_timeout=10  # 10s timeout
+                    connect_timeout=10
                 )
                 cur = conn.cursor()
                 
@@ -348,7 +326,7 @@ class NewsCrawlerService:
                 return {
                     "inserted": inserted,
                     "skipped": skipped,
-                    "errors": errors[:5]  # Chỉ lấy 5 lỗi đầu
+                    "errors": errors[:5]
                 }
                 
             except psycopg2.OperationalError as e:
@@ -387,15 +365,13 @@ class NewsCrawlerService:
                     news_list = self.crawl_from_rss(source_name, rss_url)
                     total_news.extend(news_list)
                     summary["sources_crawled"] += 1
-                    
-                    # Delay 1s giữa mỗi RSS để tránh quá tải
+
                     time.sleep(1)
                     
                 except Exception as e:
                     logger.error(f"Error crawling {source_name} - {rss_url}: {e}")
                     summary["errors"].append(f"{source_name}: {str(e)[:50]}")
-        
-        # Lưu vào DB
+
         if total_news:
             result = self.save_news_to_db(total_news)
             summary["total_found"] = len(total_news)
@@ -405,9 +381,7 @@ class NewsCrawlerService:
         
         logger.info(f"✅ Crawl completed - Found: {summary['total_found']}, Inserted: {summary['total_inserted']}, Skipped: {summary['total_skipped']}")
         return summary
-
-
-# Singleton instance
+ 
 _crawler_service = None
 
 def get_crawler_service() -> NewsCrawlerService:

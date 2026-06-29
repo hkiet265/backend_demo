@@ -20,7 +20,7 @@ function ChatControlView({
   setChatInput,
   handleSendChat,
   onNewsClick,
-  onBusinessCardClick   // (bizName) => void — để chuyển tab + filter
+  onBusinessCardClick
 }) {
   const chatEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -39,8 +39,7 @@ function ChatControlView({
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   };
-
-  // Xử lý click action button
+ 
   const handleQuickAction = (actionText) => {
     setChatInput(actionText);
     setTimeout(() => {
@@ -48,9 +47,7 @@ function ChatControlView({
       handleSendChat(fakeEvent);
     }, 100);
   };
-
-  // KHÔNG có auto-scroll nữa - user hoàn toàn kiểm soát scroll
-
+ 
   return (
     <div className="full-chat-workspace fade-in-effect">
       <div className="chatbox-messages" ref={messagesContainerRef} onScroll={handleScroll}>
@@ -58,8 +55,7 @@ function ChatControlView({
           <div key={msg.id} className={`chat-bubble-wrapper ${msg.sender}`}>
             <div className="chat-bubble-content">
               <p className="bubble-text" style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</p>
-
-              {/* Tin tức liên quan */}
+ 
               {msg.suggestedNews && msg.suggestedNews.length > 0 && (
                 <div className="suggested-news-list">
                   <div className="news-list-header">📰 Tin tức liên quan:</div>
@@ -80,8 +76,7 @@ function ChatControlView({
                   ))}
                 </div>
               )}
-
-              {/* Doanh nghiệp gợi ý - Dạng đơn giản: tên + SĐT */}
+ 
               {msg.suggestedBusinesses && msg.suggestedBusinesses.length > 0 && (
                 <div className="suggested-news-list">
                   <div className="news-list-header">🏢 Doanh nghiệp phù hợp:</div>
@@ -114,16 +109,14 @@ function ChatControlView({
             </div>
           </div>
         ))}
-
-        {/* Typing indicator — hiện khi đang load, trước khi streaming bắt đầu */}
+ 
         {isChatLoading && (
           messages[messages.length - 1]?.sender !== 'ai' || messages[messages.length - 1]?.text === ''
         ) && <TypingIndicator />}
 
         <div ref={chatEndRef} />
       </div>
-
-      {/* Quick Actions - Nằm trên thanh input */}
+ 
       <div className="quick-actions-top">
         <button
           className="quick-action-btn-top"
@@ -140,8 +133,7 @@ function ChatControlView({
           📰 Tìm tin tức
         </button>
       </div>
-
-      {/* Nút scroll xuống - đơn giản màu đen */}
+ 
       {showScrollButton && (
         <button className="scroll-to-bottom-btn" onClick={scrollToBottom} title="Cuộn xuống cuối">
           <svg 

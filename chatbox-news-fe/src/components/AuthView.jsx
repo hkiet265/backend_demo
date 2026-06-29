@@ -7,8 +7,7 @@ function AuthView({ onLoginSuccess }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
-  // Form fields
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -18,8 +17,7 @@ function AuthView({ onLoginSuccess }) {
     e.preventDefault();
     setError('');
     setLoading(true);
-
-    // Validation
+     
     if (!isLogin) {
       if (!fullName.trim()) {
         setError('Vui lòng nhập họ và tên');
@@ -58,12 +56,12 @@ function AuthView({ onLoginSuccess }) {
       console.log('📥 Response:', data);
 
       if (!response.ok) {
-        // Xử lý các loại lỗi khác nhau
+        
         if (data.detail) {
           if (typeof data.detail === 'string') {
             throw new Error(data.detail);
           } else if (Array.isArray(data.detail)) {
-            // Validation errors từ Pydantic
+            
             const errorMsg = data.detail.map(err => {
               const field = err.loc ? err.loc[err.loc.length - 1] : 'field';
               return `${field}: ${err.msg}`;
@@ -73,17 +71,14 @@ function AuthView({ onLoginSuccess }) {
         }
         throw new Error('Đã xảy ra lỗi khi ' + (isLogin ? 'đăng nhập' : 'đăng ký'));
       }
-
-      // Lưu token vào localStorage
+ 
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
       console.log('✅ Auth success, calling callback...');
-
-      // Show success message
+ 
       setSuccess(isLogin ? 'Đăng nhập thành công!' : 'Đăng ký thành công!');
-
-      // Callback về App để cập nhật trạng thái đăng nhập
+ 
       setTimeout(() => {
         if (onLoginSuccess) {
           onLoginSuccess(data.user);
@@ -110,8 +105,7 @@ function AuthView({ onLoginSuccess }) {
 
   return (
     <div className="auth-container">
-      <div className="auth-card">
-        {/* Header */}
+      <div className="auth-card"> 
         <div className="auth-header">
           <div className="auth-logo">
             <img src="/emtu-avatar.png" alt="Em Tư" className="auth-avatar" />
@@ -123,24 +117,20 @@ function AuthView({ onLoginSuccess }) {
               : 'Tạo tài khoản mới để sử dụng Em Tư'}
           </p>
         </div>
-
-        {/* Error message */}
+ 
         {error && (
           <div className="auth-error">
             ⚠️ {error}
           </div>
         )}
-
-        {/* Success message */}
+ 
         {success && (
           <div className="auth-success">
             ✅ {success}
           </div>
         )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="auth-form">
-          {/* Email */}
+ 
+        <form onSubmit={handleSubmit} className="auth-form">         
           <div className="auth-input-group">
             <label>Email</label>
             <div className="auth-input-wrapper">
@@ -154,8 +144,7 @@ function AuthView({ onLoginSuccess }) {
               />
             </div>
           </div>
-
-          {/* Full Name - chỉ hiện khi đăng ký */}
+ 
           {!isLogin && (
             <div className="auth-input-group">
               <label>Họ và tên</label>
@@ -171,8 +160,7 @@ function AuthView({ onLoginSuccess }) {
               </div>
             </div>
           )}
-
-          {/* Phone - chỉ hiện khi đăng ký */}
+ 
           {!isLogin && (
             <div className="auth-input-group">
               <label>Số điện thoại (tùy chọn)</label>
@@ -187,8 +175,7 @@ function AuthView({ onLoginSuccess }) {
               </div>
             </div>
           )}
-
-          {/* Password */}
+ 
           <div className="auth-input-group">
             <label>Mật khẩu</label>
             <div className="auth-input-wrapper">
@@ -209,14 +196,12 @@ function AuthView({ onLoginSuccess }) {
               </button>
             </div>
           </div>
-
-          {/* Submit button */}
+ 
           <button type="submit" className="auth-submit-btn" disabled={loading}>
             {loading ? '⏳ Đang xử lý...' : (isLogin ? 'Đăng nhập' : 'Đăng ký')}
           </button>
         </form>
-
-        {/* Toggle mode */}
+ 
         <div className="auth-footer">
           <p>
             {isLogin ? 'Chưa có tài khoản?' : 'Đã có tài khoản?'}

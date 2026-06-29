@@ -32,8 +32,7 @@ async def get_all_news(
     try:
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
-        
-        # Build WHERE clause
+
         conditions = []
         params = []
         
@@ -50,12 +49,10 @@ async def get_all_news(
             params.append(f"%{region}%")
         
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
-        
-        # Get total count
+
         cur.execute(f"SELECT COUNT(*) FROM station_news {where_clause};", params)
         total = cur.fetchone()[0]
-        
-        # Get paginated data
+
         offset = (page - 1) * page_size
         params.extend([page_size, offset])
         
@@ -133,12 +130,10 @@ async def search_news(
             params.append(f"%{category}%")
         
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
-        
-        # Get total
+
         cur.execute(f"SELECT COUNT(*) FROM station_news {where_clause};", params)
         total = cur.fetchone()[0]
-        
-        # Get data
+
         offset = (page - 1) * page_size
         params.extend([page_size, offset])
         

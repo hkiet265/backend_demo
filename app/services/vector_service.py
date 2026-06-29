@@ -45,18 +45,13 @@ class VectorService:
             List of similar documents with metadata
         """
         try:
-            # Generate query embedding
+            
             query_embedding = self.embedding_service.generate_query_embedding(query)
             embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
-            
-            # Connect to database
+
             conn = psycopg2.connect(**self.db_config)
             cur = conn.cursor()
-            
-            # Cosine similarity search with recency boost
-            # Note: <=> operator returns distance (0 = identical)
-            # similarity = 1 - distance
-            # Prioritize recent news by adding created_at to ORDER BY
+
             cur.execute(f"""
                 SELECT 
                     id,
@@ -77,11 +72,10 @@ class VectorService:
             results = cur.fetchall()
             cur.close()
             conn.close()
-            
-            # Filter by threshold and format results
+
             documents = []
             for row in results:
-                similarity = row[6]  # Index đã thay đổi vì thêm created_at
+                similarity = row[6]
                 if similarity >= threshold:
                     documents.append({
                         'id': row[0],
@@ -195,13 +189,11 @@ class VectorService:
         
         for doc in docs:
             try:
-                # Combine title + summary for better context
+                
                 text = f"{doc['title']} {doc['summary'] or ''}"
-                
-                # Generate embedding
+
                 embedding = self.embedding_service.generate_document_embedding(text)
-                
-                # Save to database
+
                 if self.save_embedding(doc['id'], embedding):
                     stats['success'] += 1
                     logger.info(f"✅ Generated embedding for: {doc['title'][:60]}")

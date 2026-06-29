@@ -14,9 +14,9 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
 @router.post("/message", response_model=ChatResponse)
-@limiter.limit(CHAT_RATE_LIMIT)  # 10 requests/minute
+@limiter.limit(CHAT_RATE_LIMIT)
 async def send_message(
-    request: Request,  # For rate limiter
+    request: Request,
     chat_request: ChatRequest,
     chat_service: ChatService = Depends(get_chat_service)
 ) -> ChatResponse:
@@ -34,14 +34,12 @@ async def send_message(
     """
     try:
         logger.info(f"Chat request: {chat_request.message[:50]}...")
-        
-        # Process message
+
         result = chat_service.process_message(
             message=chat_request.message,
             action_button_id=chat_request.action_button_id
         )
-        
-        # Format response
+
         response = ChatResponse(
             answer=result['answer'],
             suggested_news=[

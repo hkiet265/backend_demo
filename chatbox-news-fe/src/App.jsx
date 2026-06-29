@@ -10,12 +10,11 @@ import EditProfileView from './components/EditProfileView';
 import AdminPortal from './pages/AdminPortal';
 
 function App() {
-  // Auth state
+ 
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-
-  // Kiểm tra auth khi load app
+ 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     const userData = localStorage.getItem('user');
@@ -35,8 +34,7 @@ function App() {
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
     setShowAuthModal(false);
-    
-    // Auto redirect admin to admin portal
+
     if (user.role === 'admin') {
       window.location.href = '/admin';
     }
@@ -63,7 +61,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Admin Portal Route */}
+ 
         <Route 
           path="/admin" 
           element={
@@ -73,8 +71,7 @@ function App() {
             />
           } 
         />
-        
-        {/* Main App Route */}
+
         <Route 
           path="/*" 
           element={
@@ -85,8 +82,7 @@ function App() {
                 onShowAuth={handleShowAuth}
                 onShowEditProfile={handleShowEditProfile}
               />
-              
-              {/* Modal đăng nhập/đăng ký */}
+ 
               {showAuthModal && (
                 <div className="auth-modal-overlay" onClick={() => setShowAuthModal(false)}>
                   <div className="auth-modal-wrapper" onClick={(e) => e.stopPropagation()}>
@@ -95,8 +91,7 @@ function App() {
                   </div>
                 </div>
               )}
-
-              {/* Modal chỉnh sửa profile */}
+ 
               {showEditModal && (
                 <EditProfileView
                   currentUser={currentUser}
@@ -113,39 +108,34 @@ function App() {
 }
 
 function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
-  // State quản lý việc chuyển đổi màn hình trên Navbar (Mặc định mở tab Doanh Nghiệp)
+ 
   const [activeTab, setActiveTab] = useState('business');
-  
-  // State quản lý chatbox popup
-  const [isChatOpen, setIsChatOpen] = useState(false);
 
-  // --- TAB 1: STATE QUẢN TRỊ DOANH NGHIỆP ---
+  const [isChatOpen, setIsChatOpen] = useState(false);
+ 
   const [searchQuery, setSearchQuery] = useState('');
   const [regionFilter, setRegionFilter] = useState('all');
   const [isEnriching, setIsEnriching] = useState(false);
   const [allBusinesses, setAllBusinesses] = useState([]);
   const [isFetchBusinessLoading, setIsFetchBusinessLoading] = useState(true);
-
-  // --- TAB 2: STATE KHO TIN TỨC CÀO ĐƯỢC TỪ SUPABASE ---
+ 
   const [allNews, setAllNews] = useState([]);
   const [isFetchNewsLoading, setIsFetchNewsLoading] = useState(true);
   const [newsSearchQuery, setNewsSearchQuery] = useState('');
-
-  // --- TAB 3: STATE KHUNG CHATBOX ĐIỀU HÀNH STREAMING TEXT ---
+ 
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [messages, setMessages] = useState([
     { id: Date.now(), sender: 'ai', text: 'Chào bạn! Em là Em Tư đây. Em chuyên giúp bạn tìm tin tức nha. Hỏi em về tin gì cũng được!' }
   ]);
-
-  // Hàm gọi API đồng bộ lấy toàn bộ bài viết từ Supabase
+ 
   const fetchAllNews = async () => {
     try {
       setIsFetchNewsLoading(true);
       const response = await fetch('http://127.0.0.1:8000/api/news?page=1&page_size=1000');
       if (response.ok) {
         const data = await response.json();
-        // Map API fields to frontend Vietnamese fields
+ 
         const mappedNews = (data.data || []).map(news => ({
           id: news.id,
           tieu_de: news.title,
@@ -161,12 +151,11 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
           do_tin_cay: news.trust_score,
           trang_thai: news.status
         }));
-        
-        // Sắp xếp tin mới nhất lên đầu
+
         const sortedNews = mappedNews.sort((a, b) => {
           const dateA = new Date(a.created_at || a.thoi_gian_dang || 0);
           const dateB = new Date(b.created_at || b.thoi_gian_dang || 0);
-          return dateB - dateA; // Mới nhất trước (DESC)
+          return dateB - dateA;
         });
         
         console.log('📰 Đã tải tin tức:', sortedNews.length, 'bài');
@@ -183,8 +172,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
       setIsFetchNewsLoading(false);
     }
   };
-
-  // Hàm lấy danh sách doanh nghiệp từ Supabase
+ 
   const fetchAllBusinesses = async () => {
     try {
       setIsFetchBusinessLoading(true);
@@ -201,17 +189,14 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
       setIsFetchBusinessLoading(false);
     }
   };
-
-  // Nạp kho bài viết và doanh nghiệp tự động khi mở trang
+ 
   useEffect(() => {
     fetchAllNews();
     fetchAllBusinesses();
   }, []);
-
-  // --- XỬ LÝ TÌM KIẾM DOANH NGHIỆP (live filter) ---
+ 
   const handleClearSearch = () => { setSearchQuery(''); setRegionFilter('all'); };
-
-  // --- XỬ LÝ GIẢ LẬP NHẬP LIỆU THÔ BẰNG AI (Giờ cào thật từ TopCV) ---
+ 
   const handleSimulateRawInput = async () => {
     if (isEnriching) return;
     setIsEnriching(true);
@@ -220,14 +205,13 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
       const response = await fetch('http://127.0.0.1:8000/api/enrich', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ raw_text: "" }) // raw_text rỗng = cào từ TopCV
+        body: JSON.stringify({ raw_text: "" }) 
       });
 
       if (response.ok) {
         const result = await response.json();
         console.log("✅ Cào thành công:", result);
-        
-        // Refresh danh sách doanh nghiệp
+
         await fetchAllBusinesses();
       }
     } catch (error) {
@@ -236,29 +220,26 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
       setIsEnriching(false);
     }
   };
-
-  // --- ALGORITHM NHẢ CHỮ CHUNKS (MÁY ĐÁNH CHỮ) ---
+ 
   const simulateStreaming = (text, suggestedNews = [], suggestedBusinesses = [], actionButtons = [], onComplete = null) => {
-    // TẮT STREAMING - Hiển thị trực tiếp để debug
+ 
     const msgId = Date.now() + Math.random();
     setMessages(prev => [...prev, { 
       id: msgId, 
       sender: 'ai', 
-      text: text,  // Hiển thị ngay toàn bộ text
+      text: text,
       suggestedNews: suggestedNews,
       suggestedBusinesses: suggestedBusinesses,
       actionButtons: actionButtons
     }]);
     
     setIsChatLoading(false);
-    
-    // Gọi callback ngay
+
     if (onComplete) {
       setTimeout(onComplete, 100);
     }
   };
-
-  // --- GỬI TIN NHẮN CHAT ĐIỀU HÀNH ---
+ 
   const handleSendChat = async (e, actionButtonId = null) => {
     e.preventDefault();
     if (!chatInput.trim() || isChatLoading) return;
@@ -282,18 +263,16 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
 
       if (response.ok) {
         const data = await response.json();
-        
-        // Chỉ hiển thị câu trả lời, không list tin tức trong text
+
         let reply = data.answer || "Em Tư đã xử lý yêu cầu của bạn.";
-        
-        // Hiển thị reply với tin tức / doanh nghiệp đính kèm và action buttons
+ 
         simulateStreaming(
           reply, 
           data.suggested_news || [], 
           data.suggested_businesses || [],
           data.action_buttons || [],
           () => {
-            // Callback: Làm mới kho tin tức SAU KHI streaming xong
+    
             if (data.suggested_news && data.suggested_news.length > 0) {
               fetchAllNews();
             }
@@ -370,8 +349,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
           />
         )}
       </div>
-
-      {/* Chatbox Popup */}
+ 
       {isChatOpen && (
         <div className="chat-popup-container">
           <div className="chat-popup-header">

@@ -17,8 +17,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
     e.preventDefault();
     setError('');
     setSuccess('');
-
-    // Validation
+ 
     if (!fullName.trim()) {
       setError('Vui lòng nhập họ và tên');
       return;
@@ -28,8 +27,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
       setError('Họ và tên phải có ít nhất 2 ký tự');
       return;
     }
-
-    // Nếu đổi mật khẩu
+ 
     if (newPassword || confirmPassword || currentPassword) {
       if (!currentPassword) {
         setError('Vui lòng nhập mật khẩu hiện tại');
@@ -56,10 +54,9 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
       
       const payload = {
         full_name: fullName.trim(),
-        email: currentUser.email, // Send email để identify user
+        email: currentUser.email,
       };
-
-      // Thêm password nếu có đổi
+ 
       if (newPassword) {
         payload.current_password = currentPassword;
         payload.new_password = newPassword;
@@ -78,13 +75,11 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
       if (!response.ok) {
         throw new Error(data.detail || 'Cập nhật thất bại');
       }
-
-      // Update localStorage
+ 
       localStorage.setItem('user', JSON.stringify(data.user));
 
       setSuccess('✅ Cập nhật thành công!');
-
-      // Call callback
+ 
       setTimeout(() => {
         onUpdateSuccess(data.user);
         onClose();
@@ -118,8 +113,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="edit-profile-form">
-          {/* Email (read-only) */}
+        <form onSubmit={handleSubmit} className="edit-profile-form"> 
           <div className="form-group">
             <label>📧 Email (không thể thay đổi)</label>
             <input
@@ -129,8 +123,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
               className="form-input disabled"
             />
           </div>
-
-          {/* Full Name */}
+ 
           <div className="form-group">
             <label>👤 Họ và tên</label>
             <div className="input-with-icon-inline">
@@ -149,8 +142,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
           <div className="divider">
             <span>Đổi mật khẩu (tùy chọn)</span>
           </div>
-
-          {/* Current Password */}
+ 
           <div className="form-group">
             <label>🔐 Mật khẩu hiện tại</label>
             <div className="input-with-icon-inline">
@@ -171,8 +163,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
               </button>
             </div>
           </div>
-
-          {/* New Password */}
+ 
           <div className="form-group">
             <label>🔑 Mật khẩu mới</label>
             <div className="input-with-icon-inline">
@@ -193,8 +184,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
               </button>
             </div>
           </div>
-
-          {/* Confirm Password */}
+ 
           <div className="form-group">
             <label>✅ Xác nhận mật khẩu mới</label>
             <div className="input-with-icon-inline">

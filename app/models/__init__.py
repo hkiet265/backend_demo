@@ -7,15 +7,15 @@ from .business import BusinessCreate, BusinessUpdate, BusinessResponse
 from .user import UserRegister, UserLogin, UserResponse, TokenResponse
 
 __all__ = [
-    # Chat
+    
     "ChatRequest",
     "ChatResponse",
     "ActionButton",
-    # Business
+    
     "BusinessCreate",
     "BusinessUpdate",
     "BusinessResponse",
-    # User
+    
     "UserRegister",
     "UserLogin",
     "UserResponse",

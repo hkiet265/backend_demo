@@ -10,9 +10,7 @@ from app.services import (
     RAGService,
     ChatService
 )
-
-
-# Singleton instances
+ 
 _embedding_service = None
 _vector_service = None
 _rag_service = None
@@ -55,7 +53,7 @@ def get_rag_service() -> RAGService:
             vector_service=vector_service,
             gemini_api_key=settings.GEMINI_API_KEY,
             chat_model=settings.CHAT_MODEL,
-            use_groq=True  # 🚀 Enable Groq for ultra-fast generation
+            use_groq=True
         )
     return _rag_service
 

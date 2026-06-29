@@ -44,7 +44,7 @@ def generate_token() -> str:
 
 
 @router.post("/register", response_model=AuthResponse)
-@limiter.limit(AUTH_RATE_LIMIT)  # 5 requests/minute (prevent spam accounts)
+@limiter.limit(AUTH_RATE_LIMIT)
 async def register(request: Request, register_request: RegisterRequest):
     """
     Register new user
@@ -55,11 +55,11 @@ async def register(request: Request, register_request: RegisterRequest):
     - **phone**: User phone (optional)
     """
     try:
-        # Connect to database
+        
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Check if user exists
+        
         cur.execute("SELECT id FROM app_users WHERE email = %s", (register_request.email,))
         existing_user = cur.fetchone()
         
@@ -68,10 +68,10 @@ async def register(request: Request, register_request: RegisterRequest):
             conn.close()
             raise HTTPException(status_code=400, detail="Email đã được sử dụng")
         
-        # Hash password
+        
         password_hash = hash_password(register_request.password)
         
-        # Insert new user (role defaults to 'user')
+        
         cur.execute("""
             INSERT INTO app_users (email, password_hash, full_name, phone, role, created_at)
             VALUES (%s, %s, %s, %s, 'user', NOW())
@@ -81,10 +81,9 @@ async def register(request: Request, register_request: RegisterRequest):
         user = cur.fetchone()
         conn.commit()
         
-        # Generate access token
+        
         token = generate_token()
         
-        # Note: Token is stored in client localStorage, no need for server-side sessions
         
         cur.close()
         conn.close()
@@ -111,7 +110,7 @@ async def register(request: Request, register_request: RegisterRequest):
 
 
 @router.post("/login", response_model=AuthResponse)
-@limiter.limit(AUTH_RATE_LIMIT)  # 5 requests/minute (prevent brute force)
+@limiter.limit(AUTH_RATE_LIMIT)  
 async def login(request: Request, login_request: LoginRequest):
     """
     Login user
@@ -120,14 +119,14 @@ async def login(request: Request, login_request: LoginRequest):
     - **password**: User password
     """
     try:
-        # Connect to database
+        
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Hash password
+        
         password_hash = hash_password(login_request.password)
         
-        # Find user
+        
         cur.execute("""
             SELECT id, email, full_name, phone, role, created_at
             FROM app_users
@@ -141,11 +140,9 @@ async def login(request: Request, login_request: LoginRequest):
             conn.close()
             raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
         
-        # Generate new access token
+        
         token = generate_token()
-        
-        # Note: Token is stored in client localStorage, no need for server-side sessions
-        
+
         cur.close()
         conn.close()
         
@@ -191,7 +188,7 @@ async def update_profile(request: UpdateProfileRequest):
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
-        # Get user
+        
         cur.execute("SELECT id, email, full_name, password_hash, role FROM app_users WHERE email = %s", (request.email,))
         user = cur.fetchone()
         
@@ -200,7 +197,7 @@ async def update_profile(request: UpdateProfileRequest):
             conn.close()
             raise HTTPException(status_code=404, detail="Người dùng không tồn tại")
         
-        # If changing password, verify current password
+        
         if request.new_password:
             if not request.current_password:
                 cur.close()
@@ -212,8 +209,7 @@ async def update_profile(request: UpdateProfileRequest):
                 cur.close()
                 conn.close()
                 raise HTTPException(status_code=401, detail="Mật khẩu hiện tại không đúng")
-            
-            # Update with new password
+
             new_password_hash = hash_password(request.new_password)
             cur.execute("""
                 UPDATE app_users
@@ -222,7 +218,7 @@ async def update_profile(request: UpdateProfileRequest):
                 RETURNING id, email, full_name, phone, role, created_at
             """, (request.full_name, new_password_hash, user['id']))
         else:
-            # Update only name
+            
             cur.execute("""
                 UPDATE app_users
                 SET full_name = %s
@@ -233,7 +229,7 @@ async def update_profile(request: UpdateProfileRequest):
         updated_user = cur.fetchone()
         conn.commit()
         
-        # Generate new token
+        
         token = generate_token()
         
         cur.close()

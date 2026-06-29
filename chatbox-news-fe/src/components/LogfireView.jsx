@@ -4,7 +4,6 @@ import { Activity, Zap, Clock, TrendingUp, AlertCircle, CheckCircle, XCircle, Re
 const LogfireView = () => {
   const [monitoring, setMonitoring] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState(null);
   const [logfireEnabled, setLogfireEnabled] = useState(false);
 
   const logfireUrl = 'https://logfire-us.pydantic.dev/kiethk/emtu';
@@ -18,7 +17,6 @@ const LogfireView = () => {
       if (data.status === 'success') {
         setMonitoring(data.data);
         setLogfireEnabled(data.data.logfire_enabled || false);
-        setLastUpdate(new Date().toLocaleTimeString('vi-VN'));
       }
     } catch (error) {
       console.error('Failed to fetch monitoring data:', error);
@@ -29,8 +27,7 @@ const LogfireView = () => {
 
   useEffect(() => {
     fetchMonitoring();
-    
-    // Auto refresh every 60 seconds (reduced from 30s to avoid rate limiting)
+
     const interval = setInterval(fetchMonitoring, 60000);
     return () => clearInterval(interval);
   }, []);
@@ -54,8 +51,7 @@ const LogfireView = () => {
   const { api_metrics, recent_errors, system_health, database } = monitoring;
 
   return (
-    <div className="logfire-view">
-      {/* Header */}
+    <div className="logfire-view"> 
       <div className="dashboard-header">
         <div>
           <h2>🔥 Logfire Monitoring</h2>
@@ -67,17 +63,9 @@ const LogfireView = () => {
               <span style={{color: '#f59e0b', marginLeft: '10px'}}>● Not Connected (Using fallback data)</span>
             )}
           </p>
-        </div>
-        <div className="header-actions">
-          <span className="last-update">Cập nhật: {lastUpdate}</span>
-          <button onClick={fetchMonitoring} className="refresh-button" disabled={loading}>
-            <RefreshCw size={16} />
-            {loading ? 'Đang tải...' : 'Làm mới'}
-          </button>
-        </div>
+        </div> 
       </div>
-
-      {/* Performance Metrics */}
+ 
       <div className="stats-grid">
         <div className="stat-card monitoring">
           <div className="stat-icon api">
@@ -123,10 +111,8 @@ const LogfireView = () => {
           </div>
         </div>
       </div>
-
-      {/* Charts Grid */}
-      <div className="charts-grid">
-        {/* API Endpoints Performance */}
+ 
+      <div className="charts-grid"> 
         <div className="chart-card monitoring-card">
           <h3><Zap size={20} /> Top API Endpoints (hôm nay)</h3>
           <div className="bar-chart">
@@ -146,8 +132,7 @@ const LogfireView = () => {
             ))}
           </div>
         </div>
-
-        {/* Recent Logs */}
+ 
         <div className="chart-card monitoring-card">
           <h3><AlertCircle size={20} /> Recent Logs & Errors</h3>
           <div className="latest-list">
@@ -166,8 +151,7 @@ const LogfireView = () => {
             ))}
           </div>
         </div>
-
-        {/* Database Tables */}
+ 
         <div className="chart-card monitoring-card">
           <h3><Activity size={20} /> Database Tables</h3>
           <div className="bar-chart">
@@ -182,8 +166,7 @@ const LogfireView = () => {
             ))}
           </div>
         </div>
-
-        {/* System Health Status */}
+ 
         <div className="chart-card monitoring-card">
           <h3><Activity size={20} /> System Health</h3>
           <div className="health-grid">
@@ -218,8 +201,7 @@ const LogfireView = () => {
           </div>
         </div>
       </div>
-
-      {/* Endpoint Details */}
+ 
       <div className="endpoint-details-section">
         <h3>📊 Endpoint Performance Details</h3>
         <div className="endpoint-cards-grid">
