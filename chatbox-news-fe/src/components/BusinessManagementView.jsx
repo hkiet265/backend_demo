@@ -194,51 +194,134 @@ function BusinessManagementView({
     window.open(`http://127.0.0.1:8000/api/businesses/export/csv${q}`, '_blank');
   };
 
-  const handleImportCSV = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    const lines = text.trim().split('\n');
-    if (lines.length < 2) return;
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-    const records = lines.slice(1).map(line => {
-      const vals = line.split(',').map(v => v.trim().replace(/"/g, ''));
-      const obj = {};
-      headers.forEach((h, i) => { obj[h] = vals[i] || null; });
-      return {
-        ten_doanh_nghiep: obj.ten_doanh_nghiep || obj.name || '',
-        nganh_nghe: obj.nganh_nghe || obj.industry || null,
-        vung_mien: obj.vung_mien || obj.region || null,
-        tinh_thanh: obj.tinh_thanh || obj.location || null,
-        dia_chi: obj.dia_chi || obj.address || null,
-        website: obj.website || null,
-        email: obj.email || null,
-        so_dien_thoai: obj.so_dien_thoai || obj.phone || null,
-        quy_mo: obj.quy_mo || obj.scale || null,
-        trang_thai: obj.trang_thai || 'Hoat_dong',
-        tags: obj.tags || null,
-        mo_ta: obj.mo_ta || obj.description || null,
-      };
-    }).filter(r => r.ten_doanh_nghiep);
+  const handleDeleteBusiness = async (businessId) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      showToast('Vui lòng đăng nhập để xóa doanh nghiệp', 'error');
+      return;
+    }
 
-    if (records.length === 0) { 
-      showToast('Không tìm thấy dữ liệu hợp lệ trong file CSV', 'error'); 
-      return; 
+    if (!window.confirm('Bạn có chắc chắn muốn xóa doanh nghiệp này không?')) {
+      return;
     }
 
     try {
+      const response = await fetch(`http://127.0.0.1:8000/api/businesses/${businessId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Xóa thất bại');
+      }
+
+      showToast('✅ Xóa doanh nghiệp thành công', 'success');
+      closeModal();
+      setCurrentPage(1);
+      onRefresh();
+    } catch (err) {
+      showToast('❌ ' + err.message, 'error');
+    }
+  };
+
+  const handleImportCSV = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file extension
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      showToast('⚠️ Vui lòng chọn file có định dạng .csv', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      const lines = text.trim().split('\n').filter(line => line.trim());
+
+      // Validate minimum lines
+      if (lines.length < 2) {
+        showToast('⚠️ File CSV phải có ít nhất 2 dòng (dòng tiêu đề + dòng dữ liệu)', 'error');
+        e.target.value = '';
+        return;
+      }
+
+      // Parse headers
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      // Validate required headers
+      const requiredHeaders = ['ten_doanh_nghiep'];
+      const hasRequiredHeaders = requiredHeaders.every(required => 
+        headers.some(h => h === required || h === 'name')
+      );
+
+      if (!hasRequiredHeaders) {
+        showToast(
+          '⚠️ File CSV sai định dạng!\n\n' +
+          'Dòng đầu tiên phải có tiêu đề với cột bắt buộc: "ten_doanh_nghiep"\n\n' +
+          'Các cột tùy chọn: tinh_thanh, so_dien_thoai, email, website, nganh_nghe, quy_mo\n\n' +
+          'Ví dụ:\n' +
+          'ten_doanh_nghiep,tinh_thanh,email\n' +
+          'Công ty ABC,Hà Nội,abc@gmail.com',
+          'error'
+        );
+        e.target.value = '';
+        return;
+      }
+
+      // Parse records
+      const records = lines.slice(1).map((line, index) => {
+        const vals = line.split(',').map(v => v.trim().replace(/"/g, ''));
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = vals[i] || null; });
+        return {
+          ten_doanh_nghiep: obj.ten_doanh_nghiep || obj.name || '',
+          nganh_nghe: obj.nganh_nghe || obj.industry || null,
+          vung_mien: obj.vung_mien || obj.region || null,
+          tinh_thanh: obj.tinh_thanh || obj.location || null,
+          dia_chi: obj.dia_chi || obj.address || null,
+          website: obj.website || null,
+          email: obj.email || null,
+          so_dien_thoai: obj.so_dien_thoai || obj.phone || null,
+          quy_mo: obj.quy_mo || obj.scale || null,
+          trang_thai: obj.trang_thai || 'Hoat_dong',
+          tags: obj.tags || null,
+          mo_ta: obj.mo_ta || obj.description || null,
+        };
+      }).filter(r => r.ten_doanh_nghiep);
+
+      // Validate data records
+      if (records.length === 0) { 
+        showToast('⚠️ Không tìm thấy dữ liệu hợp lệ trong file CSV.\n\nĐảm bảo các dòng dữ liệu có giá trị trong cột "ten_doanh_nghiep"', 'error'); 
+        e.target.value = '';
+        return; 
+      }
+
+      // Send to backend
       const res = await fetch('http://127.0.0.1:8000/api/businesses/bulk-import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ records })
       });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.detail || 'Import thất bại');
+      }
+
       const data = await res.json();
-      showToast(`✅ Import xong: ${data.inserted} thêm mới, ${data.skipped} bỏ qua trùng lặp`, 'success');
+      showToast(`✅ Import thành công: ${data.inserted} doanh nghiệp mới, ${data.skipped} bỏ qua (trùng lặp)`, 'success');
+      setCurrentPage(1);  // Reset về trang 1 để xem doanh nghiệp mới
       onRefresh();
+
     } catch (err) {
-      showToast('Lỗi import: ' + err.message, 'error');
+      showToast('❌ Lỗi import: ' + err.message, 'error');
+    } finally {
+      e.target.value = '';
     }
-    e.target.value = '';
   };
 
   const openModal = (business) => {
@@ -527,15 +610,6 @@ function BusinessManagementView({
                     </a>
                   </div>
                 )}
-                {selectedBusiness.website && (
-                  <div className="business-info-item">
-                    <strong>🌐 Website:</strong>
-                    <a href={formatWebsite(selectedBusiness.website)} target="_blank" rel="noreferrer"
-                       style={{ color: 'var(--color-primary)' }}>
-                      {selectedBusiness.website}
-                    </a>
-                  </div>
-                )}
                 {selectedBusiness.scale && (
                   <div className="business-info-item">
                     <strong>👥 Quy mô:</strong>
@@ -580,23 +654,33 @@ function BusinessManagementView({
                   <p>{selectedBusiness.description}</p>
                 </div>
               )}
- 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
-                {selectedBusiness.phone && (
-                  <a href={`tel:${formatPhone(selectedBusiness.phone)}`} className="neon-search-btn"
-                     style={{ textDecoration: 'none', padding: '8px 16px', fontSize: '13px' }}>
-                    📞 Gọi ngay
-                  </a>
-                )}
-                {selectedBusiness.website && (
-                  <a href={formatWebsite(selectedBusiness.website)} target="_blank" rel="noreferrer"
-                     className="neon-search-btn"
-                     style={{ textDecoration: 'none', padding: '8px 16px', fontSize: '13px', background: 'transparent',
-                              border: '2px solid var(--color-primary)', color: 'var(--color-primary)' }}>
-                    🌐 Xem website
-                  </a>
-                )}
-              </div>
+
+              {/* Delete button for business owner */}
+              {currentUser && selectedBusiness.created_by_user_id === currentUser.id && (
+                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
+                  <button
+                    onClick={() => handleDeleteBusiness(selectedBusiness.id)}
+                    className="btn-cancel"
+                    style={{ 
+                      background: '#ef4444', 
+                      color: 'white',
+                      border: 'none',
+                      padding: '10px 20px',
+                      fontSize: '14px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    🗑️ Xóa doanh nghiệp
+                  </button>
+                  <p style={{ 
+                    fontSize: '12px', 
+                    color: 'var(--text-dim)', 
+                    marginTop: '8px' 
+                  }}>
+                    Bạn là người tạo doanh nghiệp này nên có thể xóa
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>,

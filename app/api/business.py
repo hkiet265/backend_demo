@@ -2,7 +2,7 @@
 Business API Routes
 Endpoints for business management with full CRUD + Import/Export + AI Enrichment
 """
-from fastapi import APIRouter, HTTPException, Query, File, UploadFile
+from fastapi import APIRouter, HTTPException, Query, File, UploadFile, Depends
 from fastapi.responses import StreamingResponse
 from typing import List, Optional
 from pydantic import BaseModel, Field
@@ -10,6 +10,7 @@ from datetime import datetime, date
 import psycopg2
 from app.config import settings
 from app.services.ai_enrichment_service import get_enrichment_service
+from app.dependencies import get_current_user
 import logging
 import csv
 import io
@@ -121,10 +122,10 @@ async def get_all_businesses(
         query = f"""
             SELECT id, ten_doanh_nghiep, so_dien_thoai, vung_mien, tinh_thanh,
                    email, website, mo_ta, quy_mo, nganh_nghe, trang_thai,
-                   do_tin_cay, facebook, zalo, linkedin, dia_chi, tags
+                   do_tin_cay, facebook, zalo, linkedin, dia_chi, tags, created_by_user_id
             FROM businesses_demo
             {where_clause}
-            ORDER BY do_tin_cay DESC NULLS LAST, id DESC
+            ORDER BY id DESC
             LIMIT %s OFFSET %s;
         """
         
@@ -153,7 +154,8 @@ async def get_all_businesses(
                 "zalo": r[13],
                 "linkedin": r[14],
                 "address": r[15],
-                "tags": r[16]
+                "tags": r[16],
+                "created_by_user_id": r[17]
             })
         
         return {
@@ -167,6 +169,85 @@ async def get_all_businesses(
         
     except Exception as e:
         logger.error(f"Get businesses error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/my-businesses")
+async def get_my_businesses(
+    current_user: dict = Depends(get_current_user),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100)
+):
+    """
+    Get businesses created by the current user
+    """
+    try:
+        conn = psycopg2.connect(**settings.database_url)
+        cur = conn.cursor()
+        
+        # Count total businesses created by user
+        cur.execute(
+            "SELECT COUNT(*) FROM businesses_demo WHERE created_by_user_id = %s;",
+            (current_user["id"],)
+        )
+        total = cur.fetchone()[0]
+        
+        # Get paginated results
+        offset = (page - 1) * page_size
+        
+        query = """
+            SELECT id, ten_doanh_nghiep, so_dien_thoai, vung_mien, tinh_thanh,
+                   email, website, mo_ta, quy_mo, nganh_nghe, trang_thai,
+                   do_tin_cay, facebook, zalo, linkedin, dia_chi, tags, created_by_user_id,
+                   updated_at
+            FROM businesses_demo
+            WHERE created_by_user_id = %s
+            ORDER BY updated_at DESC
+            LIMIT %s OFFSET %s;
+        """
+        
+        cur.execute(query, (current_user["id"], page_size, offset))
+        rows = cur.fetchall()
+        
+        cur.close()
+        conn.close()
+        
+        businesses = []
+        for r in rows:
+            businesses.append({
+                "id": r[0],
+                "name": r[1],
+                "phone": r[2],
+                "region": r[3],
+                "location": r[4],
+                "email": r[5],
+                "website": r[6],
+                "description": r[7],
+                "scale": r[8],
+                "industry": r[9],
+                "status": r[10] or "Hoat_dong",
+                "trust_score": r[11],
+                "facebook": r[12],
+                "zalo": r[13],
+                "linkedin": r[14],
+                "address": r[15],
+                "tags": r[16],
+                "created_by_user_id": r[17],
+                "created_at": r[18].isoformat() if r[18] else None,
+                "updated_at": r[18].isoformat() if r[18] else None
+            })
+        
+        return {
+            "status": "success",
+            "data": businesses,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size
+        }
+        
+    except Exception as e:
+        logger.error(f"Get my businesses error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -309,7 +390,7 @@ async def health_check():
 
 
 @router.post("")
-async def create_business(business: BusinessCreate):
+async def create_business(business: BusinessCreate, current_user: dict = Depends(get_current_user)):
     """Create new business"""
     try:
         conn = psycopg2.connect(**settings.database_url)
@@ -320,10 +401,10 @@ async def create_business(business: BusinessCreate):
                 ten_doanh_nghiep, nganh_nghe, vung_mien, tinh_thanh, quan_huyen,
                 dia_chi, website, email, so_dien_thoai, facebook, zalo, linkedin,
                 lat, lng, quy_mo, ma_so_thue, ngay_thanh_lap, trang_thai,
-                nguon_du_lieu, do_tin_cay, tags, ghi_chu, mo_ta, updated_at
+                nguon_du_lieu, do_tin_cay, tags, ghi_chu, mo_ta, created_by_user_id, updated_at
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s, %s, %s, %s, NOW()
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW()
             ) RETURNING id;
         """, (
             business.ten_doanh_nghiep, business.nganh_nghe, business.vung_mien,
@@ -332,7 +413,8 @@ async def create_business(business: BusinessCreate):
             business.facebook, business.zalo, business.linkedin,
             business.lat, business.lng, business.quy_mo, business.ma_so_thue,
             business.ngay_thanh_lap, business.trang_thai, business.nguon_du_lieu,
-            business.do_tin_cay, business.tags, business.ghi_chu, business.mo_ta
+            business.do_tin_cay, business.tags, business.ghi_chu, business.mo_ta,
+            current_user["id"]  # Save user who created this business
         ))
         
         new_id = cur.fetchone()[0]
@@ -400,18 +482,33 @@ async def update_business(business_id: int, business: BusinessUpdate):
 
 
 @router.delete("/{business_id}")
-async def delete_business(business_id: int):
-    """Delete business"""
+async def delete_business(business_id: int, current_user: dict = Depends(get_current_user)):
+    """Delete business - users can delete their own businesses, admins can delete any"""
     try:
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
         
-        cur.execute("DELETE FROM businesses_demo WHERE id = %s RETURNING id;", (business_id,))
+        # First check if business exists and get owner
+        cur.execute("SELECT created_by_user_id FROM businesses_demo WHERE id = %s;", (business_id,))
         result = cur.fetchone()
         
         if not result:
-            raise HTTPException(status_code=404, detail="Business not found")
+            raise HTTPException(status_code=404, detail="Doanh nghiệp không tồn tại")
         
+        created_by_user_id = result[0]
+        
+        # Check permission: user can delete their own business OR admin can delete any
+        is_admin = current_user.get("role") == "admin"
+        is_owner = created_by_user_id == current_user["id"]
+        
+        if not (is_admin or is_owner):
+            raise HTTPException(
+                status_code=403, 
+                detail="Bạn không có quyền xóa doanh nghiệp này. Chỉ người tạo hoặc admin mới có quyền xóa."
+            )
+        
+        # Delete the business
+        cur.execute("DELETE FROM businesses_demo WHERE id = %s RETURNING id;", (business_id,))
         conn.commit()
         cur.close()
         conn.close()
