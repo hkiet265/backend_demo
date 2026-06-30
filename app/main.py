@@ -15,6 +15,7 @@ import logfire
 from app.config import settings
 from app.api import chat, business, news, auth, crawler, admin
 from app.middleware import limiter, rate_limit_exceeded_handler
+from app.database import init_db_pool, close_db_pool
  
 logging.basicConfig(
     level=logging.INFO,
@@ -121,6 +122,14 @@ async def startup_event():
     global scheduler
     
     logger.info(f"🚀 {settings.APP_NAME} v{settings.APP_VERSION} starting up...")
+    
+    try:
+        init_db_pool(settings.database_url, minconn=5, maxconn=20)
+        logger.info("✅ Database connection pool initialized (5-20 connections)")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize database pool: {e}")
+        raise
+    
     logger.info(f"📊 RAG enabled with {settings.RAG_TOP_K} top results")
     logger.info(f"🔍 Embedding model: {settings.EMBEDDING_MODEL}")
     logger.info(f"💬 Chat model: {settings.CHAT_MODEL}")
@@ -152,6 +161,7 @@ async def shutdown_event():
         scheduler.shutdown()
         logger.info("⏹️ Scheduler stopped")
     
+    close_db_pool()
     logger.info(f"👋 {settings.APP_NAME} shutting down...")
 
 

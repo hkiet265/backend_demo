@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import AdminDashboardView from '../components/AdminDashboardView';
 import AdminUsersView from '../components/AdminUsersView';
 import LogfireView from '../components/LogfireView';
-import { BarChart3, LogOut, Home, Users, Activity } from 'lucide-react';
+import AdminNewsView from '../components/AdminNewsView';
+import AdminBusinessView from '../components/AdminBusinessView';
+import { BarChart3, LogOut, Home, Users, Activity, Newspaper, Building2 } from 'lucide-react';
 
 const AdminPortal = ({ currentUser, onLogout }) => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -60,6 +62,22 @@ const AdminPortal = ({ currentUser, onLogout }) => {
           </button>
           
           <button
+            className={`admin-nav-item ${activeSection === 'news' ? 'active' : ''}`}
+            onClick={() => setActiveSection('news')}
+          >
+            <Newspaper size={20} />
+            <span>News Management</span>
+          </button>
+          
+          <button
+            className={`admin-nav-item ${activeSection === 'business' ? 'active' : ''}`}
+            onClick={() => setActiveSection('business')}
+          >
+            <Building2 size={20} />
+            <span>Business Management</span>
+          </button>
+          
+          <button
             className={`admin-nav-item ${activeSection === 'logfire' ? 'active' : ''}`}
             onClick={() => setActiveSection('logfire')}
           >
@@ -83,6 +101,8 @@ const AdminPortal = ({ currentUser, onLogout }) => {
       <main className="admin-content">
         {activeSection === 'dashboard' && <AdminDashboardView />}
         {activeSection === 'users' && <AdminUsersView />}
+        {activeSection === 'news' && <AdminNewsView />}
+        {activeSection === 'business' && <AdminBusinessView />}
         {activeSection === 'logfire' && <LogfireView />}
       </main>
     </div>

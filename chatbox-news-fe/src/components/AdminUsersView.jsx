@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Shield, UserCheck, Calendar, Mail, Phone } from 'lucide-react';
+import { Users, Shield, UserCheck, Calendar, Mail, Phone, MoreVertical, Edit, Trash2, X } from 'lucide-react';
+import LoadingSpinner from './LoadingSpinner';
+import Toast from './Toast';
+import ConfirmDialog from './ConfirmDialog';
 
 const AdminUsersView = () => {
   const [users, setUsers] = useState([]);
   const [roleStats, setRoleStats] = useState([]);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true); 
+  const [loading, setLoading] = useState(true);
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [toast, setToast] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
 
   const adminUsers = users.filter(u => u.role === 'admin');
   const regularUsers = users.filter(u => u.role === 'user'); 
@@ -35,12 +47,87 @@ const AdminUsersView = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const toggleDropdown = (id) => {
+    setOpenDropdown(openDropdown === id ? null : id);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.dropdown-menu') && !e.target.closest('.action-btn')) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  const handleEdit = (user) => {
+    setEditForm({
+      id: user.id,
+      full_name: user.full_name,
+      email: user.email,
+      phone: user.phone || '',
+      role: user.role
+    });
+    setShowEditModal(true);
+    setOpenDropdown(null);
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/admin/users/${editForm.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: editForm.full_name,
+          phone: editForm.phone,
+          role: editForm.role
+        })
+      });
+
+      if (response.ok) {
+        showToast('Đã cập nhật user thành công!', 'success');
+        setShowEditModal(false);
+        fetchUsers();
+      } else {
+        const data = await response.json();
+        showToast(data.detail || 'Lỗi khi cập nhật user', 'error');
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      showToast('Lỗi khi cập nhật user', 'error');
+    }
+  };
+
+  const handleDelete = (id) => {
+    setConfirmDelete(id);
+    setOpenDropdown(null);
+  };
+
+  const confirmDeleteUser = async () => {
+    const id = confirmDelete;
+    setConfirmDelete(null);
+
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/admin/users/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        showToast('Đã xóa user thành công!', 'success');
+        fetchUsers();
+      } else {
+        const data = await response.json();
+        showToast(data.detail || 'Lỗi khi xóa user', 'error');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      showToast('Lỗi khi xóa user', 'error');
+    }
+  };
+
   if (loading && users.length === 0) {
-    return (
-      <div className="admin-users-view loading">
-        <div className="loading-spinner">Đang tải danh sách users...</div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen message="Đang tải danh sách users..." />;
   }
 
   return (
@@ -91,6 +178,7 @@ const AdminUsersView = () => {
                 <th>Số điện thoại</th>
                 <th>Role</th>
                 <th>Ngày đăng ký</th>
+                <th>Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -127,6 +215,28 @@ const AdminUsersView = () => {
                       {new Date(user.created_at).toLocaleDateString('vi-VN')}
                     </div>
                   </td>
+                  <td className="actions-cell">
+                    <div className="dropdown-wrapper">
+                      <button
+                        className="action-btn menu"
+                        onClick={() => toggleDropdown(user.id)}
+                        title="Hành động"
+                      >
+                        <MoreVertical size={18} />
+                      </button>
+                      {openDropdown === user.id && (
+                        <div className="dropdown-menu">
+                          <button
+                            className="dropdown-item"
+                            onClick={() => handleEdit(user)}
+                          >
+                            <Edit size={16} />
+                            <span>Chỉnh sửa</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -156,6 +266,7 @@ const AdminUsersView = () => {
                 <th>Số điện thoại</th>
                 <th>Role</th>
                 <th>Ngày đăng ký</th>
+                <th>Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -192,6 +303,35 @@ const AdminUsersView = () => {
                       {new Date(user.created_at).toLocaleDateString('vi-VN')}
                     </div>
                   </td>
+                  <td className="actions-cell">
+                    <div className="dropdown-wrapper">
+                      <button
+                        className="action-btn menu"
+                        onClick={() => toggleDropdown(user.id)}
+                        title="Hành động"
+                      >
+                        <MoreVertical size={18} />
+                      </button>
+                      {openDropdown === user.id && (
+                        <div className="dropdown-menu">
+                          <button
+                            className="dropdown-item"
+                            onClick={() => handleEdit(user)}
+                          >
+                            <Edit size={16} />
+                            <span>Chỉnh sửa</span>
+                          </button>
+                          <button
+                            className="dropdown-item delete"
+                            onClick={() => handleDelete(user.id)}
+                          >
+                            <Trash2 size={16} />
+                            <span>Xóa</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -205,6 +345,94 @@ const AdminUsersView = () => {
           </div>
         )}
       </div>
+      
+      {showEditModal && (
+        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Chỉnh sửa user</h3>
+              <button className="modal-close" onClick={() => setShowEditModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Email (không thể thay đổi)</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  disabled
+                  className="form-input"
+                  style={{opacity: 0.6, cursor: 'not-allowed'}}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Tên đầy đủ</label>
+                <input
+                  type="text"
+                  value={editForm.full_name}
+                  onChange={(e) => setEditForm({...editForm, full_name: e.target.value})}
+                  className="form-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Số điện thoại</label>
+                <input
+                  type="text"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                  className="form-input"
+                  placeholder="Nhập số điện thoại"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Role</label>
+                <select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({...editForm, role: e.target.value})}
+                  className="form-input"
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              <div className="modal-actions">
+                <button className="btn-secondary" onClick={() => setShowEditModal(false)}>
+                  Hủy
+                </button>
+                <button className="btn-primary" onClick={handleSaveEdit}>
+                  Lưu thay đổi
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Xác nhận xóa"
+          message="Bạn có chắc chắn muốn xóa user này? Hành động này không thể hoàn tác."
+          confirmText="Xóa"
+          cancelText="Hủy"
+          type="danger"
+          onConfirm={confirmDeleteUser}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
     </div>
   );
 };

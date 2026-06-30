@@ -263,3 +263,91 @@ async def admin_health():
         "service": "admin",
         "timestamp": datetime.now().isoformat()
     }
+
+
+@router.put("/users/{user_id}")
+@limiter.limit(GENERAL_RATE_LIMIT)
+async def update_user(user_id: int, request: Request):
+    """
+    Update user information
+    
+    Body:
+    - full_name: string
+    - phone: string (optional)
+    - role: string (admin or user)
+    """
+    try:
+        body = await request.json()
+        
+        conn = psycopg2.connect(**settings.database_url)
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        cur.execute("""
+            UPDATE app_users
+            SET full_name = %s, phone = %s, role = %s
+            WHERE id = %s
+            RETURNING id, email, full_name, phone, role, created_at
+        """, (
+            body.get('full_name'),
+            body.get('phone'),
+            body.get('role'),
+            user_id
+        ))
+        
+        updated_user = cur.fetchone()
+        
+        if not updated_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return {
+            "status": "success",
+            "user": updated_user
+        }
+        
+    except Exception as e:
+        logger.error(f"Update user error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/users/{user_id}")
+@limiter.limit(GENERAL_RATE_LIMIT)
+async def delete_user(user_id: int, request: Request):
+    """
+    Delete a user
+    
+    Note: Cannot delete admin users for safety
+    """
+    try:
+        conn = psycopg2.connect(**settings.database_url)
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Check if user is admin
+        cur.execute("SELECT role FROM app_users WHERE id = %s", (user_id,))
+        user = cur.fetchone()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if user['role'] == 'admin':
+            raise HTTPException(status_code=403, detail="Cannot delete admin users")
+        
+        cur.execute("DELETE FROM app_users WHERE id = %s", (user_id,))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return {
+            "status": "success",
+            "message": "User deleted successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete user error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Activity, Database, Users, TrendingUp, RefreshCw, AlertCircle, Clock, Zap, Server } from 'lucide-react';
+import LoadingSpinner from './LoadingSpinner';
 
 const AdminDashboardView = () => {
   const [stats, setStats] = useState(null);
@@ -40,11 +41,7 @@ const AdminDashboardView = () => {
   }, []);
 
   if (loading && !stats) {
-    return (
-      <div className="admin-dashboard loading">
-        <div className="loading-spinner">Đang tải dữ liệu...</div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen message="Đang tải dashboard..." />;
   }
 
   if (!stats) {

@@ -1,6 +1,7 @@
 import { RefreshCw, ChevronLeft, ChevronRight, Search } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import LoadingSpinner from './LoadingSpinner';
 
 function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearchQuery, setNewsSearchQuery, onNewsClick }) {
   const [selectedNews, setSelectedNews] = useState(null);
@@ -20,44 +21,50 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
     }
   }, [newsSearchQuery, setNewsSearchQuery]);
  
-  const normalizeCategory = (text) => {
+  const normalizeCategory = useCallback((text) => {
     if (!text) return '';
     return text
       .trim()
       .split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
-  };
+  }, []);
  
-  const filteredNews = allNews.filter((news) => {
-    const matchSearch = searchQuery === '' || 
-      news.tieu_de.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (news.tom_tat && news.tom_tat.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredNews = useMemo(() => {
+    return allNews.filter((news) => {
+      const matchSearch = searchQuery === '' || 
+        news.tieu_de.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (news.tom_tat && news.tom_tat.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchCategory = selectedCategory === 'all' || 
-      (news.chuyen_muc && news.chuyen_muc.trim().toLowerCase() === selectedCategory.toLowerCase());
-    
-    return matchSearch && matchCategory;
-  });
+      const matchCategory = selectedCategory === 'all' || 
+        (news.chuyen_muc && news.chuyen_muc.trim().toLowerCase() === selectedCategory.toLowerCase());
+      
+      return matchSearch && matchCategory;
+    });
+  }, [allNews, searchQuery, selectedCategory]);
  
-  const categoryMap = new Map();
-  allNews.forEach(news => {
-    if (news.chuyen_muc) {
-      const normalized = normalizeCategory(news.chuyen_muc);
-      const lowerKey = normalized.toLowerCase(); 
-      if (!categoryMap.has(lowerKey)) {
-        categoryMap.set(lowerKey, normalized);
+  const categories = useMemo(() => {
+    const categoryMap = new Map();
+    allNews.forEach(news => {
+      if (news.chuyen_muc) {
+        const normalized = normalizeCategory(news.chuyen_muc);
+        const lowerKey = normalized.toLowerCase(); 
+        if (!categoryMap.has(lowerKey)) {
+          categoryMap.set(lowerKey, normalized);
+        }
       }
-    }
-  });
-  
-  const uniqueCategories = Array.from(categoryMap.values()).sort();
-  const categories = ['all', ...uniqueCategories];
+    });
+    
+    const uniqueCategories = Array.from(categoryMap.values()).sort();
+    return ['all', ...uniqueCategories];
+  }, [allNews, normalizeCategory]);
  
-  const totalPages = Math.ceil(filteredNews.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentNews = filteredNews.slice(startIndex, endIndex);
+  const totalPages = useMemo(() => Math.ceil(filteredNews.length / itemsPerPage), [filteredNews.length]);
+  const currentNews = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredNews.slice(startIndex, endIndex);
+  }, [filteredNews, currentPage]);
  
   useEffect(() => {
     setCurrentPage(1);
@@ -179,10 +186,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
         </div>
 
         {isFetchNewsLoading ? (
-          <div className="loading-state">
-            <div className="spinner"></div>
-            <p>Em Tư đang lùng sục tin tức khắp nơi cho bạn...</p>
-          </div>
+          <LoadingSpinner message="Em Tư đang lùng sục tin tức khắp nơi cho bạn..." />
         ) : filteredNews.length === 0 ? (
           <div className="empty-state">
             <p>
