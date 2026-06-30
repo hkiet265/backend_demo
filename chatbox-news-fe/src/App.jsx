@@ -8,9 +8,10 @@ import ChatControlView from './components/ChatControlView';
 import AuthView from './components/AuthView';
 import EditProfileView from './components/EditProfileView';
 import AdminPortal from './pages/AdminPortal';
+import LoadingSpinner from './components/LoadingSpinner';
 
 function App() {
- 
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -29,7 +30,15 @@ function App() {
         localStorage.removeItem('user');
       }
     }
+    
+    setTimeout(() => {
+      setIsInitialLoading(false);
+    }, 800);
   }, []);
+
+  if (isInitialLoading) {
+    return <LoadingSpinner fullScreen message="Đang khởi động Em Tư..." />;
+  }
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);

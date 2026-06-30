@@ -10,12 +10,12 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Simple cache to avoid rate limiting (cache for 60 seconds)
+# Simple cache to avoid rate limiting and improve performance
 _metrics_cache: Optional[Dict[str, Any]] = None
 _cache_timestamp: Optional[datetime] = None
 _errors_cache: Optional[List[Dict]] = None  # Cache for errors
 _errors_cache_timestamp: Optional[datetime] = None
-CACHE_TTL_SECONDS = 60
+CACHE_TTL_SECONDS = 300  # 5 phút - Logfire data không cần real-time lắm
 
 
 class LogfireQueryService:
@@ -67,7 +67,7 @@ class LogfireQueryService:
         }
         
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:  # Giảm timeout xuống 10s
                 response = await client.post(
                     f'{self.base_url}/v2/query',
                     json=body,
@@ -113,17 +113,45 @@ class LogfireQueryService:
         
         min_timestamp = now - timedelta(hours=hours)
         
-        # Query 1: Get basic stats (simple and fast)
-        sql_stats = """
+        # Single optimized query - Lấy stats + top endpoints trong 1 lần
+        sql_combined = """
+        WITH stats AS (
+            SELECT 
+                COUNT(*) as total_requests,
+                COALESCE(AVG(duration) / 1000, 0) as avg_response_ms,
+                SUM(CASE WHEN otel_status_code = 'ERROR' THEN 1 ELSE 0 END) as error_count
+            FROM records
+            WHERE (span_name LIKE 'GET %' OR span_name LIKE 'POST %')
+                AND duration IS NOT NULL
+                AND duration > 0
+        ),
+        endpoints AS (
+            SELECT 
+                span_name as endpoint,
+                COUNT(*) as count,
+                COALESCE(AVG(duration) / 1000, 0) as avg_time_ms
+            FROM records
+            WHERE (span_name LIKE 'GET %' OR span_name LIKE 'POST %')
+                AND duration IS NOT NULL
+                AND duration > 0
+            GROUP BY span_name
+            ORDER BY count DESC
+            LIMIT 5
+        )
         SELECT 
-            COUNT(*) as total_requests,
-            AVG(duration) / 1000000 as avg_response_ms,
-            SUM(CASE WHEN otel_status_code = 'ERROR' THEN 1 ELSE 0 END) as error_count
-        FROM records
-        WHERE span_name LIKE 'GET %' OR span_name LIKE 'POST %'
+            s.total_requests,
+            s.avg_response_ms,
+            s.error_count,
+            e.endpoint,
+            e.count as endpoint_count,
+            e.avg_time_ms
+        FROM stats s
+        CROSS JOIN endpoints e
         """
         
-        result = await self.query_json(sql_stats, min_timestamp, limit=10)
+        result = await self.query_json(sql_combined, min_timestamp, limit=10)
+        
+        logger.info(f"📊 Logfire combined query completed")
         
         if "error" in result:
             # Return cached data if available, otherwise fallback
@@ -138,40 +166,22 @@ class LogfireQueryService:
                 return _metrics_cache
             return self._get_fallback_metrics()
         
-        row = data[0]
-        total_requests = row.get('total_requests', 0) or 0
-        avg_response_ms = round(row.get('avg_response_ms', 0) or 0, 2)
-        error_count = row.get('error_count', 0) or 0
+        # Parse combined result
+        first_row = data[0]
+        total_requests = first_row.get('total_requests', 0) or 0
+        avg_response_ms = round(first_row.get('avg_response_ms', 0) or 0, 2)
+        error_count = first_row.get('error_count', 0) or 0
         error_rate = error_count / total_requests if total_requests > 0 else 0
         
-        # Query 2: Get top endpoints (separate, small query)
-        sql_endpoints = """
-        SELECT 
-            span_name as endpoint,
-            COUNT(*) as count,
-            AVG(duration) / 1000000 as avg_time_ms
-        FROM records
-        WHERE span_name LIKE 'GET %' OR span_name LIKE 'POST %'
-        GROUP BY span_name
-        ORDER BY count DESC
-        LIMIT 5
-        """
-        
-        endpoints_result = await self.query_json(sql_endpoints, min_timestamp, limit=5)
-        
-        if "error" in endpoints_result:
-            # Use fallback endpoints if query fails
-            endpoints = []
-        else:
-            endpoints_data = endpoints_result.get('data', [])
-            endpoints = [
-                {
-                    "path": row.get('endpoint', 'Unknown'),
-                    "count": row.get('count', 0),
-                    "avg_time": round(row.get('avg_time_ms', 0) or 0, 2)
-                }
-                for row in endpoints_data
-            ]
+        # Extract endpoints from all rows
+        endpoints = [
+            {
+                "path": row.get('endpoint', 'Unknown'),
+                "count": row.get('endpoint_count', 0),
+                "avg_time": round(row.get('avg_time_ms', 0) or 0, 2)
+            }
+            for row in data
+        ]
         
         metrics = {
             "total_requests_today": total_requests,

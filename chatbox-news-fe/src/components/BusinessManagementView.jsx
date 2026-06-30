@@ -1,6 +1,7 @@
 import { Search, Sparkles, BarChart3, X, RefreshCw, ChevronLeft, ChevronRight, Upload, Download } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import Toast from './Toast';
 
 const PAGE_SIZE = 10;
  
@@ -54,6 +55,11 @@ function BusinessManagementView({
   const [currentPage, setCurrentPage] = useState(1);
   const [isEnrichingAll, setIsEnrichingAll] = useState(false);
   const csvInputRef = useRef(null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
  
   const normalizeText = (text) => {
     if (!text) return '';
@@ -140,7 +146,10 @@ function BusinessManagementView({
       };
     }).filter(r => r.ten_doanh_nghiep);
 
-    if (records.length === 0) { alert('Không tìm thấy dữ liệu hợp lệ trong file CSV'); return; }
+    if (records.length === 0) { 
+      showToast('Không tìm thấy dữ liệu hợp lệ trong file CSV', 'error'); 
+      return; 
+    }
 
     try {
       const res = await fetch('http://127.0.0.1:8000/api/businesses/bulk-import', {
@@ -149,10 +158,10 @@ function BusinessManagementView({
         body: JSON.stringify({ records })
       });
       const data = await res.json();
-      alert(`✅ Import xong: ${data.inserted} thêm mới, ${data.skipped} bỏ qua trùng lặp`);
+      showToast(`✅ Import xong: ${data.inserted} thêm mới, ${data.skipped} bỏ qua trùng lặp`, 'success');
       onRefresh();
     } catch (err) {
-      alert('Lỗi import: ' + err.message);
+      showToast('Lỗi import: ' + err.message, 'error');
     }
     e.target.value = '';
   };
@@ -504,6 +513,14 @@ function BusinessManagementView({
           </div>
         </div>,
         document.body
+      )}
+      
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );
