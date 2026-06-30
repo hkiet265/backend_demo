@@ -8,6 +8,7 @@ import ChatControlView from './components/ChatControlView';
 import AuthView from './components/AuthView';
 import EditProfileView from './components/EditProfileView';
 import FavoritesView from './components/FavoritesView';
+import MyBusinessesView from './components/MyBusinessesView';
 import AdminPortal from './pages/AdminPortal';
 import LoadingSpinner from './components/LoadingSpinner';
 
@@ -361,6 +362,10 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
 
         {activeTab === 'favorites' && (
           <FavoritesView currentUser={currentUser} />
+        )}
+
+        {activeTab === 'my-businesses' && (
+          <MyBusinessesView currentUser={currentUser} />
         )}
       </div>
  

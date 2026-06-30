@@ -1,4 +1,4 @@
-import { Building2, Newspaper, LogOut, User, Settings, ChevronDown, Heart } from 'lucide-react';
+import { Building2, Newspaper, LogOut, User, Settings, ChevronDown, Heart, Briefcase } from 'lucide-react';
 import { useState } from 'react';
 
 function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, currentUser, onLogout, onShowAuth, onShowEditProfile }) {
@@ -31,12 +31,21 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
           </button>
 
           {currentUser && (
-            <button 
-              className={`nav-tab-item ${activeTab === 'favorites' ? 'active' : ''}`}
-              onClick={() => setActiveTab('favorites')}
-            >
-              <Heart size={16} /> Yêu Thích
-            </button>
+            <>
+              <button 
+                className={`nav-tab-item ${activeTab === 'favorites' ? 'active' : ''}`}
+                onClick={() => setActiveTab('favorites')}
+              >
+                <Heart size={16} /> Yêu Thích
+              </button>
+              
+              <button 
+                className={`nav-tab-item ${activeTab === 'my-businesses' ? 'active' : ''}`}
+                onClick={() => setActiveTab('my-businesses')}
+              >
+                <Briefcase size={16} /> DN Của Tôi
+              </button>
+            </>
           )}
         </div>
       </div>

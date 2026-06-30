@@ -5121,3 +5121,116 @@ html, body, #root {
   flex-shrink: 0;
 }
 /* Force reload */
+
+
+/* My Businesses View */
+.my-businesses-view {
+  padding: 24px;
+}
+
+.my-businesses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.my-business-card {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  transition: all 0.2s ease;
+}
+
+.my-business-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(255, 140, 66, 0.15);
+  transform: translateY(-2px);
+}
+
+.business-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.business-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+  flex: 1;
+}
+
+.business-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  background: transparent;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-dim);
+}
+
+.icon-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  transform: scale(1.1);
+}
+
+.delete-btn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.business-card-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.info-badge {
+  background: rgba(255, 140, 66, 0.15);
+  color: var(--color-primary);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.info-text {
+  color: var(--text-dim);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.business-card-meta {
+  font-size: 13px;
+  color: var(--text-dim);
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
