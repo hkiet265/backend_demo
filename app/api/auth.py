@@ -7,13 +7,18 @@ from pydantic import BaseModel, EmailStr
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import hashlib
-import secrets
+import jwt
+from datetime import datetime, timedelta
 import logging
 from app.config import settings
 from app.middleware.rate_limiter import limiter, AUTH_RATE_LIMIT
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+JWT_SECRET = "emtu_secret_key_2024"
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_DAYS = 30
 
 
 class RegisterRequest(BaseModel):
@@ -38,9 +43,16 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 
-def generate_token() -> str:
-    """Generate random access token"""
-    return secrets.token_urlsafe(32)
+def generate_jwt_token(user: dict) -> str:
+    """Generate JWT token for user"""
+    payload = {
+        "user_id": user['id'],
+        "email": user['email'],
+        "full_name": user['full_name'],
+        "role": user.get('role', 'user'),
+        "exp": datetime.utcnow() + timedelta(days=JWT_EXPIRATION_DAYS)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
 @router.post("/register", response_model=AuthResponse)
@@ -82,7 +94,7 @@ async def register(request: Request, register_request: RegisterRequest):
         conn.commit()
         
         
-        token = generate_token()
+        token = generate_jwt_token(user)
         
         
         cur.close()
@@ -141,7 +153,7 @@ async def login(request: Request, login_request: LoginRequest):
             raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
         
         
-        token = generate_token()
+        token = generate_jwt_token(user)
 
         cur.close()
         conn.close()
@@ -230,7 +242,7 @@ async def update_profile(request: UpdateProfileRequest):
         conn.commit()
         
         
-        token = generate_token()
+        token = generate_jwt_token(user)
         
         cur.close()
         conn.close()

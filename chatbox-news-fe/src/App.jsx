@@ -7,6 +7,7 @@ import NewsStorageView from './components/NewsStorageView';
 import ChatControlView from './components/ChatControlView';
 import AuthView from './components/AuthView';
 import EditProfileView from './components/EditProfileView';
+import FavoritesView from './components/FavoritesView';
 import AdminPortal from './pages/AdminPortal';
 import LoadingSpinner from './components/LoadingSpinner';
 
@@ -356,6 +357,10 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
               setActiveTab('business');
             }}
           />
+        )}
+
+        {activeTab === 'favorites' && (
+          <FavoritesView currentUser={currentUser} />
         )}
       </div>
  

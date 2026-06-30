@@ -3,6 +3,9 @@ Dependency Injection
 Provide services to API routes
 """
 from functools import lru_cache
+from fastapi import Header, HTTPException
+from typing import Optional
+import jwt
 from app.config import settings
 from app.services import (
     EmbeddingService,
@@ -10,6 +13,9 @@ from app.services import (
     RAGService,
     ChatService
 )
+
+JWT_SECRET = "emtu_secret_key_2024"
+JWT_ALGORITHM = "HS256"
  
 _embedding_service = None
 _vector_service = None
@@ -66,3 +72,39 @@ def get_chat_service() -> ChatService:
         rag_service = get_rag_service()
         _chat_service = ChatService(rag_service=rag_service)
     return _chat_service
+
+
+
+async def get_current_user(authorization: Optional[str] = Header(None)):
+    """
+    Get current authenticated user from JWT token
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        if authorization.startswith("Bearer "):
+            token = authorization.replace("Bearer ", "")
+        else:
+            token = authorization
+        
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_id = payload.get("user_id")
+        email = payload.get("email")
+        
+        if not user_id or not email:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        return {
+            "id": user_id,
+            "email": email,
+            "full_name": payload.get("full_name"),
+            "role": payload.get("role", "user")
+        }
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
