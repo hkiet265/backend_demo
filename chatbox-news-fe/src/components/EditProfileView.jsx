@@ -127,7 +127,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
           <div className="form-group">
             <label>👤 Họ và tên</label>
             <div className="input-with-icon-inline">
-              <User size={18} className="input-icon" />
+             
               <input
                 type="text"
                 value={fullName}
@@ -146,7 +146,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
           <div className="form-group">
             <label>🔐 Mật khẩu hiện tại</label>
             <div className="input-with-icon-inline">
-              <Lock size={18} className="input-icon" />
+              
               <input
                 type={showCurrentPassword ? 'text' : 'password'}
                 value={currentPassword}
@@ -167,7 +167,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
           <div className="form-group">
             <label>🔑 Mật khẩu mới</label>
             <div className="input-with-icon-inline">
-              <Lock size={18} className="input-icon" />
+             
               <input
                 type={showNewPassword ? 'text' : 'password'}
                 value={newPassword}
@@ -188,7 +188,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
           <div className="form-group">
             <label>✅ Xác nhận mật khẩu mới</label>
             <div className="input-with-icon-inline">
-              <Lock size={18} className="input-icon" />
+              
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}

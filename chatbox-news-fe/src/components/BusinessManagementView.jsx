@@ -1,5 +1,5 @@
-import { Search, Sparkles, BarChart3, X, RefreshCw, ChevronLeft, ChevronRight, Upload, Download } from 'lucide-react';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { Search, Sparkles, BarChart3, X, RefreshCw, ChevronLeft, ChevronRight, Upload, Download, Heart } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Toast from './Toast';
 
@@ -56,10 +56,85 @@ function BusinessManagementView({
   const [isEnrichingAll, setIsEnrichingAll] = useState(false);
   const csvInputRef = useRef(null);
   const [toast, setToast] = useState(null);
+  const [bookmarkedBusinesses, setBookmarkedBusinesses] = useState(new Set());
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
   };
+
+  useEffect(() => {
+    const loadBookmarks = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/bookmarks/businesses', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const bookmarks = await response.json();
+          console.log('📦 Loaded business bookmarks:', bookmarks);
+          // Backend returns full business objects with 'id' field
+          const bookmarkedIds = new Set(bookmarks.map(b => b.id));
+          console.log('📌 Bookmarked IDs:', Array.from(bookmarkedIds));
+          setBookmarkedBusinesses(bookmarkedIds);
+        }
+      } catch (error) {
+        console.error('Error loading bookmarks:', error);
+      }
+    };
+
+    loadBookmarks();
+  }, []);
+
+  const handleBookmark = useCallback(async (businessId, e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      showToast('Vui lòng đăng nhập để sử dụng tính năng yêu thích', 'error');
+      return;
+    }
+
+    try {
+      if (bookmarkedBusinesses.has(businessId)) {
+        const response = await fetch(`http://127.0.0.1:8000/api/bookmarks/businesses/${businessId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          setBookmarkedBusinesses(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(businessId);
+            return newSet;
+          });
+          showToast('Đã xóa khỏi yêu thích', 'success');
+        }
+      } else {
+        const response = await fetch('http://127.0.0.1:8000/api/bookmarks/businesses', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ business_id: businessId })
+        });
+
+        if (response.ok) {
+          setBookmarkedBusinesses(prev => new Set([...prev, businessId]));
+          showToast('Đã thêm vào yêu thích', 'success');
+        }
+      }
+    } catch (error) {
+      console.error('Bookmark error:', error);
+      showToast('Lỗi khi lưu yêu thích', 'error');
+    }
+  }, [bookmarkedBusinesses]);
  
   const normalizeText = (text) => {
     if (!text) return '';
@@ -285,7 +360,22 @@ function BusinessManagementView({
             <div className="biz-card-grid">
               {pagedBusinesses.map((biz) => (
                 <div key={biz.id} className="biz-card" onClick={() => openModal(biz)}>
-  
+                  <button
+                    className={`bookmark-heart-btn ${bookmarkedBusinesses.has(biz.id) ? 'bookmarked' : ''}`}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleBookmark(biz.id, e);
+                    }}
+                    title={bookmarkedBusinesses.has(biz.id) ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'}
+                  >
+                    <Heart size={18} fill={bookmarkedBusinesses.has(biz.id) ? 'currentColor' : 'none'} />
+                  </button>
+
                   <div className="biz-card-icon">
                     {getBizIcon(biz.name, biz.description)}
                   </div>
@@ -308,8 +398,6 @@ function BusinessManagementView({
                       )}
                     </div>
                   </div>
- 
-                  <ChevronRight size={18} className="biz-card-arrow" />
                 </div>
               ))}
             </div>

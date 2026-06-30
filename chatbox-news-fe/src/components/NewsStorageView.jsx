@@ -1,14 +1,115 @@
-import { RefreshCw, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { RefreshCw, ChevronLeft, ChevronRight, Search, Heart } from 'lucide-react';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import LoadingSpinner from './LoadingSpinner';
+import Toast from './Toast';
 
 function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearchQuery, setNewsSearchQuery, onNewsClick }) {
   const [selectedNews, setSelectedNews] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [toast, setToast] = useState(null);
+  const [bookmarkedNews, setBookmarkedNews] = useState(new Set());
   const itemsPerPage = 8;
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
+
+  useEffect(() => {
+    const loadBookmarks = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/bookmarks/news', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const bookmarks = await response.json();
+          console.log('📦 Loaded news bookmarks:', bookmarks);
+          // Backend returns full news objects with 'id' field
+          const bookmarkedIds = new Set(bookmarks.map(b => b.id));
+          console.log('📌 Bookmarked news IDs:', Array.from(bookmarkedIds));
+          setBookmarkedNews(bookmarkedIds);
+        }
+      } catch (error) {
+        console.error('Error loading bookmarks:', error);
+      }
+    };
+
+    loadBookmarks();
+  }, []);
+
+  const handleBookmark = useCallback(async (newsId, e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    
+    console.log('🔥 Bookmark clicked for news:', newsId);
+    
+    const token = localStorage.getItem('access_token');
+    console.log('🔑 Token:', token ? 'Found' : 'Not found');
+    
+    if (!token) {
+      showToast('Vui lòng đăng nhập để sử dụng tính năng yêu thích', 'error');
+      return;
+    }
+
+    try {
+      console.log('📍 Bookmark status:', bookmarkedNews.has(newsId) ? 'Already bookmarked' : 'Not bookmarked');
+      
+      if (bookmarkedNews.has(newsId)) {
+        console.log('🗑️ Removing bookmark...');
+        const response = await fetch(`http://127.0.0.1:8000/api/bookmarks/news/${newsId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        console.log('📡 Delete response:', response.status);
+        
+        if (response.ok) {
+          setBookmarkedNews(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(newsId);
+            return newSet;
+          });
+          showToast('Đã xóa khỏi yêu thích', 'success');
+        } else {
+          const error = await response.json();
+          console.error('❌ Delete error:', error);
+          showToast(error.detail || 'Lỗi khi xóa', 'error');
+        }
+      } else {
+        console.log('➕ Adding bookmark...');
+        const response = await fetch('http://127.0.0.1:8000/api/bookmarks/news', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ news_id: newsId })
+        });
+
+        console.log('📡 Add response:', response.status);
+
+        if (response.ok) {
+          setBookmarkedNews(prev => new Set([...prev, newsId]));
+          showToast('Đã thêm vào yêu thích', 'success');
+        } else {
+          const error = await response.json();
+          console.error('❌ Add error:', error);
+          showToast(error.detail || 'Lỗi khi thêm', 'error');
+        }
+      }
+    } catch (error) {
+      console.error('💥 Bookmark error:', error);
+      showToast('Lỗi khi lưu yêu thích', 'error');
+    }
+  }, [bookmarkedNews]);
  
   useEffect(() => {
     if (newsSearchQuery) {
@@ -131,7 +232,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
       <div className="main-content-area fade-in-effect">
         <div className="section-header">
           <div className="header-title-block">
-            <h3 className="news-view-title">Xem tin tức cùng em Tư </h3>
+            <h3 className="news-view-title">Xem tin tức cùng Em Tư </h3>
             <p className="sub-header-text">Cập nhật những tin tức hot nhất hiện tại!</p>
           </div>
           <div className="header-actions">
@@ -202,6 +303,22 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                 <div key={news.id} className="database-news-card"
                   onClick={() => openModal(news)}
                 >
+                  <button
+                    className={`bookmark-heart-btn ${bookmarkedNews.has(news.id) ? 'bookmarked' : ''}`}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleBookmark(news.id, e);
+                    }}
+                    title={bookmarkedNews.has(news.id) ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'}
+                  >
+                    <Heart size={18} fill={bookmarkedNews.has(news.id) ? 'currentColor' : 'none'} />
+                  </button>
+
                   {news.chuyen_muc && news.chuyen_muc !== 'Tin mới' && (
                     <div className="card-meta">
                       <span className="badge category">{normalizeCategory(news.chuyen_muc)}</span>
@@ -318,6 +435,14 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
           </div>
         </div>,
         document.body
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </>
   );
