@@ -5,6 +5,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from app.database import get_db_connection
 from app.dependencies import get_current_user
+from app.services.notification_service import get_notification_service
 import logging
 
 router = APIRouter(prefix="/api/bookmarks", tags=["bookmarks"])
@@ -149,6 +150,18 @@ async def bookmark_business(
         with get_db_connection() as conn:
             cur = conn.cursor()
             
+            # Get business details and owner
+            cur.execute("""
+                SELECT ten_doanh_nghiep, user_id FROM businesses_demo WHERE id = %s
+            """, (request.business_id,))
+            business = cur.fetchone()
+            
+            if not business:
+                raise HTTPException(status_code=404, detail="Business not found")
+            
+            business_name = business[0]
+            business_owner_id = business[1]
+            
             cur.execute("""
                 INSERT INTO user_bookmarks_businesses (user_id, business_id, note)
                 VALUES (%s, %s, %s)
@@ -157,14 +170,33 @@ async def bookmark_business(
             """, (current_user['id'], request.business_id, request.note))
             
             result = cur.fetchone()
+            
             conn.commit()
             cur.close()
+            
+            # Create notification for business owner (now enabled!)
+            if result and business_owner_id and business_owner_id != current_user['id']:
+                try:
+                    with get_db_connection() as notif_conn:
+                        notification_service = get_notification_service()
+                        notification_service.notify_business_bookmarked(
+                            notif_conn,
+                            user_id=business_owner_id,
+                            bookmarker_name=current_user.get('full_name', 'Người dùng'),
+                            business_name=business_name,
+                            business_id=request.business_id
+                        )
+                        logger.info(f"Created bookmark notification for user {business_owner_id}")
+                except Exception as notif_error:
+                    logger.error(f"Failed to create notification: {notif_error}")
         
         if result:
             return {"status": "success", "message": "Đã thêm vào yêu thích"}
         else:
             return {"status": "info", "message": "Doanh nghiệp đã có trong danh sách yêu thích"}
             
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error bookmarking business: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -32,6 +32,14 @@ Quản lý doanh nghiệp
 - Phân loại ngành nghề và vùng miền tự động
 - Import/Export dữ liệu CSV
 - Tính điểm tin cậy (Trust Score)
+- Lead Scoring: Chấm điểm và xếp hạng doanh nghiệp (Phase 2)
+- Website Scraper: Thu thập thông tin từ website tự động (Phase 2)
+
+AI Enrichment nâng cao (Phase 2)
+- Website Scraping: Tự động thu thập email, SĐT, mạng xã hội từ website
+- Lead Scoring: Chấm điểm doanh nghiệp 0-100 theo 6 tiêu chí
+- NER: Trích xuất thực thể từ tin tức (địa danh, tổ chức, nhân vật)
+- News Clustering: Gom cụm tin tương tự, phát hiện trùng lặp
 
 Quản lý người dùng
 - Đăng ký/Đăng nhập
