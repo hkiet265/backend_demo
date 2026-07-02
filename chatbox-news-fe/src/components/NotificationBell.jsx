@@ -18,7 +18,7 @@ const NotificationBell = ({ currentUser }) => {
 
   // Fetch notifications
   const fetchNotifications = async () => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
@@ -71,7 +71,7 @@ const NotificationBell = ({ currentUser }) => {
   }, []);
 
   const markAsRead = async (notificationId) => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     try {
       await fetch(`${API_BASE}/api/notifications/${notificationId}/read`, {
         method: 'PUT',
@@ -84,7 +84,7 @@ const NotificationBell = ({ currentUser }) => {
   };
 
   const markAllAsRead = async () => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     const type = activeTab === 'all' ? null : activeTab;
     
     try {
@@ -99,7 +99,7 @@ const NotificationBell = ({ currentUser }) => {
   };
 
   const deleteNotification = async (notificationId) => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     try {
       await fetch(`${API_BASE}/api/notifications/${notificationId}`, {
         method: 'DELETE',

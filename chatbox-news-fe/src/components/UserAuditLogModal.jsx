@@ -20,7 +20,7 @@ const UserAuditLogModal = ({ business, onClose }) => {
   }, [business]);
 
   const fetchAuditLogs = async () => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     if (!token || !business) return;
 
     try {

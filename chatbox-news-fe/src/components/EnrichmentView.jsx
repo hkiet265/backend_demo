@@ -29,7 +29,7 @@ function EnrichmentView() {
   const [clusters, setClusters] = useState([]);
   const [clusterStats, setClusterStats] = useState(null);
 
-  const getAuthToken = () => localStorage.getItem('access_token');
+  const getAuthToken = () => localStorage.getItem('token');
 
   // Website Scraper Functions
   const scrapeWebsite = async () => {

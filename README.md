@@ -7,30 +7,20 @@ Nền tảng quản lý tin tức và doanh nghiệp được hỗ trợ bởi A
 ## 🐳 Quick Start với Docker (Khuyến nghị)
 
 ### Yêu cầu
-- Docker & Docker Compose
-- Port 8000 (Backend), 5173 (Frontend)
+- Docker Desktop (Windows/Mac) hoặc Docker Engine + Docker Compose (Linux)
+- Port 8000 (Backend) và 5173 (Frontend) phải trống
+- Git để clone repository
 
 ### Khởi động
 
 ```bash
-# 1. Clone repository
 git clone https://github.com/hkiet265/backend_demo.git
 cd backend_demo
-
-# 2. Copy environment file
 cp .env.docker.example .env
-# File .env đã có sẵn Supabase credentials và API keys
-
-# 3. Khởi động containers (Backend + Frontend)
 docker-compose up -d --build
-
-# 4. Kiểm tra logs
-docker logs emtu_backend --tail 30
-docker logs emtu_frontend --tail 30
-
-# 5. Test backend
-curl http://localhost:8000/health
 ```
+
+Chờ 30-60 giây để containers khởi động, sau đó truy cập:
 
 ### URLs
 
@@ -41,11 +31,12 @@ curl http://localhost:8000/health
 ### Database
 
 **Supabase PostgreSQL (Shared):**
-- ✅ Database đã có sẵn schema và sample data
-- ✅ Mọi người dùng chung 1 database
+- ✅ Database đã có sẵn schema và sample data (939 tin tức)
+- ✅ Tất cả cộng tác viên dùng chung 1 database
+- ✅ Không cần setup database riêng
 - Region: Tokyo (aws-1-ap-northeast-1)
 
-### Tài khoản mặc định
+### Tài khoản đăng nhập
 
 **Admin:**
 - Email: `admin@emtu.vn`
@@ -61,31 +52,35 @@ curl http://localhost:8000/health
 
 #### 🤖 AI Chatbot thông minh
 - Trả lời câu hỏi về tin tức bằng tiếng Việt
-- RAG (Retrieval-Augmented Generation) với vector search
+- RAG (Retrieval-Augmented Generation) với vector search (768 dims)
 - Multi-LLM: Groq (llama-3.3-70b) + Google Gemini với auto-fallback
 - Auto key rotation: 10 Gemini + 3 Groq keys
 
 #### 📰 Quản lý tin tức tự động
-- Auto-crawling mỗi 30 phút từ VTV, VTC, VOV
-- Semantic search với vector embeddings (768 dims)
-- Lọc theo danh mục
-- Bookmark system
+- Auto-crawling RSS feeds mỗi 30 phút (VTV, VTC, VOV)
+- Semantic search với vector embeddings
+- Lọc theo: Danh mục, Vùng miền, Thời gian
+- Bookmark/Favorite system
+- Duplicate detection
 
 #### 🏢 Quản lý doanh nghiệp
 - AI tự động chuẩn hóa: Phone, Email, Website, Address
-- Phân loại ngành nghề và vùng miền
-- Trust scoring
+- Phân loại ngành nghề và vùng miền tự động
+- Trust scoring (độ tin cậy 0-10)
 - Import/Export CSV
+- Smart search với NER
 
 #### 👥 Hệ thống người dùng
-- JWT authentication
+- JWT authentication (30 days expiration)
+- SHA256 password hashing
 - Role-based: Admin & User
 - Profile management
 
 #### 📊 Admin Dashboard
 - Logfire monitoring realtime
 - User & Business management
-- API performance metrics
+- News moderation
+- System metrics
 
 ---
 
@@ -95,12 +90,12 @@ curl http://localhost:8000/health
 - FastAPI (Python 3.13)
 - Supabase PostgreSQL + pgvector
 - Groq + Google Gemini (Multi-LLM)
-- JWT authentication
+- JWT authentication + SHA256
 - Logfire monitoring
 
 ### Frontend
 - React 18 + Vite 8.1.0
-- Custom CSS (orange #FF8C42)
+- Custom CSS (Orange #FF8C42)
 - Lucide React icons
 
 ### DevOps
@@ -108,15 +103,14 @@ curl http://localhost:8000/health
 - Hot-reload development
 
 ---
- 
-**Full Documentation:** http://localhost:8000/docs
- 
----
- 
-## 🚀 Development
+
+## 🚀 Development Mode (Không dùng Docker)
 
 ### Backend
 ```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
 pip install -r requirements.txt
 python -m uvicorn app.main:app --reload
 ```
@@ -130,22 +124,45 @@ npm run dev
 
 ---
 
+## 📝 Lệnh Docker hữu ích
+
+```bash
+docker-compose ps              # Xem trạng thái containers
+docker logs emtu_backend       # Xem logs backend
+docker logs emtu_frontend      # Xem logs frontend
+docker-compose restart         # Restart containers
+docker-compose down            # Stop và xóa containers
+docker-compose up -d --build   # Rebuild containers
+```
+
+---
+
 ## 🐛 Troubleshooting
 
 ### Backend không start
-```bash
-docker logs emtu_backend
-# Check: Supabase connection, API keys
-```
+- Xem logs: `docker logs emtu_backend`
+- Kiểm tra Supabase credentials trong .env
+- Kiểm tra port 8000 có bị chiếm không
 
 ### Frontend không load
-```bash
-docker logs emtu_frontend
-# Check: Node modules, port 5173
-```
+- Xem logs: `docker logs emtu_frontend`
+- Kiểm tra backend đã chạy: `curl http://localhost:8000/health`
+- Kiểm tra port 5173 có bị chiếm không
 
 ### Database connection failed
+- Verify DB_HOST, DB_USER, DB_PASSWORD trong .env
+- Test connection: `telnet [DB_HOST] 6543`
+
+### Rebuild hoàn toàn
 ```bash
-# Verify Supabase credentials in .env
-# Check DB_HOST, DB_USER, DB_PASSWORD
+docker-compose down
+docker-compose up -d --build
 ```
+
+---
+
+## 📚 Documentation
+
+Xem đầy đủ API documentation tại: http://localhost:8000/docs
+
+---
