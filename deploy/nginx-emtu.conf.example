@@ -1,0 +1,42 @@
+# Copy this block into the shared nginx stack's nginx/conf.d/default.conf
+# (the docker-laravel-l12 project on EC2), then reload that nginx container.
+#
+# Requires: emtu_backend_prod and emtu_frontend_prod containers joined to
+# the same external "shared-web" network as the shared nginx container.
+
+server {
+    listen 80;
+    server_name staging.emtu.deligo.vn;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name staging.emtu.deligo.vn;
+
+    ssl_certificate /etc/letsencrypt/live/staging.emtu.deligo.vn/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/staging.emtu.deligo.vn/privkey.pem;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    client_max_body_size 100M;
+
+    location /api/ {
+        proxy_pass http://emtu_backend_prod:8000/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        proxy_pass http://emtu_frontend_prod:80;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

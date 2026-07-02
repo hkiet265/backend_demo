@@ -11,7 +11,7 @@ const UserAuditLogModal = ({ business, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
 
-  const API_BASE = 'http://127.0.0.1:8000';
+  const API_BASE = '';
 
   useEffect(() => {
     if (business) {

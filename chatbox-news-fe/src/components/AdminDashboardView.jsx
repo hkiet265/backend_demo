@@ -12,8 +12,8 @@ const AdminDashboardView = () => {
       setLoading(true);
 
       const [statsRes, monitoringRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/admin/stats'),
-        fetch('http://127.0.0.1:8000/api/admin/monitoring')
+        fetch('/api/admin/stats'),
+        fetch('/api/admin/monitoring')
       ]);
       
       const statsData = await statsRes.json();

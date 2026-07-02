@@ -26,7 +26,7 @@ const AdminNewsView = () => {
   const fetchNews = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://127.0.0.1:8000/api/news?page_size=1000');
+      const response = await fetch('/api/news?page_size=1000');
       const data = await response.json();
       
       if (data.status === 'success') {
@@ -79,7 +79,7 @@ const AdminNewsView = () => {
     setConfirmDelete(null);
     
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/news/${id}`, {
+      const response = await fetch(`/api/news/${id}`, {
         method: 'DELETE'
       });
       
@@ -111,7 +111,7 @@ const AdminNewsView = () => {
 
   const handleSaveEdit = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/news/${editForm.id}`, {
+      const response = await fetch(`/api/news/${editForm.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -45,7 +45,7 @@ function MyBusinessesView({ currentUser }) {
 
     try {
       setLoading(true);
-      const response = await fetch('http://127.0.0.1:8000/api/businesses/my-businesses?page=1&page_size=100', {
+      const response = await fetch('/api/businesses/my-businesses?page=1&page_size=100', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -75,7 +75,7 @@ function MyBusinessesView({ currentUser }) {
 
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/businesses/${businessId}`, {
+      const response = await fetch(`/api/businesses/${businessId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

@@ -23,7 +23,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
       if (!token) return;
 
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/bookmarks/news', {
+        const response = await fetch('/api/bookmarks/news', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -64,7 +64,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
       
       if (bookmarkedNews.has(newsId)) {
         console.log('🗑️ Removing bookmark...');
-        const response = await fetch(`http://127.0.0.1:8000/api/bookmarks/news/${newsId}`, {
+        const response = await fetch(`/api/bookmarks/news/${newsId}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -85,7 +85,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
         }
       } else {
         console.log('➕ Adding bookmark...');
-        const response = await fetch('http://127.0.0.1:8000/api/bookmarks/news', {
+        const response = await fetch('/api/bookmarks/news', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

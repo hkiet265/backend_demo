@@ -9,7 +9,7 @@ const AdminAlertsView = () => {
   const [activeTab, setActiveTab] = useState('summary');
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  const API_BASE = 'http://127.0.0.1:8000';
+  const API_BASE = '';
 
   const fetchAlertSummary = async () => {
     try {

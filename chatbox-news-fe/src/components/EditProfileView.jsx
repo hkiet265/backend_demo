@@ -62,7 +62,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
         payload.new_password = newPassword;
       }
 
-      const response = await fetch('http://127.0.0.1:8000/api/auth/update-profile', {
+      const response = await fetch('/api/auth/update-profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

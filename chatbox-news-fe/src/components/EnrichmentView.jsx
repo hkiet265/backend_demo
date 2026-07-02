@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Search, Award, FileText, BarChart3, Globe, RefreshCw, Download } from 'lucide-react';
 
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = '';
 
 function EnrichmentView() {
   const [activeTab, setActiveTab] = useState('scraper'); // scraper, scoring, ner, clustering

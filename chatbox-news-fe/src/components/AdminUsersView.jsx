@@ -25,7 +25,7 @@ const AdminUsersView = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://127.0.0.1:8000/api/admin/users');
+      const response = await fetch('/api/admin/users');
       const data = await response.json();
       
       if (data.status === 'success') {
@@ -75,7 +75,7 @@ const AdminUsersView = () => {
 
   const handleSaveEdit = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/admin/users/${editForm.id}`, {
+      const response = await fetch(`/api/admin/users/${editForm.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -109,7 +109,7 @@ const AdminUsersView = () => {
     setConfirmDelete(null);
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/admin/users/${id}`, {
+      const response = await fetch(`/api/admin/users/${id}`, {
         method: 'DELETE'
       });
 

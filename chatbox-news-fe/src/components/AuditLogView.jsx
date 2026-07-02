@@ -12,7 +12,7 @@ const AuditLogView = () => {
   });
   const [selectedLog, setSelectedLog] = useState(null);
 
-  const API_BASE = 'http://127.0.0.1:8000';
+  const API_BASE = '';
 
   const fetchLogs = async () => {
     try {

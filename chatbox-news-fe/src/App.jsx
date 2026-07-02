@@ -133,7 +133,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
   const fetchAllNews = async () => {
     try {
       setIsFetchNewsLoading(true);
-      const response = await fetch('http://127.0.0.1:8000/api/news?page=1&page_size=1000');
+      const response = await fetch('/api/news?page=1&page_size=1000');
       if (response.ok) {
         const data = await response.json();
  
@@ -177,7 +177,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
   const fetchAllBusinesses = async () => {
     try {
       setIsFetchBusinessLoading(true);
-      const response = await fetch('http://127.0.0.1:8000/api/businesses?page=1&page_size=100');
+      const response = await fetch('/api/businesses?page=1&page_size=100');
       if (response.ok) {
         const data = await response.json();
         setAllBusinesses(data.data || []);
@@ -203,7 +203,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
     setIsEnriching(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/enrich', {
+      const response = await fetch('/api/enrich', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ raw_text: "" }) 
@@ -256,7 +256,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
         requestBody.action_button_id = actionButtonId;
       }
 
-      const response = await fetch('http://127.0.0.1:8000/api/chat/message', {
+      const response = await fetch('/api/chat/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)

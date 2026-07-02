@@ -58,9 +58,9 @@ const FavoritesView = ({ currentUser }) => {
       const headers = { 'Authorization': `Bearer ${token}` };
       
       const [newsRes, businessRes, statsRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/bookmarks/news', { headers }),
-        fetch('http://127.0.0.1:8000/api/bookmarks/businesses', { headers }),
-        fetch('http://127.0.0.1:8000/api/bookmarks/stats', { headers })
+        fetch('/api/bookmarks/news', { headers }),
+        fetch('/api/bookmarks/businesses', { headers }),
+        fetch('/api/bookmarks/stats', { headers })
       ]);
 
       if (newsRes.ok) {
@@ -115,8 +115,8 @@ const FavoritesView = ({ currentUser }) => {
 
     try {
       const endpoint = type === 'news' 
-        ? `http://127.0.0.1:8000/api/bookmarks/news/${id}`
-        : `http://127.0.0.1:8000/api/bookmarks/businesses/${id}`;
+        ? `/api/bookmarks/news/${id}`
+        : `/api/bookmarks/businesses/${id}`;
 
       const response = await fetch(endpoint, { 
         method: 'DELETE',

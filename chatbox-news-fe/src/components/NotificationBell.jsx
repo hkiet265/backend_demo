@@ -14,7 +14,7 @@ const NotificationBell = ({ currentUser }) => {
   const [filter, setFilter] = useState('unread'); // all, unread, today
   const popoverRef = useRef(null);
 
-  const API_BASE = 'http://127.0.0.1:8000';
+  const API_BASE = '';
 
   // Fetch notifications
   const fetchNotifications = async () => {

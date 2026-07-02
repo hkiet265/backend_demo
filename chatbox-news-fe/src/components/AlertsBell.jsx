@@ -12,7 +12,7 @@ const AlertsBell = ({ currentUser }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const popoverRef = useRef(null);
 
-  const API_BASE = 'http://127.0.0.1:8000';
+  const API_BASE = '';
 
   // Fetch alerts for user's businesses
   const fetchAlerts = async () => {

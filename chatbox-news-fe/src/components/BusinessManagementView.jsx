@@ -72,7 +72,7 @@ function BusinessManagementView({
       }
 
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/bookmarks/businesses', {
+        const response = await fetch('/api/bookmarks/businesses', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -111,7 +111,7 @@ function BusinessManagementView({
     try {
       if (bookmarkedBusinesses.has(businessId)) {
         // Remove bookmark
-        const response = await fetch(`http://127.0.0.1:8000/api/bookmarks/businesses/${businessId}`, {
+        const response = await fetch(`/api/bookmarks/businesses/${businessId}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -131,7 +131,7 @@ function BusinessManagementView({
       } else {
         // Add bookmark
         console.log('Adding bookmark for business:', businessId);
-        const response = await fetch('http://127.0.0.1:8000/api/bookmarks/businesses', {
+        const response = await fetch('/api/bookmarks/businesses', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -203,7 +203,7 @@ function BusinessManagementView({
   const handleEnrichAll = async () => {
     setIsEnrichingAll(true);
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/ai/enrich-all', { method: 'POST' });
+      const res = await fetch('/api/ai/enrich-all', { method: 'POST' });
       const data = await res.json();
       if (data.enriched_count > 0) onRefresh();
     } catch (e) { console.error(e); }
@@ -212,7 +212,7 @@ function BusinessManagementView({
 
   const handleExportCSV = () => {
     const q = regionFilter !== 'all' ? `?region=${regionFilter}` : '';
-    window.open(`http://127.0.0.1:8000/api/businesses/export/csv${q}`, '_blank');
+    window.open(`/api/businesses/export/csv${q}`, '_blank');
   };
 
   const handleDeleteBusiness = async (businessId) => {
@@ -227,7 +227,7 @@ function BusinessManagementView({
     }
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/businesses/${businessId}`, {
+      const response = await fetch(`/api/businesses/${businessId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -328,7 +328,7 @@ function BusinessManagementView({
         return;
       }
 
-      const res = await fetch('http://127.0.0.1:8000/api/businesses/bulk-import', {
+      const res = await fetch('/api/businesses/bulk-import', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

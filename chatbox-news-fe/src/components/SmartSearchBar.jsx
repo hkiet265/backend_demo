@@ -8,7 +8,7 @@ const SmartSearchBar = ({ onResultsFound }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = useRef(null);
 
-  const API_BASE = 'http://127.0.0.1:8000';
+  const API_BASE = '';
 
   // Load recent searches from localStorage
   useEffect(() => {

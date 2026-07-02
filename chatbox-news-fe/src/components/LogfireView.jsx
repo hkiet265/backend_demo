@@ -12,7 +12,7 @@ const LogfireView = () => {
   const fetchMonitoring = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://127.0.0.1:8000/api/admin/monitoring');
+      const response = await fetch('/api/admin/monitoring');
       const data = await response.json();
       
       if (data.status === 'success') {

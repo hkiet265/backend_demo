@@ -36,7 +36,7 @@ const AdminBusinessView = () => {
   const fetchBusinesses = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://127.0.0.1:8000/api/businesses?page_size=100');
+      const response = await fetch('/api/businesses?page_size=100');
       const data = await response.json();
       
       if (data.status === 'success') {
@@ -87,7 +87,7 @@ const AdminBusinessView = () => {
     setConfirmDelete(null);
     
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/businesses/${id}`, {
+      const response = await fetch(`/api/businesses/${id}`, {
         method: 'DELETE'
       });
       
@@ -120,7 +120,7 @@ const AdminBusinessView = () => {
 
   const handleSaveEdit = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/businesses/${editForm.id}`, {
+      const response = await fetch(`/api/businesses/${editForm.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
