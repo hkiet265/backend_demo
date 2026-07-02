@@ -153,7 +153,8 @@ class AuditLogService:
         user_id: Optional[int] = None,
         action: Optional[str] = None,
         limit: int = 100,
-        offset: int = 0
+        offset: int = 0,
+        exclude_actions: Optional[List[str]] = None
     ) -> List[Dict]:
         """
         Lấy audit logs với filters
@@ -179,6 +180,11 @@ class AuditLogService:
             if action:
                 conditions.append("action = %s")
                 params.append(action)
+            
+            if exclude_actions:
+                placeholders = ', '.join(['%s'] * len(exclude_actions))
+                conditions.append(f"action NOT IN ({placeholders})")
+                params.extend(exclude_actions)
             
             where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
             

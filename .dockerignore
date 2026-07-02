@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Logs
+*.log
+
+# Database
+*.db
+*.sqlite
+
+# Frontend (for backend container)
+chatbox-news-fe/
+
+# Documentation
+*.md
+CLEANUP_LOG.md
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Batch files
+*.bat
+
+# CSV files (unless needed)
+*.csv

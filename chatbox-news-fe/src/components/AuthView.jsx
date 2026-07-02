@@ -72,7 +72,7 @@ function AuthView({ onLoginSuccess }) {
         throw new Error('Đã xảy ra lỗi khi ' + (isLogin ? 'đăng nhập' : 'đăng ký'));
       }
  
-      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
       console.log('✅ Auth success, calling callback...');

@@ -201,8 +201,8 @@ const AuditLogView = () => {
               <option value="CREATE">Create</option>
               <option value="UPDATE">Update</option>
               <option value="DELETE">Delete</option>
-              <option value="LOGIN">Login</option>
-              <option value="LOGOUT">Logout</option>
+              <option value="IMPORT">Import</option>
+              <option value="EXPORT">Export</option>
             </select>
           </div>
 

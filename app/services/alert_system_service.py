@@ -406,6 +406,151 @@ class AlertSystemService:
         except Exception as e:
             logger.error(f"Error getting alert stats: {e}")
             return {}
+    
+    def get_alert_summary(self, conn) -> Dict:
+        """Get alert summary for dashboard"""
+        stats = self.get_alert_stats(conn)
+        
+        by_severity = stats.get('by_severity', {})
+        by_type = stats.get('by_type', {})
+        
+        return {
+            'total_alerts': stats.get('total_active', 0),
+            'by_severity': {
+                'info': by_severity.get('low', 0),
+                'warning': by_severity.get('medium', 0),
+                'error': by_severity.get('high', 0),
+                'critical': by_severity.get('critical', 0)
+            },
+            'by_category': {
+                'outdated': by_type.get('outdated', 0),
+                'missing_fields': by_type.get('missing_field', 0),
+                'invalid_data': by_type.get('invalid', 0)
+            },
+            'needs_attention': stats.get('critical_high_count', 0)
+        }
+    
+    def get_all_alerts(self, conn) -> Dict:
+        """Get all alerts grouped by type"""
+        return {
+            'outdated': self.check_outdated_businesses(conn),
+            'missing_fields': self.check_missing_fields(conn, 'business'),
+            'invalid_data': self.check_invalid_data(conn)
+        }
+    
+    def check_outdated_businesses(self, conn) -> list:
+        """Check for outdated businesses"""
+        try:
+            cur = conn.cursor()
+            
+            cur.execute("""
+                SELECT ah.id, ah.business_id, b.name, ah.severity, ah.message,
+                       ah.metadata, ah.detected_at
+                FROM alert_history ah
+                JOIN businesses_demo b ON b.id = ah.business_id
+                WHERE ah.status = 'active'
+                AND ah.alert_type = 'outdated'
+                ORDER BY ah.severity DESC, ah.detected_at DESC;
+            """)
+            
+            rows = cur.fetchall()
+            cur.close()
+            
+            alerts = []
+            for row in rows:
+                import json
+                metadata = row[5] if isinstance(row[5], dict) else (json.loads(row[5]) if row[5] else {})
+                
+                alerts.append({
+                    'id': row[0],
+                    'resource_id': row[1],
+                    'resource_name': row[2],
+                    'severity': row[3],
+                    'message': row[4],
+                    'details': metadata,
+                    'detected_at': row[6].isoformat() if row[6] else None,
+                    'recommended_action': 'Cập nhật thông tin doanh nghiệp'
+                })
+            
+            return alerts
+            
+        except Exception as e:
+            logger.error(f"Check outdated businesses error: {e}")
+            return []
+    
+    def check_missing_fields(self, conn, resource_type: str) -> list:
+        """Check for missing required fields"""
+        try:
+            cur = conn.cursor()
+            
+            cur.execute("""
+                SELECT ah.id, ah.business_id, b.name, ah.severity, ah.message,
+                       ah.field_name, ah.detected_at
+                FROM alert_history ah
+                JOIN businesses_demo b ON b.id = ah.business_id
+                WHERE ah.status = 'active'
+                AND ah.alert_type = 'missing_field'
+                ORDER BY ah.severity DESC, ah.detected_at DESC;
+            """)
+            
+            rows = cur.fetchall()
+            cur.close()
+            
+            alerts = []
+            for row in rows:
+                alerts.append({
+                    'id': row[0],
+                    'resource_id': row[1],
+                    'resource_name': row[2],
+                    'severity': row[3],
+                    'message': row[4],
+                    'field_name': row[5],
+                    'detected_at': row[6].isoformat() if row[6] else None,
+                    'recommended_action': f'Điền thông tin {row[5]}'
+                })
+            
+            return alerts
+            
+        except Exception as e:
+            logger.error(f"Check missing fields error: {e}")
+            return []
+    
+    def check_invalid_data(self, conn) -> list:
+        """Check for invalid data"""
+        try:
+            cur = conn.cursor()
+            
+            cur.execute("""
+                SELECT ah.id, ah.business_id, b.name, ah.severity, ah.message,
+                       ah.field_name, ah.detected_at
+                FROM alert_history ah
+                JOIN businesses_demo b ON b.id = ah.business_id
+                WHERE ah.status = 'active'
+                AND ah.alert_type = 'invalid'
+                ORDER BY ah.severity DESC, ah.detected_at DESC;
+            """)
+            
+            rows = cur.fetchall()
+            cur.close()
+            
+            alerts = []
+            for row in rows:
+                alerts.append({
+                    'id': row[0],
+                    'resource_id': row[1],
+                    'resource_name': row[2],
+                    'severity': row[3],
+                    'message': row[4],
+                    'field_name': row[5],
+                    'detected_at': row[6].isoformat() if row[6] else None,
+                    'recommended_action': f'Sửa lại {row[5]} cho đúng định dạng'
+                })
+            
+            return alerts
+            
+        except Exception as e:
+            logger.error(f"Check invalid data error: {e}")
+            return []
 
 
 _alert_service = None

@@ -1,0 +1,98 @@
+services:
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: emtu_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: EmTuPassword2024!
+      POSTGRES_DB: emtu_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - emtu_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: emtu_backend
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=EmTuPassword2024!
+      - DB_NAME=emtu_db
+      - DB_SSLMODE=disable
+      - GEMINI_API_KEY_1=${GEMINI_API_KEY_1}
+      - GEMINI_API_KEY_2=${GEMINI_API_KEY_2}
+      - GEMINI_API_KEY_3=${GEMINI_API_KEY_3}
+      - GEMINI_API_KEY_4=${GEMINI_API_KEY_4}
+      - GEMINI_API_KEY_5=${GEMINI_API_KEY_5}
+      - GEMINI_API_KEY_6=${GEMINI_API_KEY_6}
+      - GEMINI_API_KEY_7=${GEMINI_API_KEY_7}
+      - GEMINI_API_KEY_8=${GEMINI_API_KEY_8}
+      - GEMINI_API_KEY_9=${GEMINI_API_KEY_9}
+      - GEMINI_API_KEY_10=${GEMINI_API_KEY_10}
+      - GROQ_API_KEY_1=${GROQ_API_KEY_1}
+      - GROQ_API_KEY_2=${GROQ_API_KEY_2}
+      - GROQ_API_KEY_3=${GROQ_API_KEY_3}
+      - USE_GROQ_FOR_GENERATION=true
+      - FALLBACK_TO_GEMINI=true
+      - EMBEDDING_MODEL=models/text-embedding-004
+      - CHAT_MODEL=gemini-1.5-flash
+      - EMBEDDING_DIMENSION=768
+      - JWT_SECRET=emtu_secret_key_2024
+      - JWT_EXPIRATION_DAYS=30
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN}
+      - LOGFIRE_READ_TOKEN=${LOGFIRE_READ_TOKEN}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      - ./scripts:/app/scripts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - emtu_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./chatbox-news-fe
+      dockerfile: Dockerfile
+    container_name: emtu_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./chatbox-news-fe/src:/app/src
+      - ./chatbox-news-fe/public:/app/public
+      - /app/node_modules
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    networks:
+      - emtu_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  emtu_network:
+    driver: bridge
