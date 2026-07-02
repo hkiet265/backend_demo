@@ -48,7 +48,7 @@ const FavoritesView = ({ currentUser }) => {
   const fetchBookmarks = async () => {
     if (!currentUser) return;
 
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     if (!token) {
       showToast('Vui lòng đăng nhập lại', 'error');
       return;
@@ -107,7 +107,7 @@ const FavoritesView = ({ currentUser }) => {
     const { type, id } = confirmDelete;
     setConfirmDelete(null);
 
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     if (!token) {
       showToast('Vui lòng đăng nhập lại', 'error');
       return;

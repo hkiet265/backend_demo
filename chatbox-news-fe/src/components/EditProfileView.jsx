@@ -50,7 +50,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
       
       const payload = {
         full_name: fullName.trim(),

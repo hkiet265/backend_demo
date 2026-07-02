@@ -64,7 +64,7 @@ function BusinessManagementView({
 
   useEffect(() => {
     const loadBookmarks = async () => {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
       if (!token) {
         // Clear bookmarks when no token (logged out)
         setBookmarkedBusinesses(new Set());
@@ -102,7 +102,7 @@ function BusinessManagementView({
       e.preventDefault();
     }
     
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     if (!token) {
       showToast('Vui lòng đăng nhập để sử dụng tính năng yêu thích', 'error');
       return;
@@ -216,7 +216,7 @@ function BusinessManagementView({
   };
 
   const handleDeleteBusiness = async (businessId) => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     if (!token) {
       showToast('Vui lòng đăng nhập để xóa doanh nghiệp', 'error');
       return;
@@ -321,7 +321,7 @@ function BusinessManagementView({
         return; 
       }
 
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
       if (!token) {
         showToast('⚠️ Vui lòng đăng nhập để thêm doanh nghiệp', 'error');
         e.target.value = '';

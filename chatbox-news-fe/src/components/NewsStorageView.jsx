@@ -19,7 +19,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
 
   useEffect(() => {
     const loadBookmarks = async () => {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
       if (!token) return;
 
       try {
@@ -51,7 +51,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
     
     console.log('🔥 Bookmark clicked for news:', newsId);
     
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     console.log('🔑 Token:', token ? 'Found' : 'Not found');
     
     if (!token) {

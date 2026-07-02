@@ -37,7 +37,7 @@ function MyBusinessesView({ currentUser }) {
   };
 
   const fetchMyBusinesses = async () => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     if (!token) {
       showToast('Vui lòng đăng nhập', 'error');
       return;
@@ -73,7 +73,7 @@ function MyBusinessesView({ currentUser }) {
       return;
     }
 
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     try {
       const response = await fetch(`http://127.0.0.1:8000/api/businesses/${businessId}`, {
         method: 'DELETE',
