@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     LOGFIRE_TOKEN: str = ""
     LOGFIRE_READ_TOKEN: str = ""
 
+    JWT_SECRET: str = "emtu_secret_key_2024_change_in_production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRATION_DAYS: int = 30
+
     USE_GROQ_FOR_GENERATION: bool = True
     FALLBACK_TO_GEMINI: bool = True
 
@@ -53,7 +57,7 @@ class Settings(BaseSettings):
     RAG_ENABLE_HYBRID_SEARCH: bool = True
 
     ENABLE_CASUAL_CHAT_AI: bool = True
-    MAX_CASUAL_MESSAGE_LENGTH: int = 15 
+    MAX_CASUAL_MESSAGE_LENGTH: int = 15
 
     HOST: str = "127.0.0.1"
     PORT: int = 8000

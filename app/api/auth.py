@@ -16,10 +16,6 @@ from app.middleware.rate_limiter import limiter, AUTH_RATE_LIMIT
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-JWT_SECRET = "emtu_secret_key_2024"
-JWT_ALGORITHM = "HS256"
-JWT_EXPIRATION_DAYS = 30
-
 
 class RegisterRequest(BaseModel):
     email: EmailStr
@@ -39,8 +35,11 @@ class AuthResponse(BaseModel):
 
 
 def hash_password(password: str) -> str:
-    """Hash password using SHA256"""
     return hashlib.sha256(password.encode()).hexdigest()
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return hashlib.sha256(plain_password.encode()).hexdigest() == hashed_password
 
 
 def generate_jwt_token(user: dict) -> str:
@@ -50,9 +49,9 @@ def generate_jwt_token(user: dict) -> str:
         "email": user['email'],
         "full_name": user['full_name'],
         "role": user.get('role', 'user'),
-        "exp": datetime.utcnow() + timedelta(days=JWT_EXPIRATION_DAYS)
+        "exp": datetime.utcnow() + timedelta(days=settings.JWT_EXPIRATION_DAYS)
     }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
 @router.post("/register", response_model=AuthResponse)
@@ -131,19 +130,14 @@ async def login(request: Request, login_request: LoginRequest):
     - **password**: User password
     """
     try:
-        
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
-        
-        password_hash = hash_password(login_request.password)
-        
-        
         cur.execute("""
-            SELECT id, email, full_name, phone, role, created_at
+            SELECT id, email, full_name, phone, role, created_at, password_hash
             FROM app_users
-            WHERE email = %s AND password_hash = %s
-        """, (login_request.email, password_hash))
+            WHERE email = %s
+        """, (login_request.email,))
         
         user = cur.fetchone()
         
@@ -152,8 +146,15 @@ async def login(request: Request, login_request: LoginRequest):
             conn.close()
             raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
         
+        if not verify_password(login_request.password, user['password_hash']):
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
         
-        token = generate_jwt_token(user)
+        user_dict = dict(user)
+        user_dict.pop('password_hash', None)
+        
+        token = generate_jwt_token(user_dict)
 
         cur.close()
         conn.close()
@@ -216,8 +217,7 @@ async def update_profile(request: UpdateProfileRequest):
                 conn.close()
                 raise HTTPException(status_code=400, detail="Cần nhập mật khẩu hiện tại")
             
-            current_password_hash = hash_password(request.current_password)
-            if current_password_hash != user['password_hash']:
+            if not verify_password(request.current_password, user['password_hash']):
                 cur.close()
                 conn.close()
                 raise HTTPException(status_code=401, detail="Mật khẩu hiện tại không đúng")

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Heart, Trash2, Calendar, MapPin, Phone, Globe, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
-import LoadingSpinner from './LoadingSpinner';
 import Toast from './Toast';
 import ConfirmDialog from './ConfirmDialog';
 
@@ -10,7 +9,6 @@ const FavoritesView = ({ currentUser }) => {
   const [activeTab, setActiveTab] = useState('news');
   const [newsBookmarks, setNewsBookmarks] = useState([]);
   const [businessBookmarks, setBusinessBookmarks] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ news_count: 0, business_count: 0, total: 0 });
   const [toast, setToast] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -57,8 +55,6 @@ const FavoritesView = ({ currentUser }) => {
     }
 
     try {
-      setLoading(true);
-      
       const headers = { 'Authorization': `Bearer ${token}` };
       
       const [newsRes, businessRes, statsRes] = await Promise.all([
@@ -85,8 +81,6 @@ const FavoritesView = ({ currentUser }) => {
     } catch (error) {
       console.error('Failed to fetch bookmarks:', error);
       showToast('Lỗi khi tải danh sách yêu thích', 'error');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -160,10 +154,6 @@ const FavoritesView = ({ currentUser }) => {
         </div>
       </div>
     );
-  }
-
-  if (loading) {
-    return <LoadingSpinner fullScreen message="Đang tải danh sách yêu thích..." />;
   }
 
   return (

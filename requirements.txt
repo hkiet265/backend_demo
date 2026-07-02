@@ -6,8 +6,8 @@ pydantic-settings>=2.0.0
 pydantic[email]>=2.0.0
 pyjwt>=2.8.0
 slowapi>=0.1.9
-logfire>=0.20.0  # Monitoring & observability
-httpx>=0.25.0  # HTTP client for Logfire API
+logfire>=0.20.0
+httpx>=0.25.0
 
 # Database
 psycopg2-binary>=2.9.9

@@ -1,35 +1,16 @@
 services:
-  postgres:
-    image: ankane/pgvector:latest
-    container_name: emtu_postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: EmTuPassword2024!
-      POSTGRES_DB: emtu_db
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - emtu_network
-
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: emtu_backend
     environment:
-      - DB_HOST=postgres
+      - DB_HOST=aws-1-ap-northeast-1.pooler.supabase.com
       - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=EmTuPassword2024!
-      - DB_NAME=emtu_db
-      - DB_SSLMODE=disable
+      - DB_USER=postgres.bfiocjgmrhngahagpoas
+      - DB_PASSWORD=Hokhaikiet265@
+      - DB_NAME=postgres
+      - DB_SSLMODE=require
       - GEMINI_API_KEY_1=${GEMINI_API_KEY_1}
       - GEMINI_API_KEY_2=${GEMINI_API_KEY_2}
       - GEMINI_API_KEY_3=${GEMINI_API_KEY_3}
@@ -57,9 +38,6 @@ services:
     volumes:
       - ./app:/app/app
       - ./scripts:/app/scripts
-    depends_on:
-      postgres:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -88,10 +66,6 @@ services:
     networks:
       - emtu_network
     restart: unless-stopped
-
-volumes:
-  postgres_data:
-    driver: local
 
 networks:
   emtu_network:
