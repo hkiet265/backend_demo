@@ -13,9 +13,6 @@ from app.services import (
     RAGService,
     ChatService
 )
-
-JWT_SECRET = "emtu_secret_key_2024"
-JWT_ALGORITHM = "HS256"
  
 _embedding_service = None
 _vector_service = None
@@ -94,7 +91,7 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
         
         logger.info(f"🔑 Token received (first 20 chars): {token[:20]}...")
         
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         user_id = payload.get("user_id")
         email = payload.get("email")
         

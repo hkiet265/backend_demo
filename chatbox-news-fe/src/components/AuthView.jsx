@@ -56,17 +56,15 @@ function AuthView({ onLoginSuccess }) {
       console.log('📥 Response:', data);
 
       if (!response.ok) {
-        
         if (data.detail) {
           if (typeof data.detail === 'string') {
             throw new Error(data.detail);
           } else if (Array.isArray(data.detail)) {
-            
-            const errorMsg = data.detail.map(err => {
+            const errorMessage = data.detail.map(err => {
               const field = err.loc ? err.loc[err.loc.length - 1] : 'field';
               return `${field}: ${err.msg}`;
             }).join(', ');
-            throw new Error(errorMsg);
+            throw new Error(errorMessage);
           }
         }
         throw new Error('Đã xảy ra lỗi khi ' + (isLogin ? 'đăng nhập' : 'đăng ký'));

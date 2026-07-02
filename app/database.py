@@ -31,12 +31,15 @@ def init_db_pool(db_config: dict, minconn: int = 5, maxconn: int = 20):
     with _pool_lock:
         if _db_pool is None:
             try:
+                pool_config = db_config.copy()
+                pool_config['connect_timeout'] = 10
+                
                 _db_pool = pool.ThreadedConnectionPool(
                     minconn=minconn,
                     maxconn=maxconn,
-                    **db_config
+                    **pool_config
                 )
-                logger.info(f"✅ Database pool initialized: {minconn}-{maxconn} connections")
+                logger.info(f"✅ Database pool initialized: {minconn}-{maxconn} connections (timeout: 10s)")
             except Exception as e:
                 logger.error(f"❌ Failed to initialize database pool: {e}")
                 raise
