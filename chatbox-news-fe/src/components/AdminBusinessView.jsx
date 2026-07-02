@@ -19,6 +19,16 @@ const AdminBusinessView = () => {
   const [toast, setToast] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
+  const formatRegionDisplay = (region) => {
+    if (!region) return '';
+    const r = region.toLowerCase();
+    if (r.includes('bac') || r.includes('bắc')) return 'Bắc';
+    if (r.includes('nam')) return 'Nam';
+    if (r.includes('trung')) return 'Trung';
+    if (r.includes('toan')) return 'Toàn quốc';
+    return region;
+  };
+
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
   };
@@ -245,7 +255,7 @@ const AdminBusinessView = () => {
                 <td className="business-name">{business.name}</td>
                 <td>{business.industry || 'N/A'}</td>
                 <td>
-                  <span className={`badge region-${business.region}`}>{business.region}</span>
+                  <span className={`badge region-${business.region}`}>{formatRegionDisplay(business.region)}</span>
                 </td>
                 <td>{business.location}</td>
                 <td>
@@ -484,7 +494,7 @@ const AdminBusinessView = () => {
               
               <div className="business-detail-meta">
                 <span className="badge">{selectedBusiness.industry}</span>
-                <span className={`badge region-${selectedBusiness.region}`}>{selectedBusiness.region}</span>
+                <span className={`badge region-${selectedBusiness.region}`}>{formatRegionDisplay(selectedBusiness.region)}</span>
                 <span className="badge">Trust: {selectedBusiness.trust_score}/100</span>
               </div>
 

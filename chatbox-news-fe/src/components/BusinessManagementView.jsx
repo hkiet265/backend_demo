@@ -65,7 +65,11 @@ function BusinessManagementView({
   useEffect(() => {
     const loadBookmarks = async () => {
       const token = localStorage.getItem('access_token');
-      if (!token) return;
+      if (!token) {
+        // Clear bookmarks when no token (logged out)
+        setBookmarkedBusinesses(new Set());
+        return;
+      }
 
       try {
         const response = await fetch('http://127.0.0.1:8000/api/bookmarks/businesses', {
@@ -79,14 +83,18 @@ function BusinessManagementView({
           const bookmarkedIds = new Set(bookmarks.map(b => b.id));
           console.log('📌 Bookmarked IDs:', Array.from(bookmarkedIds));
           setBookmarkedBusinesses(bookmarkedIds);
+        } else {
+          // Clear bookmarks on error (e.g., 401 unauthorized)
+          setBookmarkedBusinesses(new Set());
         }
       } catch (error) {
         console.error('Error loading bookmarks:', error);
+        setBookmarkedBusinesses(new Set());
       }
     };
 
     loadBookmarks();
-  }, []);
+  }, [currentUser]); // Re-run when currentUser changes
 
   const handleBookmark = useCallback(async (businessId, e) => {
     if (e) {
@@ -102,6 +110,7 @@ function BusinessManagementView({
 
     try {
       if (bookmarkedBusinesses.has(businessId)) {
+        // Remove bookmark
         const response = await fetch(`http://127.0.0.1:8000/api/bookmarks/businesses/${businessId}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
@@ -114,8 +123,14 @@ function BusinessManagementView({
             return newSet;
           });
           showToast('Đã xóa khỏi yêu thích', 'success');
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Delete bookmark failed:', response.status, errorData);
+          showToast(`Lỗi: ${errorData.detail || 'Không thể xóa'}`, 'error');
         }
       } else {
+        // Add bookmark
+        console.log('Adding bookmark for business:', businessId);
         const response = await fetch('http://127.0.0.1:8000/api/bookmarks/businesses', {
           method: 'POST',
           headers: {
@@ -125,14 +140,20 @@ function BusinessManagementView({
           body: JSON.stringify({ business_id: businessId })
         });
 
+        console.log('Bookmark response:', response.status);
+        
         if (response.ok) {
           setBookmarkedBusinesses(prev => new Set([...prev, businessId]));
           showToast('Đã thêm vào yêu thích', 'success');
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Add bookmark failed:', response.status, errorData);
+          showToast(`Lỗi: ${errorData.detail || 'Không thể thêm'}`, 'error');
         }
       }
     } catch (error) {
       console.error('Bookmark error:', error);
-      showToast('Lỗi khi lưu yêu thích', 'error');
+      showToast(`Lỗi kết nối: ${error.message}`, 'error');
     }
   }, [bookmarkedBusinesses]);
  
@@ -300,10 +321,19 @@ function BusinessManagementView({
         return; 
       }
 
-      // Send to backend
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        showToast('⚠️ Vui lòng đăng nhập để thêm doanh nghiệp', 'error');
+        e.target.value = '';
+        return;
+      }
+
       const res = await fetch('http://127.0.0.1:8000/api/businesses/bulk-import', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ records })
       });
       
@@ -313,8 +343,30 @@ function BusinessManagementView({
       }
 
       const data = await res.json();
-      showToast(`✅ Import thành công: ${data.inserted} doanh nghiệp mới, ${data.skipped} bỏ qua (trùng lặp)`, 'success');
-      setCurrentPage(1);  // Reset về trang 1 để xem doanh nghiệp mới
+      
+      // Better messaging
+      let message = '';
+      let messageType = 'success';
+      
+      if (data.inserted > 0 && data.skipped === 0) {
+        // All success
+        message = `✅ Thêm thành công ${data.inserted} doanh nghiệp mới!`;
+      } else if (data.inserted > 0 && data.skipped > 0) {
+        // Partial success
+        message = `⚠️ Thêm được ${data.inserted} doanh nghiệp mới. Bỏ qua ${data.skipped} doanh nghiệp vì đã tồn tại (trùng tên/SĐT/email).`;
+        messageType = 'warning';
+      } else if (data.inserted === 0 && data.skipped > 0) {
+        // All duplicates
+        message = `⚠️ Không thể thêm! doanh nghiệp đã tồn tại`;
+        messageType = 'error';
+      } else {
+        // No valid data
+        message = `⚠️ Không có dữ liệu hợp lệ để thêm.`;
+        messageType = 'error';
+      }
+      
+      showToast(message, messageType);
+      setCurrentPage(1);
       onRefresh();
 
     } catch (err) {
@@ -333,10 +385,21 @@ function BusinessManagementView({
     document.querySelector('.main-content-area')?.style.setProperty('overflow', 'auto');
   };
 
+  const formatRegionDisplay = (region) => {
+    if (!region) return '';
+    const r = region.toLowerCase();
+    if (r.includes('bac') || r.includes('bắc')) return 'Bắc';
+    if (r.includes('nam')) return 'Nam';
+    if (r.includes('trung')) return 'Trung';
+    if (r.includes('toan')) return 'Toàn quốc';
+    return region;
+  };
+
   const regionColor = (region) => {
     if (!region) return '';
     const r = region.toLowerCase();
-    if (r.includes('bắc')) return 'region-Bắc';
+    // Kiểm tra cả có dấu và không dấu
+    if (r.includes('bắc') || r.includes('bac')) return 'region-Bắc';
     if (r.includes('nam')) return 'region-Nam';
     if (r.includes('trung')) return 'region-Trung';
     return 'region-default';
@@ -471,7 +534,7 @@ function BusinessManagementView({
                     </p>
                     <div className="biz-card-tags">
                       {biz.region && (
-                        <span className={`biz-tag ${regionColor(biz.region)}`}>{biz.region}</span>
+                        <span className={`biz-tag ${regionColor(biz.region)}`}>{formatRegionDisplay(biz.region)}</span>
                       )}
                       {(biz.industry || biz.scale) && (
                         <span className="biz-tag biz-tag-scale">{biz.industry || biz.scale}</span>
@@ -560,7 +623,7 @@ function BusinessManagementView({
  
             <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               {selectedBusiness.region && (
-                <span className={`biz-tag ${regionColor(selectedBusiness.region)}`}>{selectedBusiness.region}</span>
+                <span className={`biz-tag ${regionColor(selectedBusiness.region)}`}>{formatRegionDisplay(selectedBusiness.region)}</span>
               )}
               {selectedBusiness.industry && (
                 <span className="biz-tag biz-tag-scale">{selectedBusiness.industry}</span>

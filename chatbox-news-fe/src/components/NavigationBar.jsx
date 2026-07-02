@@ -1,5 +1,6 @@
 import { Building2, Newspaper, LogOut, User, Settings, ChevronDown, Heart, Briefcase } from 'lucide-react';
 import { useState } from 'react';
+import NotificationBell from './NotificationBell';
 
 function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, currentUser, onLogout, onShowAuth, onShowEditProfile }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -53,6 +54,8 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
       <div className="nav-right-section">
         {currentUser ? (
           <>
+            <NotificationBell currentUser={currentUser} />
+            
             <button 
               className="nav-chat-button"
               onClick={() => setIsChatOpen(!isChatOpen)}

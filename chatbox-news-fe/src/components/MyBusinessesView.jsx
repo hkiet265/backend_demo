@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, Trash2, Edit, Building2, RefreshCw } from 'lucide-react';
+import { X, Trash2, Edit, Building2, RefreshCw, History } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import Toast from './Toast';
+import UserAuditLogModal from './UserAuditLogModal';
 
 const FIELD_ICON = {
   'công nghệ': '💻', 'thông tin': '💻', 'phần mềm': '💻', 'ai': '🤖',
@@ -29,6 +30,7 @@ function MyBusinessesView({ currentUser }) {
   const [loading, setLoading] = useState(true);
   const [selectedBusiness, setSelectedBusiness] = useState(null);
   const [toast, setToast] = useState(null);
+  const [auditLogBusiness, setAuditLogBusiness] = useState(null);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -117,24 +119,51 @@ function MyBusinessesView({ currentUser }) {
   return (
     <div className="main-content-area fade-in-effect">
       <div className="my-businesses-view">
-        <div className="view-header" style={{ marginBottom: '24px' }}>
+        <div className="view-header" style={{ 
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}>
           <div>
-            <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>
-              <Building2 size={28} style={{ verticalAlign: 'middle', marginRight: '8px' }} />
+            <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>
+              <Building2 size={28} style={{ marginRight: '8px' }} />
               Doanh nghiệp của tôi
             </h2>
-            <p style={{ color: 'var(--text-dim)', fontSize: '14px' }}>
+            <p style={{ color: 'var(--text-dim)', fontSize: '14px', margin: 0 }}>
               Quản lý các doanh nghiệp bạn đã đăng ký
             </p>
           </div>
-          <button 
-            className="refresh-btn" 
-            onClick={fetchMyBusinesses}
-            disabled={loading}
-            title="Làm mới"
-          >
-            <RefreshCw size={18} className={loading ? 'spinning' : ''} />
-          </button>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {!loading && businesses.length > 0 && (
+              <div style={{ 
+                padding: '8px 16px',
+                background: 'rgba(255, 140, 66, 0.15)',
+                borderRadius: 'var(--radius-md)',
+                border: '2px solid var(--color-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <span style={{ fontSize: '14px', color: 'var(--text-dim)' }}>📊 Tổng:</span>
+                <strong style={{ fontSize: '18px', color: 'var(--color-primary)', fontWeight: '700' }}>
+                  {businesses.length}
+                </strong>
+              </div>
+            )}
+            
+            <button 
+              className="refresh-btn" 
+              onClick={fetchMyBusinesses}
+              disabled={loading}
+              title="Làm mới"
+            >
+              <RefreshCw size={18} className={loading ? 'spinning' : ''} />
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -159,31 +188,32 @@ function MyBusinessesView({ currentUser }) {
             </p>
           </div>
         ) : (
-          <>
-            <div style={{ 
-              marginBottom: '16px', 
-              padding: '12px 16px',
-              background: 'var(--bg-secondary)',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '14px',
-              color: 'var(--text-dim)'
-            }}>
-              📊 Tổng số: <strong style={{ color: 'var(--color-primary)' }}>{businesses.length}</strong> doanh nghiệp
-            </div>
-
-            <div className="my-businesses-list">
-              {businesses.map((business) => (
-                <div 
-                  key={business.id} 
-                  className="my-business-card"
-                  onClick={() => openModal(business)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="business-card-header">
-                    <h3 className="business-card-title">
-                      {getBizIcon(business.name, business.description)} {business.name}
-                    </h3>
+          <div className="my-businesses-list">
+            {businesses.map((business) => (
+              <div 
+                key={business.id} 
+                className="my-business-card"
+                onClick={() => openModal(business)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="business-card-header">
+                  <h3 className="business-card-title">
+                    {getBizIcon(business.name, business.description)} {business.name}
+                  </h3>
                     <div className="business-card-actions" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="icon-btn history-btn"
+                        onClick={() => setAuditLogBusiness(business)}
+                        title="Xem lịch sử"
+                        style={{
+                          background: 'rgba(59, 130, 246, 0.1)',
+                          border: '2px solid rgba(59, 130, 246, 0.3)',
+                          color: '#3b82f6',
+                          marginRight: '8px'
+                        }}
+                      >
+                        <History size={16} />
+                      </button>
                       <button
                         className="icon-btn delete-btn"
                         onClick={() => handleDelete(business.id, business.name)}
@@ -211,8 +241,7 @@ function MyBusinessesView({ currentUser }) {
                   </div>
                 </div>
               ))}
-            </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -307,6 +336,14 @@ function MyBusinessesView({ currentUser }) {
           message={toast.message}
           type={toast.type}
           onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Audit Log Modal */}
+      {auditLogBusiness && (
+        <UserAuditLogModal
+          business={auditLogBusiness}
+          onClose={() => setAuditLogBusiness(null)}
         />
       )}
     </div>

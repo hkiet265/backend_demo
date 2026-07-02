@@ -1,6 +1,6 @@
 """
 Business API Routes
-Endpoints for business management with full CRUD + Import/Export + AI Enrichment
+Endpoints for business management with full CRUD + Import/Export + AI Enrichment + Deduplication
 """
 from fastapi import APIRouter, HTTPException, Query, File, UploadFile, Depends
 from fastapi.responses import StreamingResponse
@@ -10,6 +10,8 @@ from datetime import datetime, date
 import psycopg2
 from app.config import settings
 from app.services.ai_enrichment_service import get_enrichment_service
+from app.services.deduplication_service import get_deduplication_service
+from app.services.geocoding_service import get_geocoding_service
 from app.dependencies import get_current_user
 import logging
 import csv
@@ -19,6 +21,8 @@ import hashlib
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/businesses", tags=["business"])
 enrichment_service = get_enrichment_service()
+dedup_service = get_deduplication_service()
+geocoding_service = get_geocoding_service()
 
 
 
@@ -389,10 +393,77 @@ async def health_check():
     return {"status": "healthy", "service": "business"}
 
 
+@router.post("/check-duplicates")
+async def check_duplicates(business_data: dict, current_user: dict = Depends(get_current_user)):
+    """
+    Check for potential duplicates before creating a business
+    
+    Request body example:
+    {
+        "ten_doanh_nghiep": "Công ty ABC",
+        "so_dien_thoai": "0901234567",
+        "email": "abc@gmail.com",
+        "website": "abc.vn",
+        "dia_chi": "123 Đường X, Quận Y"
+    }
+    """
+    try:
+        conn = psycopg2.connect(**settings.database_url)
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT id, ten_doanh_nghiep, so_dien_thoai, email, website, 
+                   dia_chi, ma_so_thue, vung_mien, tinh_thanh
+            FROM businesses_demo
+            LIMIT 1000;
+        """)
+        
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        existing_businesses = [
+            {
+                'id': r[0],
+                'ten_doanh_nghiep': r[1],
+                'so_dien_thoai': r[2],
+                'email': r[3],
+                'website': r[4],
+                'dia_chi': r[5],
+                'ma_so_thue': r[6],
+                'vung_mien': r[7],
+                'tinh_thanh': r[8]
+            }
+            for r in rows
+        ]
+        
+        duplicates = dedup_service.find_duplicates(business_data, existing_businesses)
+        
+        return {
+            "status": "success",
+            "has_duplicates": len(duplicates) > 0,
+            "duplicate_count": len(duplicates),
+            "duplicates": duplicates[:5]
+        }
+        
+    except Exception as e:
+        logger.error(f"Check duplicates error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("")
 async def create_business(business: BusinessCreate, current_user: dict = Depends(get_current_user)):
-    """Create new business"""
+    """Create new business with auto-geocoding"""
     try:
+        business_dict = business.dict()
+        geocoded_data = geocoding_service.geocode(business_dict)
+        
+        # Update business object with geocoded data
+        if geocoded_data.get('tinh_thanh') and not business.tinh_thanh:
+            business.tinh_thanh = geocoded_data['tinh_thanh']
+        if geocoded_data.get('vung_mien') and not business.vung_mien:
+            business.vung_mien = geocoded_data['vung_mien']
+        
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
         
@@ -590,8 +661,8 @@ async def export_csv(
 
 
 @router.post("/bulk-import")
-async def bulk_import(data: BulkImportRequest):
-    """Bulk import businesses from CSV"""
+async def bulk_import(data: BulkImportRequest, current_user: dict = Depends(get_current_user)):
+    """Bulk import businesses from CSV - requires authentication"""
     try:
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
@@ -632,21 +703,28 @@ async def bulk_import(data: BulkImportRequest):
                         skipped += 1
                         continue
 
+                # Apply geocoding to infer location
+                geocoded = geocoding_service.geocode(record)
+                
+                # Use geocoded values if original is missing
+                tinh_thanh = record.get('tinh_thanh') or geocoded.get('tinh_thanh')
+                vung_mien = record.get('vung_mien') or geocoded.get('vung_mien')
+
                 cur.execute("""
                     INSERT INTO businesses_demo (
                         ten_doanh_nghiep, nganh_nghe, vung_mien, tinh_thanh, quan_huyen,
                         dia_chi, website, email, so_dien_thoai, facebook, zalo, linkedin,
                         lat, lng, quy_mo, ma_so_thue, ngay_thanh_lap, trang_thai,
-                        nguon_du_lieu, do_tin_cay, tags, ghi_chu, mo_ta, updated_at
+                        nguon_du_lieu, do_tin_cay, tags, ghi_chu, mo_ta, created_by_user_id, updated_at
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s, %s, NOW()
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW()
                     );
                 """, (
                     name,
                     record.get('nganh_nghe'),
-                    record.get('vung_mien'),
-                    record.get('tinh_thanh'),
+                    vung_mien,
+                    tinh_thanh,
                     record.get('quan_huyen'),
                     record.get('dia_chi'),
                     record.get('website'),
@@ -665,7 +743,8 @@ async def bulk_import(data: BulkImportRequest):
                     record.get('do_tin_cay', 50),
                     record.get('tags'),
                     record.get('ghi_chu'),
-                    record.get('mo_ta')
+                    record.get('mo_ta'),
+                    current_user["id"]  # Save the user who imported
                 ))
                 inserted += 1
                 
