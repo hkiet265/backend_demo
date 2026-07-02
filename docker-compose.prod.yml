@@ -33,8 +33,6 @@ services:
       - JWT_EXPIRATION_DAYS=${JWT_EXPIRATION_DAYS}
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN}
       - LOGFIRE_READ_TOKEN=${LOGFIRE_READ_TOKEN}
-    ports:
-      - "8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -43,6 +41,7 @@ services:
       start_period: 40s
     networks:
       - emtu_network
+      - shared-web
     restart: always
 
   frontend:
@@ -50,14 +49,15 @@ services:
       context: ./chatbox-news-fe
       dockerfile: Dockerfile.prod
     container_name: emtu_frontend_prod
-    ports:
-      - "8080:80"
     depends_on:
       - backend
     networks:
       - emtu_network
+      - shared-web
     restart: always
 
 networks:
   emtu_network:
     driver: bridge
+  shared-web:
+    external: true
