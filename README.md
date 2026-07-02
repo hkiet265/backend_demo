@@ -43,7 +43,6 @@ curl http://localhost:8000/health
 **Supabase PostgreSQL (Shared):**
 - ✅ Database đã có sẵn schema và sample data
 - ✅ Mọi người dùng chung 1 database
-- ✅ Không cần setup PostgreSQL local
 - Region: Tokyo (aws-1-ap-northeast-1)
 
 ### Tài khoản mặc định
@@ -52,20 +51,16 @@ curl http://localhost:8000/health
 - Email: `admin@emtu.vn`
 - Password: `admin123`
 
-**Test Users:**
-- `testuser@emtu.vn` / `user123`
-- `hkiet2605@gmail.com` / `kiet123`
-
 ---
 
 ## 📖 Tổng quan
 
-**Em Tư News** là nền tảng AI toàn diện bao gồm:
+**Em Tư News** là nền tảng AI bao gồm:
 
 ### Core Features
 
 #### 🤖 AI Chatbot thông minh
-- Trả lời câu hỏi về tin tức bằng tiếng Việt tự nhiên
+- Trả lời câu hỏi về tin tức bằng tiếng Việt
 - RAG (Retrieval-Augmented Generation) với vector search
 - Multi-LLM: Groq (llama-3.3-70b) + Google Gemini với auto-fallback
 - Auto key rotation: 10 Gemini + 3 Groq keys
@@ -83,7 +78,7 @@ curl http://localhost:8000/health
 - Import/Export CSV
 
 #### 👥 Hệ thống người dùng
-- JWT authentication (30 ngày)
+- JWT authentication
 - Role-based: Admin & User
 - Profile management
 
@@ -113,64 +108,11 @@ curl http://localhost:8000/health
 - Hot-reload development
 
 ---
-
-## 🔑 API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Đăng ký
-- `POST /api/auth/login` - Đăng nhập
-- `PUT /api/auth/update-profile` - Cập nhật profile
-
-### Chat
-- `POST /api/chat/message` - Chat với AI
-- `GET /api/chat/health` - Health + LLM status
-
-### News
-- `GET /api/news` - List news
-- `GET /api/news/{id}` - News detail
-- `GET /api/news/search` - Search
-
-### Business
-- `GET /api/businesses` - List businesses
-- `POST /api/businesses` - Create (AI enrichment)
-- `PUT /api/businesses/{id}` - Update
-- `DELETE /api/businesses/{id}` - Delete
-
-### Admin
-- `GET /api/admin/stats` - Dashboard stats
-- `GET /api/admin/monitoring` - Logfire metrics
-
+ 
 **Full Documentation:** http://localhost:8000/docs
-
+ 
 ---
-
-## 🎯 Key Features
-
-### 1. Auto-Crawling
-- 30 phút interval
-- VTV, VTC, VOV sources
-- SHA256 deduplication
-- Auto embeddings
-
-### 2. RAG Chat
-- Vector similarity search
-- Top-3 relevant news
-- Groq → Gemini fallback
-
-### 3. AI Enrichment
-```python
-Phone: 0987654321 → +84987654321
-Email: GMAIL@GMAIL.COM → gmail@gmail.com  
-Website: www.example.com → https://example.com
-```
-
-### 4. Multi-LLM Rotation
-- 10 Gemini keys (60s cooldown)
-- 3 Groq keys (60s cooldown)
-- Auto skip failed keys
-
----
-
+ 
 ## 🚀 Development
 
 ### Backend
