@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: emtu_postgres_prod
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - emtu_network
+    restart: always
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: emtu_backend_prod
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_NAME=${POSTGRES_DB}
+      - DB_SSLMODE=disable
+      - GEMINI_API_KEY_1=${GEMINI_API_KEY_1}
+      - GEMINI_API_KEY_2=${GEMINI_API_KEY_2}
+      - GEMINI_API_KEY_3=${GEMINI_API_KEY_3}
+      - GEMINI_API_KEY_4=${GEMINI_API_KEY_4}
+      - GEMINI_API_KEY_5=${GEMINI_API_KEY_5}
+      - GEMINI_API_KEY_6=${GEMINI_API_KEY_6}
+      - GEMINI_API_KEY_7=${GEMINI_API_KEY_7}
+      - GEMINI_API_KEY_8=${GEMINI_API_KEY_8}
+      - GEMINI_API_KEY_9=${GEMINI_API_KEY_9}
+      - GEMINI_API_KEY_10=${GEMINI_API_KEY_10}
+      - GROQ_API_KEY_1=${GROQ_API_KEY_1}
+      - GROQ_API_KEY_2=${GROQ_API_KEY_2}
+      - GROQ_API_KEY_3=${GROQ_API_KEY_3}
+      - USE_GROQ_FOR_GENERATION=${USE_GROQ_FOR_GENERATION}
+      - FALLBACK_TO_GEMINI=${FALLBACK_TO_GEMINI}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      - CHAT_MODEL=${CHAT_MODEL}
+      - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION_DAYS=${JWT_EXPIRATION_DAYS}
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN}
+      - LOGFIRE_READ_TOKEN=${LOGFIRE_READ_TOKEN}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - emtu_network
+    restart: always
+
+  frontend:
+    build:
+      context: ./chatbox-news-fe
+      dockerfile: Dockerfile.prod
+    container_name: emtu_frontend_prod
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    networks:
+      - emtu_network
+    restart: always
+
+volumes:
+  postgres_prod_data:
+    driver: local
+
+networks:
+  emtu_network:
+    driver: bridge

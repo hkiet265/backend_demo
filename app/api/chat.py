@@ -71,9 +71,13 @@ async def send_message(
 async def health_check():
     """Health check endpoint"""
     from app.services.api_key_manager import get_api_key_manager
+    from app.services.groq_service import get_groq_service
     
     api_key_manager = get_api_key_manager()
-    stats = api_key_manager.get_stats()
+    gemini_stats = api_key_manager.get_stats()
+    
+    groq_service = get_groq_service()
+    groq_stats = groq_service.get_stats() if groq_service else {'status': 'disabled'}
     
     return {
         "status": "healthy",
@@ -81,6 +85,8 @@ async def health_check():
         "rag_enabled": True,
         "api_key_rotation": {
             "enabled": True,
-            "stats": stats
+            "gemini": gemini_stats,
+            "groq": groq_stats
         }
     }
+

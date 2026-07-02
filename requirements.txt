@@ -1,8 +1,11 @@
 # Core Web Framework
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
+gunicorn>=21.2.0
 pydantic-settings>=2.0.0
-slowapi>=0.1.9  # Rate limiting
+pydantic[email]>=2.0.0
+pyjwt>=2.8.0
+slowapi>=0.1.9
 logfire>=0.20.0  # Monitoring & observability
 httpx>=0.25.0  # HTTP client for Logfire API
 

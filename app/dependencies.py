@@ -79,7 +79,11 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
     """
     Get current authenticated user from JWT token
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if not authorization:
+        logger.error("❌ No authorization header provided")
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
@@ -88,11 +92,16 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
         else:
             token = authorization
         
+        logger.info(f"🔑 Token received (first 20 chars): {token[:20]}...")
+        
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user_id = payload.get("user_id")
         email = payload.get("email")
         
+        logger.info(f"✅ Token decoded successfully - User: {email} (ID: {user_id})")
+        
         if not user_id or not email:
+            logger.error("❌ Token missing user_id or email")
             raise HTTPException(status_code=401, detail="Invalid token")
         
         return {
@@ -102,9 +111,12 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
             "role": payload.get("role", "user")
         }
         
-    except jwt.ExpiredSignatureError:
+    except jwt.ExpiredSignatureError as e:
+        logger.error(f"❌ Token expired: {e}")
         raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
+    except jwt.InvalidTokenError as e:
+        logger.error(f"❌ Invalid token: {e}")
         raise HTTPException(status_code=401, detail="Invalid token")
     except Exception as e:
+        logger.error(f"❌ Authentication failed: {e}")
         raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")

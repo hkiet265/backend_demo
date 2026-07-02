@@ -10,16 +10,14 @@ import EditProfileView from './components/EditProfileView';
 import FavoritesView from './components/FavoritesView';
 import MyBusinessesView from './components/MyBusinessesView';
 import AdminPortal from './pages/AdminPortal';
-import LoadingSpinner from './components/LoadingSpinner';
 
 function App() {
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
  
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     
     if (token && userData) {
@@ -28,19 +26,11 @@ function App() {
         setCurrentUser(user);
       } catch (e) {
         console.error('Invalid user data:', e);
-        localStorage.removeItem('access_token');
+        localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
     }
-    
-    setTimeout(() => {
-      setIsInitialLoading(false);
-    }, 800);
   }, []);
-
-  if (isInitialLoading) {
-    return <LoadingSpinner fullScreen message="Đang khởi động Em Tư..." />;
-  }
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
@@ -52,7 +42,7 @@ function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
+    localStorage.removeItem('token');
     localStorage.removeItem('user');
     setCurrentUser(null);
   };

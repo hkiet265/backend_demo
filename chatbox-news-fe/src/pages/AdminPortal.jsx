@@ -1,16 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminDashboardView from '../components/AdminDashboardView';
 import AdminUsersView from '../components/AdminUsersView';
 import LogfireView from '../components/LogfireView';
 import AdminNewsView from '../components/AdminNewsView';
 import AdminBusinessView from '../components/AdminBusinessView';
-import AdminAlertsView from '../components/AdminAlertsView';
-import AuditLogView from '../components/AuditLogView';
-import SmartSearchBar from '../components/SmartSearchBar';
-import DataQualityView from '../components/DataQualityView';
-import EnrichmentView from '../components/EnrichmentView';
-import { BarChart3, LogOut, Home, Users, Activity, Newspaper, Building2, AlertTriangle, FileText, Search, TrendingUp, Sparkles } from 'lucide-react';
+import { BarChart3, LogOut, Home, Users, Activity, Newspaper, Building2 } from 'lucide-react';
 
 const AdminPortal = ({ currentUser, onLogout }) => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -83,46 +78,6 @@ const AdminPortal = ({ currentUser, onLogout }) => {
           </button>
           
           <button
-            className={`admin-nav-item ${activeSection === 'alerts' ? 'active' : ''}`}
-            onClick={() => setActiveSection('alerts')}
-          >
-            <AlertTriangle size={20} />
-            <span>Alerts</span>
-          </button>
-          
-          <button
-            className={`admin-nav-item ${activeSection === 'audit' ? 'active' : ''}`}
-            onClick={() => setActiveSection('audit')}
-          >
-            <FileText size={20} />
-            <span>Audit Logs</span>
-          </button>
-          
-          <button
-            className={`admin-nav-item ${activeSection === 'search' ? 'active' : ''}`}
-            onClick={() => setActiveSection('search')}
-          >
-            <Search size={20} />
-            <span>Smart Search</span>
-          </button>
-          
-          <button
-            className={`admin-nav-item ${activeSection === 'quality' ? 'active' : ''}`}
-            onClick={() => setActiveSection('quality')}
-          >
-            <TrendingUp size={20} />
-            <span>Data Quality</span>
-          </button>
-          
-          <button
-            className={`admin-nav-item ${activeSection === 'enrichment' ? 'active' : ''}`}
-            onClick={() => setActiveSection('enrichment')}
-          >
-            <Sparkles size={20} />
-            <span>AI Enrichment</span>
-          </button>
-          
-          <button
             className={`admin-nav-item ${activeSection === 'logfire' ? 'active' : ''}`}
             onClick={() => setActiveSection('logfire')}
           >
@@ -148,11 +103,6 @@ const AdminPortal = ({ currentUser, onLogout }) => {
         {activeSection === 'users' && <AdminUsersView />}
         {activeSection === 'news' && <AdminNewsView />}
         {activeSection === 'business' && <AdminBusinessView />}
-        {activeSection === 'alerts' && <AdminAlertsView />}
-        {activeSection === 'audit' && <AuditLogView />}
-        {activeSection === 'search' && <SmartSearchBar />}
-        {activeSection === 'quality' && <DataQualityView />}
-        {activeSection === 'enrichment' && <EnrichmentView />}
         {activeSection === 'logfire' && <LogfireView />}
       </main>
     </div>

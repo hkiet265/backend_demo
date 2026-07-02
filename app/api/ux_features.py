@@ -36,6 +36,8 @@ async def get_audit_logs(
     - resource_id: ID của resource
     - user_id: ID người dùng
     - action: CREATE, UPDATE, DELETE, etc.
+    
+    Note: LOGIN/LOGOUT actions are excluded by default
     """
     try:
         audit_service = get_audit_service()
@@ -50,7 +52,8 @@ async def get_audit_logs(
                 user_id=user_id,
                 action=action,
                 limit=page_size,
-                offset=offset
+                offset=offset,
+                exclude_actions=['LOGIN', 'LOGOUT']
             )
             
             return {
