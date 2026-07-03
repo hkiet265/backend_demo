@@ -129,8 +129,10 @@ async def startup_event():
     logger.info(f"🚀 {settings.APP_NAME} v{settings.APP_VERSION} starting up...")
     
     try:
-        init_db_pool(settings.database_url, minconn=5, maxconn=20)
-        logger.info("✅ Database connection pool initialized (5-20 connections)")
+        # Supabase free tier limit is 15 connections
+        # Set lower pool size to avoid exhausting the limit
+        init_db_pool(settings.database_url, minconn=3, maxconn=10)
+        logger.info("✅ Database connection pool initialized (3-10 connections)")
     except Exception as e:
         logger.error(f"❌ Failed to initialize database pool: {e}")
         raise

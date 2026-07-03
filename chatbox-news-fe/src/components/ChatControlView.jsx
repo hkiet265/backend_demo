@@ -39,6 +39,11 @@ function ChatControlView({
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   };
+
+  // Auto-scroll to bottom when messages change or loading state changes
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isChatLoading]);
  
   const handleQuickAction = (actionText) => {
     setChatInput(actionText);

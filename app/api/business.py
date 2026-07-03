@@ -510,22 +510,65 @@ async def create_business(business: BusinessCreate, current_user: dict = Depends
 
 
 @router.put("/{business_id}")
-async def update_business(business_id: int, business: BusinessUpdate):
-    """Update existing business"""
+async def update_business(
+    business_id: int, 
+    business: BusinessUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update existing business and save edit history"""
     try:
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
 
+        # Get current values for history tracking
+        cur.execute("""
+            SELECT ten_doanh_nghiep, nganh_nghe, vung_mien, tinh_thanh, quan_huyen,
+                   dia_chi, website, email, so_dien_thoai, facebook, zalo, linkedin,
+                   quy_mo, ma_so_thue, ngay_thanh_lap, trang_thai, tags, ghi_chu, mo_ta,
+                   do_tin_cay
+            FROM businesses_demo WHERE id = %s;
+        """, (business_id,))
+        
+        current_row = cur.fetchone()
+        if not current_row:
+            raise HTTPException(status_code=404, detail="Business not found")
+        
+        # Map current values
+        field_names = [
+            'ten_doanh_nghiep', 'nganh_nghe', 'vung_mien', 'tinh_thanh', 'quan_huyen',
+            'dia_chi', 'website', 'email', 'so_dien_thoai', 'facebook', 'zalo', 'linkedin',
+            'quy_mo', 'ma_so_thue', 'ngay_thanh_lap', 'trang_thai', 'tags', 'ghi_chu', 'mo_ta',
+            'do_tin_cay'
+        ]
+        current_values = dict(zip(field_names, current_row))
+
         update_fields = []
         params = []
+        history_records = []
         
         for field, value in business.dict(exclude_unset=True).items():
-            update_fields.append(f"{field} = %s")
-            params.append(value)
+            old_value = current_values.get(field)
+            
+            # Only update if value changed
+            if old_value != value:
+                update_fields.append(f"{field} = %s")
+                params.append(value)
+                
+                # Save history record
+                history_records.append({
+                    'field_name': field,
+                    'old_value': str(old_value) if old_value is not None else None,
+                    'new_value': str(value) if value is not None else None
+                })
         
         if not update_fields:
-            raise HTTPException(status_code=400, detail="No fields to update")
+            return {
+                "status": "success",
+                "message": "Không có thay đổi nào",
+                "id": business_id
+            }
         
+        # Update business
         params.append(business_id)
         query = f"""
             UPDATE businesses_demo 
@@ -537,8 +580,26 @@ async def update_business(business_id: int, business: BusinessUpdate):
         cur.execute(query, params)
         result = cur.fetchone()
         
-        if not result:
-            raise HTTPException(status_code=404, detail="Business not found")
+        # Save edit history
+        for history in history_records:
+            cur.execute("""
+                INSERT INTO business_edit_history 
+                (business_id, user_id, field_name, old_value, new_value, edited_at)
+                VALUES (%s, %s, %s, %s, %s, NOW())
+                ON CONFLICT (business_id, edited_at, field_name) DO NOTHING;
+            """, (
+                business_id,
+                current_user["id"],
+                history['field_name'],
+                history['old_value'],
+                history['new_value']
+            ))
+        
+        # Clean up old history (> 15 days)
+        cur.execute("""
+            DELETE FROM business_edit_history
+            WHERE edited_at < NOW() - INTERVAL '15 days';
+        """)
         
         conn.commit()
         cur.close()
@@ -546,8 +607,9 @@ async def update_business(business_id: int, business: BusinessUpdate):
         
         return {
             "status": "success",
-            "message": "Cập nhật thành công",
-            "id": result[0]
+            "message": f"Cập nhật thành công {len(history_records)} trường",
+            "id": result[0],
+            "updated_fields": len(history_records)
         }
         
     except HTTPException:
@@ -960,4 +1022,96 @@ async def enrich_all_businesses(
         
     except Exception as e:
         logger.error(f"Enrich all error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@router.get("/{business_id}/edit-history")
+async def get_edit_history(
+    business_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get edit history for a business (last 15 days only)
+    Returns list of all changes made to the business with user info
+    """
+    try:
+        conn = psycopg2.connect(**settings.database_url)
+        cur = conn.cursor()
+        
+        # Check if business exists
+        cur.execute("SELECT id FROM businesses_demo WHERE id = %s;", (business_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Doanh nghiệp không tồn tại")
+        
+        # Get edit history with user information
+        cur.execute("""
+            SELECT 
+                h.id,
+                h.field_name,
+                h.old_value,
+                h.new_value,
+                h.edited_at,
+                u.email as editor_email,
+                u.full_name as editor_name
+            FROM business_edit_history h
+            JOIN app_users u ON h.user_id = u.id
+            WHERE h.business_id = %s
+            AND h.edited_at >= NOW() - INTERVAL '15 days'
+            ORDER BY h.edited_at DESC
+            LIMIT 100;
+        """, (business_id,))
+        
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        # Format field names to Vietnamese
+        field_labels = {
+            'ten_doanh_nghiep': 'Tên doanh nghiệp',
+            'nganh_nghe': 'Ngành nghề',
+            'vung_mien': 'Vùng miền',
+            'tinh_thanh': 'Tỉnh thành',
+            'quan_huyen': 'Quận huyện',
+            'dia_chi': 'Địa chỉ',
+            'website': 'Website',
+            'email': 'Email',
+            'so_dien_thoai': 'Số điện thoại',
+            'facebook': 'Facebook',
+            'zalo': 'Zalo',
+            'linkedin': 'LinkedIn',
+            'quy_mo': 'Quy mô',
+            'ma_so_thue': 'Mã số thuế',
+            'ngay_thanh_lap': 'Ngày thành lập',
+            'trang_thai': 'Trạng thái',
+            'tags': 'Tags',
+            'ghi_chu': 'Ghi chú',
+            'mo_ta': 'Mô tả',
+            'do_tin_cay': 'Độ tin cậy'
+        }
+        
+        history = []
+        for row in rows:
+            history.append({
+                "id": row[0],
+                "field_name": row[1],
+                "field_label": field_labels.get(row[1], row[1]),
+                "old_value": row[2],
+                "new_value": row[3],
+                "edited_at": row[4].isoformat() if row[4] else None,
+                "editor_email": row[5],
+                "editor_name": row[6]
+            })
+        
+        return {
+            "status": "success",
+            "data": history,
+            "total": len(history),
+            "retention_days": 15
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get edit history error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

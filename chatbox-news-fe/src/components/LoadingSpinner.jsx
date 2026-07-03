@@ -4,7 +4,7 @@ const LoadingSpinner = ({ fullScreen = false, message = 'Đang tải...' }) => {
       <div className="loading-fullscreen">
         <div className="loading-content">
           <div className="loading-logo">
-            <img src="/emtu-avatar.png" alt="Em Tư" className="loading-avatar" />
+            <img src="/emtu2.0.png" alt="Em Tư" className="loading-avatar" />
             <div className="loading-rings">
               <div className="loading-ring"></div>
               <div className="loading-ring"></div>

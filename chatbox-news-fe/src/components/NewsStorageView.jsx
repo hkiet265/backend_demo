@@ -71,6 +71,14 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
 
         console.log('📡 Delete response:', response.status);
         
+        if (response.status === 401) {
+          // Token expired or invalid - redirect to login
+          showToast('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại', 'error');
+          localStorage.removeItem('token');
+          setTimeout(() => window.location.reload(), 1500);
+          return;
+        }
+        
         if (response.ok) {
           setBookmarkedNews(prev => {
             const newSet = new Set(prev);
@@ -95,6 +103,14 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
         });
 
         console.log('📡 Add response:', response.status);
+
+        if (response.status === 401) {
+          // Token expired or invalid - redirect to login
+          showToast('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại', 'error');
+          localStorage.removeItem('token');
+          setTimeout(() => window.location.reload(), 1500);
+          return;
+        }
 
         if (response.ok) {
           setBookmarkedNews(prev => new Set([...prev, newsId]));
@@ -230,20 +246,49 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
   return (
     <>
       <div className="main-content-area fade-in-effect">
-        <div className="section-header">
-          <div className="header-title-block">
-            <h3 className="news-view-title">Xem tin tức cùng Em Tư </h3>
-            <p className="sub-header-text">Cập nhật những tin tức hot nhất hiện tại!</p>
+        <div className="section-header" style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          borderBottom: '1px solid var(--border-neon)',
+          paddingBottom: '12px',
+          marginBottom: '12px',
+          gap: '12px'
+        }}>
+          <div style={{ flex: '1', minWidth: '0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <h3 style={{ 
+              margin: '0', 
+              fontSize: '16px', 
+              fontWeight: '700',
+              color: 'var(--text-main)',
+              lineHeight: '1.2'
+            }}>
+              Xem tin tức cùng Em Tư
+            </h3>
+            <p style={{ 
+              margin: '0', 
+              fontSize: '12px', 
+              color: 'var(--text-dim)',
+              lineHeight: '1.3'
+            }}>
+              Cập nhật những tin tức hot nhất hiện tại!
+            </p>
           </div>
-          <div className="header-actions">
-            <div className="news-count">
-              <span className="count-number">{filteredNews.length}</span>
-              <span className="count-label">tin tức</span>
-            </div>
-            <button onClick={fetchAllNews} className="refresh-btn" title={`Làm mới kho (${allNews.length})`}>
-              <RefreshCw size={18} />
-            </button>
-          </div>
+          <button 
+            onClick={fetchAllNews} 
+            className="refresh-btn" 
+            title={`Làm mới kho (${allNews.length})`}
+            style={{
+              flexShrink: '0',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <RefreshCw size={18} />
+          </button>
         </div> 
 
         <div className="news-filters">
@@ -425,6 +470,19 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
             <h2 className="modal-title">{selectedNews.tieu_de}</h2>
             <div className="modal-body">
               <p className="modal-summary">{selectedNews.tom_tat}</p>
+              
+              {/* Mobile bookmark button - rectangular with text */}
+              <button
+                className={`modal-bookmark-btn-mobile ${bookmarkedNews.has(selectedNews.id) ? 'bookmarked' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleBookmark(selectedNews.id, e);
+                }}
+              >
+                <Heart size={18} fill={bookmarkedNews.has(selectedNews.id) ? 'currentColor' : 'none'} />
+                <span>{bookmarkedNews.has(selectedNews.id) ? 'Đã yêu thích' : 'Thêm vào yêu thích'}</span>
+              </button>
+
               {selectedNews.nha_dai && (
                 <div className="modal-detail">
                   <h4>Nội dung chi tiết:</h4>

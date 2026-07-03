@@ -116,6 +116,14 @@ function BusinessManagementView({
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
+        if (response.status === 401) {
+          // Token expired or invalid - redirect to login
+          showToast('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại', 'error');
+          localStorage.removeItem('token');
+          setTimeout(() => window.location.reload(), 1500);
+          return;
+        }
+
         if (response.ok) {
           setBookmarkedBusinesses(prev => {
             const newSet = new Set(prev);
@@ -142,6 +150,14 @@ function BusinessManagementView({
 
         console.log('Bookmark response:', response.status);
         
+        if (response.status === 401) {
+          // Token expired or invalid - redirect to login
+          showToast('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại', 'error');
+          localStorage.removeItem('token');
+          setTimeout(() => window.location.reload(), 1500);
+          return;
+        }
+
         if (response.ok) {
           setBookmarkedBusinesses(prev => new Set([...prev, businessId]));
           showToast('Đã thêm vào yêu thích', 'success');
@@ -404,12 +420,6 @@ function BusinessManagementView({
             <h3>tìm việc làm cùng Em Tư</h3>
           </div>
           <div className="header-actions">
-            <div className="news-count">
-              <span className="count-number">
-                {searchQuery || regionFilter !== 'all' ? `${businesses.length} / ${allBusinesses.length}` : businesses.length}
-              </span>
-              <span className="count-label">{searchQuery || regionFilter !== 'all' ? 'kết quả' : 'doanh nghiệp'}</span>
-            </div>
             {currentUser && (
               <>
                 <button className="action-btn" title="Nhập CSV" onClick={() => csvInputRef.current?.click()}>
@@ -653,6 +663,18 @@ function BusinessManagementView({
                   </div>
                 )}
               </div>
+
+              {/* Mobile bookmark button - rectangular with text */}
+              <button
+                className={`modal-bookmark-btn-mobile ${bookmarkedBusinesses.has(selectedBusiness.id) ? 'bookmarked' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleBookmark(selectedBusiness.id, e);
+                }}
+              >
+                <Heart size={18} fill={bookmarkedBusinesses.has(selectedBusiness.id) ? 'currentColor' : 'none'} />
+                <span>{bookmarkedBusinesses.has(selectedBusiness.id) ? 'Đã yêu thích' : 'Thêm vào yêu thích'}</span>
+              </button>
 
               {selectedBusiness.description && (
                 <div className="modal-detail">
