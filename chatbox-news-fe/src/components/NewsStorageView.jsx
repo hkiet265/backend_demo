@@ -471,6 +471,20 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
             <div className="modal-body">
               <p className="modal-summary">{selectedNews.tom_tat}</p>
               
+              {/* Link to original article */}
+              {selectedNews.url && (
+                <div className="modal-original-link">
+                  <a 
+                    href={selectedNews.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="original-article-link"
+                  >
+                    📰 Đọc bài viết gốc
+                  </a>
+                </div>
+              )}
+              
               {/* Mobile bookmark button - rectangular with text */}
               <button
                 className={`modal-bookmark-btn-mobile ${bookmarkedNews.has(selectedNews.id) ? 'bookmarked' : ''}`}

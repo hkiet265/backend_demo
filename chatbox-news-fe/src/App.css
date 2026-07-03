@@ -1243,6 +1243,39 @@ html, body, #root {
   transform: rotate(90deg);
 }
 
+/* Original article link */
+.modal-original-link {
+  margin: 16px 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--border-neon);
+  border-bottom: 1px solid var(--border-neon);
+}
+
+.original-article-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(215, 30, 40, 0.2);
+}
+
+.original-article-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(215, 30, 40, 0.3);
+  background: linear-gradient(135deg, var(--color-secondary), var(--color-primary));
+}
+
+.original-article-link:active {
+  transform: translateY(0);
+}
+
 /* Modal bookmark button - only visible on mobile */
 .modal-bookmark-btn {
   display: none;
