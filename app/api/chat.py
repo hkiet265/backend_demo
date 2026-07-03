@@ -33,12 +33,15 @@ async def send_message(
     - RAG metrics (tokens saved, response time)
     """
     try:
-        logger.info(f"Chat request: {chat_request.message[:50]}...")
+        logger.info(f"🚀 CHAT REQUEST RECEIVED from {request.client.host}: {chat_request.message[:100]}")
+        logger.info(f"📝 Full message: {chat_request.message}")
 
         result = chat_service.process_message(
             message=chat_request.message,
             action_button_id=chat_request.action_button_id
         )
+        
+        logger.info(f"✅ CHAT RESPONSE: answer_length={len(result['answer'])}, businesses={len(result.get('suggested_businesses', []))}")
 
         response = ChatResponse(
             answer=result['answer'],
@@ -63,7 +66,7 @@ async def send_message(
         return response
         
     except Exception as e:
-        logger.error(f"Chat error: {e}")
+        logger.error(f"❌ CHAT ERROR: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Chat processing failed: {str(e)}")
 
 

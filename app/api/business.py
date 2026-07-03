@@ -12,8 +12,6 @@ from app.config import settings
 from app.services.ai_enrichment_service import get_enrichment_service
 from app.services.deduplication_service import get_deduplication_service
 from app.services.geocoding_service import get_geocoding_service
-from app.services.csv_security_service import get_csv_security_service
-from app.services.encryption_service import get_encryption_service
 from app.dependencies import get_current_user
 from app.middleware.rate_limiter import limiter
 import logging
@@ -26,8 +24,6 @@ router = APIRouter(prefix="/api/businesses", tags=["business"])
 enrichment_service = get_enrichment_service()
 dedup_service = get_deduplication_service()
 geocoding_service = get_geocoding_service()
-csv_security = get_csv_security_service()
-encryption_service = get_encryption_service()
 
 
 
@@ -188,20 +184,20 @@ async def get_my_businesses(
     page_size: int = Query(50, ge=1, le=100)
 ):
     """
-    Get businesses created by the current user
+    Get businesses created by current user - NO ENCRYPTION
     """
     try:
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
         
-        # Count total businesses created by user
+        # Count total
         cur.execute(
             "SELECT COUNT(*) FROM businesses_demo WHERE created_by_user_id = %s;",
             (current_user["id"],)
         )
         total = cur.fetchone()[0]
         
-        # Get paginated results
+        # Get paginated results - plain text columns
         offset = (page - 1) * page_size
         
         query = """
