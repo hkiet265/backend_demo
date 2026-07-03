@@ -267,14 +267,14 @@ function BusinessManagementView({
     }
 
     try {
-
+      // Use secure endpoint with FormData (no need to parse CSV on frontend)
       const formData = new FormData();
       formData.append('file', file);
 
       const res = await fetch('http://127.0.0.1:8000/api/secure/import-csv', {
         method: 'POST',
         headers: { 
-          'Authorization': `Bearer ${token}` 
+          'Authorization': `Bearer ${token}`
           // No Content-Type header - FormData sets it automatically
         },
         body: formData
@@ -293,7 +293,7 @@ function BusinessManagementView({
       
       if (data.inserted > 0 && data.skipped === 0) {
         // All success
-        message = `✅ Thêm thành công ${data.inserted} doanh nghiệp mới! 🔒`;
+        message = `✅ Thêm thành công ${data.inserted} doanh nghiệp mới! 🔒 Dữ liệu nhạy cảm đã được mã hóa.`;
       } else if (data.inserted > 0 && data.skipped > 0) {
         // Partial success
         message = `⚠️ Thêm được ${data.inserted} doanh nghiệp mới. Bỏ qua ${data.skipped} doanh nghiệp vì đã tồn tại (trùng tên/SĐT/email).`;
