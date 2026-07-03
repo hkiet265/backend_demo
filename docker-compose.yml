@@ -33,6 +33,7 @@ services:
       - JWT_EXPIRATION_DAYS=30
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN}
       - LOGFIRE_READ_TOKEN=${LOGFIRE_READ_TOKEN}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
     ports:
       - "8000:8000"
     volumes:

@@ -25,3 +25,7 @@ requests>=2.31.0  # HTTP requests
 python-dotenv>=1.0.0
 APScheduler>=3.10.4  # Auto-scheduling for crawling
 python-dateutil>=2.8.2  # Date parsing
+
+# Security & Encryption
+cryptography>=41.0.0  # Fernet encryption for sensitive data
+python-multipart>=0.0.6  # File upload support
