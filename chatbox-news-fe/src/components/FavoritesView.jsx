@@ -411,23 +411,25 @@ const FavoritesView = ({ currentUser }) => {
               <p className="modal-summary">{selectedNews.tom_tat}</p>
             )}
 
+            {/* Link to original article */}
+            {selectedNews.url && (
+              <div className="modal-original-link">
+                <a 
+                  href={selectedNews.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="original-article-link"
+                >
+                  📰 Đọc bài viết gốc
+                </a>
+              </div>
+            )}
+
             {selectedNews.noi_dung && (
               <div className="modal-detail">
                 <h4>Nội dung chi tiết</h4>
                 <p>{selectedNews.noi_dung}</p>
               </div>
-            )}
-
-            {selectedNews.link_bai_viet && (
-              <a 
-                href={selectedNews.link_bai_viet} 
-                target="_blank" 
-                rel="noreferrer"
-                className="neon-search-btn"
-                style={{ marginTop: '20px', display: 'inline-flex' }}
-              >
-                Đọc bài gốc <ExternalLink size={16} style={{ marginLeft: '8px' }} />
-              </a>
             )}
           </div>
         </div>

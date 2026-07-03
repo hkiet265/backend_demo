@@ -39,12 +39,14 @@ class ChatService:
         Returns:
             Response dict with answer and suggestions
         """
+        logger.info(f"🎯 PROCESS MESSAGE: {message}")
         
         if action_button_id:
             return self._handle_action_button(action_button_id)
         
         
         query_type = self._detect_query_type(message)
+        logger.info(f"🔍 DETECTED QUERY TYPE: {query_type}")
         
         if query_type == "greeting":
             return self._handle_greeting(message)
@@ -226,7 +228,8 @@ class ChatService:
             }
     
     def _handle_business_query(self, message: str) -> Dict:
-        """Handle business-related queries"""
+        """Handle business-related queries - NO ENCRYPTION"""
+        logger.info(f"🏢 BUSINESS QUERY HANDLER CALLED with message: {message}")
         try: 
             import psycopg2
             from psycopg2.extras import RealDictCursor
@@ -237,30 +240,64 @@ class ChatService:
 
             message_lower = message.lower()
 
-            sql = "SELECT * FROM businesses_demo WHERE 1=1"
+            # Simple query - plain text columns
+            sql = """
+                SELECT id, ten_doanh_nghiep, so_dien_thoai, tinh_thanh, 
+                       vung_mien, nganh_nghe, website, email, dia_chi, updated_at 
+                FROM businesses_demo 
+                WHERE 1=1
+            """
             params = []
 
-            if 'bắc' in message_lower or 'ha noi' in message_lower or 'hà nội' in message_lower or 'hai phong' in message_lower or 'hải phòng' in message_lower:
+            # Detect region
+            region_detected = None
+            if any(kw in message_lower for kw in ['bắc', 'bac', 'hà nội', 'ha noi', 'hải phòng', 'hai phong', 'miền bắc', 'mien bac']):
+                region_detected = 'Bắc'
+                sql += " AND (vung_mien = %s OR vung_mien = 'Bac')"
+                params.append(region_detected)
+            elif any(kw in message_lower for kw in ['trung', 'đà nẵng', 'da nang', 'huế', 'hue', 'miền trung', 'mien trung']):
+                region_detected = 'Trung'
                 sql += " AND vung_mien = %s"
-                params.append('Bắc')
-            elif 'trung' in message_lower or 'da nang' in message_lower or 'đà nẵng' in message_lower or 'hue' in message_lower or 'huế' in message_lower:
+                params.append(region_detected)
+            elif any(kw in message_lower for kw in ['nam', 'sài gòn', 'sai gon', 'hồ chí minh', 'ho chi minh', 'tp.hcm', 'tphcm', 'miền nam', 'mien nam']):
+                region_detected = 'Nam'
                 sql += " AND vung_mien = %s"
-                params.append('Trung')
-            elif 'nam' in message_lower or 'sai gon' in message_lower or 'sài gòn' in message_lower or 'ho chi minh' in message_lower or 'hồ chí minh' in message_lower or 'tp.hcm' in message_lower:
-                sql += " AND vung_mien = %s"
-                params.append('Nam')
+                params.append(region_detected)
+            
+            if region_detected:
+                logger.info(f"🔍 Searching businesses in region: {region_detected}")
+            else:
+                logger.info(f"🔍 Searching ALL businesses")
 
-            sql += " ORDER BY created_at DESC LIMIT 10"
+            sql += " ORDER BY updated_at DESC LIMIT 20"
+
+            logger.info(f"📝 Executing SQL: {sql}")
+            logger.info(f"📝 Params: {params}")
 
             cur.execute(sql, params)
             businesses = cur.fetchall()
+            
+            logger.info(f"📊 Found {len(businesses)} businesses")
+            
+            # Fallback if no results with region filter
+            if not businesses and region_detected:
+                logger.info(f"⚠️ No results with region, trying all...")
+                sql_fallback = """
+                    SELECT id, ten_doanh_nghiep, so_dien_thoai, tinh_thanh, 
+                           vung_mien, nganh_nghe, website, email, dia_chi, updated_at 
+                    FROM businesses_demo 
+                    ORDER BY updated_at DESC LIMIT 20
+                """
+                cur.execute(sql_fallback)
+                businesses = cur.fetchall()
+                logger.info(f"📊 Fallback found {len(businesses)} businesses")
             
             cur.close()
             conn.close()
             
             if not businesses:
                 return {
-                    'answer': "Em Tư không tìm thấy doanh nghiệp nào phù hợp. Bạn thử mô tả rõ hơn nhé! 🏢",
+                    'answer': "Em Tư không tìm thấy doanh nghiệp nào. Hãy thêm doanh nghiệp mới ở trang Quản Lý! 🏢",
                     'suggested_businesses': [],
                     'rag_used': False
                 }
@@ -278,14 +315,21 @@ class ChatService:
                     'email': biz.get('email', '')
                 })
             
+            answer = f"Em tìm thấy {len(suggested_businesses)} doanh nghiệp"
+            if region_detected:
+                answer += f" ở miền {region_detected}"
+            answer += " cho bạn:"
+            
+            logger.info(f"✅ Returning {len(suggested_businesses)} businesses")
+            
             return {
-                'answer': "Dưới đây là thông tin bạn muốn tìm kiếm:",
+                'answer': answer,
                 'suggested_businesses': suggested_businesses,
                 'rag_used': True
             }
             
         except Exception as e:
-            logger.error(f"Business query failed: {e}")
+            logger.error(f"❌ Business query failed: {e}", exc_info=True)
             return {
                 'answer': "Em Tư đang gặp chút vấn đề khi tìm doanh nghiệp. Bạn thử lại sau nhé! 😅",
                 'suggested_businesses': [],

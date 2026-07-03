@@ -44,6 +44,8 @@ class Settings(BaseSettings):
 
     LOGFIRE_TOKEN: str = ""
     LOGFIRE_READ_TOKEN: str = ""
+    
+    ENCRYPTION_KEY: str = ""
 
     JWT_SECRET: str = "emtu_secret_key_2024_change_in_production"
     JWT_ALGORITHM: str = "HS256"

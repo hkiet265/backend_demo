@@ -1,10 +1,7 @@
 """
-Secure CSV Import Endpoint
-Validates, sanitizes, and encrypts CSV data before storing
+CSV Import Endpoint - SIMPLIFIED (No Encryption)
 """
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Request
-from app.services.csv_security_service import get_csv_security_service
-from app.services.encryption_service import get_encryption_service
 from app.services.geocoding_service import get_geocoding_service
 from app.dependencies import get_current_user
 from app.middleware.rate_limiter import limiter
@@ -17,53 +14,42 @@ import psycopg2
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/secure", tags=["secure-import"])
 
-csv_security = get_csv_security_service()
-encryption_service = get_encryption_service()
 geocoding_service = get_geocoding_service()
 
 
 @router.post("/import-csv")
-@limiter.limit("5/hour")  # Max 5 uploads per hour per user
-async def import_csv_secure(
+@limiter.limit("10/hour")
+async def import_csv_simple(
     request: Request,
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Secure CSV import with validation, sanitization, and encryption
-    
-    - **Rate limited**: 5 uploads per hour
-    - **Max file size**: 10MB
-    - **Max rows**: 10,000
-    - **Validates**: File type, size, malicious content
-    - **Sanitizes**: Removes formulas, XSS, scripts
-    - **Encrypts**: Phone, email, address
+    Simple CSV import - NO encryption
     
     Required CSV columns:
     - ten_doanh_nghiep (required)
-    - so_dien_thoai (optional, will be encrypted)
-    - email (optional, will be encrypted)
-    - dia_chi (optional, will be encrypted)
+    - so_dien_thoai, email, dia_chi (optional)
     - nganh_nghe, tinh_thanh, vung_mien, website, etc.
     """
     
     try:
-        # 1. Validate file
-        logger.info(f"User {current_user['email']} uploading CSV: {file.filename}")
+        logger.info(f"📤 User {current_user['email']} uploading CSV: {file.filename}")
         
-        try:
-            validation_result = csv_security.validate_csv_file(file.file, file.filename)
-        except ValueError as e:
-            logger.warning(f"CSV validation failed: {e}")
-            raise HTTPException(status_code=400, detail=str(e))
+        # Check file extension
+        if not file.filename.lower().endswith(('.csv', '.txt')):
+            raise HTTPException(status_code=400, detail="Chỉ chấp nhận file .csv hoặc .txt")
         
-        # 2. Parse CSV
+        # Read & parse CSV
         content = await file.read()
-        csv_text = content.decode('utf-8', errors='ignore')
         
+        if len(content) > 10 * 1024 * 1024:  # 10MB max
+            raise HTTPException(status_code=400, detail="File quá lớn (tối đa 10MB)")
+        
+        csv_text = content.decode('utf-8', errors='ignore')
         reader = csv.DictReader(io.StringIO(csv_text))
         
-        # 3. Process each record
+        # Process records
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
         
@@ -71,105 +57,71 @@ async def import_csv_secure(
         skipped = 0
         errors = []
         
-        for row_no, row in enumerate(reader, start=2):  # Start from 2 (header is row 1)
+        for row_no, row in enumerate(reader, start=2):
             try:
-                # Sanitize all fields
-                sanitized_row = csv_security.sanitize_csv_row(row)
-                
-                # Validate required fields
-                name = sanitized_row.get('ten_doanh_nghiep', '').strip()
+                # Get required field
+                name = row.get('ten_doanh_nghiep', '').strip()
                 if not name:
                     skipped += 1
-                    logger.debug(f"Row {row_no}: Skipped - missing name")
                     continue
                 
-                # Get sensitive fields
-                phone = sanitized_row.get('so_dien_thoai', '').strip()
-                email = sanitized_row.get('email', '').strip()
-                address = sanitized_row.get('dia_chi', '').strip()
+                # Get optional fields - PLAIN TEXT
+                phone = row.get('so_dien_thoai', '').strip() or None
+                email = row.get('email', '').strip() or None
+                address = row.get('dia_chi', '').strip() or None
                 
-                # Check for duplicates using hash
-                phone_hash = encryption_service.hash_for_search(phone) if phone else None
-                email_hash = encryption_service.hash_for_search(email) if email else None
+                # Check duplicates by name
+                cur.execute(
+                    "SELECT id FROM businesses_demo WHERE ten_doanh_nghiep = %s LIMIT 1",
+                    (name,)
+                )
+                if cur.fetchone():
+                    skipped += 1
+                    continue
                 
-                if phone_hash or email_hash:
-                    check_conditions = []
-                    check_params = []
-                    
-                    if phone_hash:
-                        check_conditions.append("phone_hash = %s")
-                        check_params.append(phone_hash)
-                    if email_hash:
-                        check_conditions.append("email_hash = %s")
-                        check_params.append(email_hash)
-                    
-                    cur.execute(f"""
-                        SELECT id FROM businesses_demo 
-                        WHERE {' OR '.join(check_conditions)}
-                        LIMIT 1
-                    """, check_params)
-                    
-                    if cur.fetchone():
-                        skipped += 1
-                        logger.debug(f"Row {row_no}: Skipped - duplicate")
-                        continue
+                # Geocode for location
+                geocoded = geocoding_service.geocode(row)
+                tinh_thanh = row.get('tinh_thanh') or geocoded.get('tinh_thanh')
+                vung_mien = row.get('vung_mien') or geocoded.get('vung_mien')
                 
-                # Encrypt sensitive data
-                phone_encrypted = encryption_service.encrypt_phone(phone) if phone else None
-                email_encrypted = encryption_service.encrypt_email(email) if email else None
-                address_encrypted = encryption_service.encrypt(address) if address else None
-                
-                # Geocode for location inference
-                geocoded = geocoding_service.geocode(sanitized_row)
-                tinh_thanh = sanitized_row.get('tinh_thanh') or geocoded.get('tinh_thanh')
-                vung_mien = sanitized_row.get('vung_mien') or geocoded.get('vung_mien')
-                
-                # Insert with encrypted data
+                # Insert - PLAIN TEXT
                 cur.execute("""
                     INSERT INTO businesses_demo (
                         ten_doanh_nghiep, nganh_nghe, vung_mien, tinh_thanh, quan_huyen,
-                        dia_chi_encrypted,
-                        website, email_encrypted, email_hash,
-                        so_dien_thoai_encrypted, phone_hash,
-                        facebook, zalo, linkedin,
-                        quy_mo, ma_so_thue,
+                        dia_chi, website, email, so_dien_thoai,
+                        facebook, zalo, linkedin, quy_mo, ma_so_thue,
                         trang_thai, nguon_du_lieu, do_tin_cay,
                         data_source, consent_obtained,
                         created_by_user_id, updated_at
                     ) VALUES (
                         %s, %s, %s, %s, %s,
-                        %s,
-                        %s, %s, %s,
-                        %s, %s,
-                        %s, %s, %s,
-                        %s, %s,
+                        %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s,
                         %s, %s, %s,
                         %s, %s,
                         %s, NOW()
                     )
                 """, (
                     name,
-                    sanitized_row.get('nganh_nghe'),
+                    row.get('nganh_nghe'),
                     vung_mien,
                     tinh_thanh,
-                    sanitized_row.get('quan_huyen'),
-                    address_encrypted,
-                    sanitized_row.get('website'),
-                    email_encrypted,
-                    email_hash,
-                    phone_encrypted,
-                    phone_hash,
-                    sanitized_row.get('facebook'),
-                    sanitized_row.get('zalo'),
-                    sanitized_row.get('linkedin'),
-                    sanitized_row.get('quy_mo'),
-                    sanitized_row.get('ma_so_thue'),
-                    sanitized_row.get('trang_thai', 'Hoat_dong'),
+                    row.get('quan_huyen'),
+                    address,
+                    row.get('website'),
+                    email,
+                    phone,
+                    row.get('facebook'),
+                    row.get('zalo'),
+                    row.get('linkedin'),
+                    row.get('quy_mo'),
+                    row.get('ma_so_thue'),
+                    row.get('trang_thai', 'Hoat_dong'),
                     'CSV Import',
-                    int(sanitized_row.get('do_tin_cay', 50)),
-                    'CSV Import - Secure',
-                    False,  # consent_obtained - need user confirmation
-                    current_user['user_id']
+                    int(row.get('do_tin_cay', 50)),
+                    'CSV Import - Simple',
+                    False,
+                    current_user['id']
                 ))
                 
                 inserted += 1
@@ -186,20 +138,19 @@ async def import_csv_secure(
         cur.close()
         conn.close()
         
-        logger.info(f"CSV import completed: inserted={inserted}, skipped={skipped}, errors={len(errors)}")
+        logger.info(f"✅ CSV import: inserted={inserted}, skipped={skipped}, errors={len(errors)}")
         
         return {
             "success": True,
             "inserted": inserted,
             "skipped": skipped,
-            "errors": errors[:10],  # Return first 10 errors only
+            "errors": errors[:10],
             "total_errors": len(errors),
-            "validation": validation_result,
             "message": f"✅ Import thành công: {inserted} doanh nghiệp mới, {skipped} bị bỏ qua"
         }
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"CSV import failed: {e}")
+        logger.error(f"❌ CSV import failed: {e}")
         raise HTTPException(status_code=500, detail=f"Import thất bại: {str(e)}")

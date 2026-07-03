@@ -20,7 +20,12 @@ class EncryptionService:
             encryption_key: Base64-encoded Fernet key
         """
         if not encryption_key:
-            encryption_key = os.getenv('ENCRYPTION_KEY')
+            # Try to import settings
+            try:
+                from app.config import settings
+                encryption_key = settings.ENCRYPTION_KEY
+            except:
+                encryption_key = os.getenv('ENCRYPTION_KEY')
             
             if not encryption_key:
                 logger.warning("⚠️  ENCRYPTION_KEY not found in environment!")
@@ -66,7 +71,7 @@ class EncryptionService:
             ciphertext: Base64-encoded encrypted string
             
         Returns:
-            Decrypted plaintext
+            Decrypted plaintext or placeholder if failed
         """
         if not ciphertext:
             return None
@@ -76,8 +81,8 @@ class EncryptionService:
             decrypted = self.cipher.decrypt(decoded)
             return decrypted.decode()
         except Exception as e:
-            logger.error(f"Decryption failed: {e}")
-            return "[ENCRYPTED]"
+            logger.warning(f"Decryption failed (wrong key?): {str(e)[:50]}")
+            return None  # Return None instead of placeholder to let caller handle
     
     def encrypt_phone(self, phone: str) -> str:
         """
