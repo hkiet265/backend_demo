@@ -127,13 +127,13 @@ const AlertsBell = ({ currentUser }) => {
   return (
     <div style={{ position: 'relative' }} ref={popoverRef}>
       <button
-        className="alerts-bell-btn"
+        className={`alerts-bell-btn ${unreadCount > 0 ? 'has-alerts' : ''}`}
         onClick={() => setShowPopover(!showPopover)}
         title={`${unreadCount} cảnh báo`}
         style={{
           position: 'relative',
-          background: showPopover ? 'rgba(255, 140, 66, 0.2)' : 'rgba(255, 140, 66, 0.1)',
-          border: '2px solid var(--border-neon)',
+          background: '#F8FAFC',
+          border: '1px solid #E8EDF3',
           borderRadius: '50%',
           width: '42px',
           height: '42px',
@@ -142,19 +142,18 @@ const AlertsBell = ({ currentUser }) => {
           justifyContent: 'center',
           cursor: 'pointer',
           transition: 'all 0.2s ease',
-          color: 'var(--text-main)'
+          color: '#D71E28',
+          boxShadow: showPopover ? '0 4px 16px rgba(0, 0, 0, 0.12)' : '0 2px 8px rgba(0, 0, 0, 0.08)'
         }}
         onMouseEnter={(e) => {
-          if (!showPopover) {
-            e.target.style.background = 'rgba(255, 140, 66, 0.15)';
-            e.target.style.borderColor = 'var(--color-primary)';
-          }
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+          e.currentTarget.style.transform = 'scale(1.05)';
+          e.currentTarget.style.background = '#FFFFFF';
         }}
         onMouseLeave={(e) => {
-          if (!showPopover) {
-            e.target.style.background = 'rgba(255, 140, 66, 0.1)';
-            e.target.style.borderColor = 'var(--border-neon)';
-          }
+          e.currentTarget.style.boxShadow = showPopover ? '0 4px 16px rgba(0, 0, 0, 0.12)' : '0 2px 8px rgba(0, 0, 0, 0.08)';
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.background = '#F8FAFC';
         }}
       >
         <Bell size={20} />
@@ -171,8 +170,7 @@ const AlertsBell = ({ currentUser }) => {
             borderRadius: '10px',
             minWidth: '18px',
             textAlign: 'center',
-            boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)',
-            animation: unreadCount > 0 ? 'pulse 2s infinite' : 'none'
+            boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)'
           }}>
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
@@ -186,7 +184,7 @@ const AlertsBell = ({ currentUser }) => {
           right: 0,
           width: '400px',
           maxHeight: '500px',
-          background: 'var(--bg-panel)',
+          background: 'white',
           border: '2px solid var(--border-neon)',
           borderRadius: 'var(--radius-lg)',
           boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
@@ -203,7 +201,7 @@ const AlertsBell = ({ currentUser }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'var(--bg-input)'
+            background: '#F8FAFC'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Bell size={20} style={{ color: 'var(--color-primary)' }} />
@@ -226,7 +224,7 @@ const AlertsBell = ({ currentUser }) => {
                 transition: 'all 0.2s ease'
               }}
               onMouseEnter={(e) => {
-                e.target.style.background = 'rgba(255, 140, 66, 0.1)';
+                e.target.style.background = '#F1F5F9';
                 e.target.style.color = 'var(--color-primary)';
               }}
               onMouseLeave={(e) => {
@@ -265,7 +263,7 @@ const AlertsBell = ({ currentUser }) => {
                     style={{
                       padding: '12px',
                       margin: '8px 0',
-                      background: 'var(--bg-input)',
+                      background: '#F8FAFC',
                       border: `2px solid ${getSeverityColor(alert.severity)}`,
                       borderLeft: `6px solid ${getSeverityColor(alert.severity)}`,
                       borderRadius: '8px',
@@ -314,7 +312,7 @@ const AlertsBell = ({ currentUser }) => {
                             fontWeight: '600',
                             padding: '2px 8px',
                             borderRadius: '8px',
-                            background: 'rgba(255, 140, 66, 0.15)',
+                            background: 'rgba(14, 165, 233, 0.1)',
                             color: 'var(--color-primary)'
                           }}>
                             {getTypeLabel(alert.alert_type)}
@@ -350,7 +348,7 @@ const AlertsBell = ({ currentUser }) => {
             <div style={{
               padding: '12px 16px',
               borderTop: '2px solid var(--border-neon)',
-              background: 'var(--bg-input)',
+              background: '#F8FAFC',
               textAlign: 'center'
             }}>
               <button

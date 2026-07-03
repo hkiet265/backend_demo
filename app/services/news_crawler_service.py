@@ -15,6 +15,7 @@ import re
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from app.config import settings
+from app.database import get_db_connection
 
 logger = logging.getLogger(__name__)
 
@@ -98,43 +99,26 @@ class NewsCrawlerService:
         """
         return hashlib.md5(content.encode('utf-8')).hexdigest()
     
-    def check_duplicate(self, url: str, title: str, conn=None) -> bool:
+    def check_duplicate(self, url: str, title: str) -> bool:
         """
         Kiểm tra tin tức đã tồn tại chưa bằng hash
         Returns True nếu trùng (bỏ qua), False nếu chưa có
         """
-        should_close = False
         try:
-
             content_hash = self.generate_hash(url + title)
-
-            if conn is None:
-                conn = psycopg2.connect(**settings.database_url)
-                should_close = True
             
-            cur = conn.cursor()
-            
-            cur.execute(
-                "SELECT 1 FROM station_news WHERE hash_noi_dung = %s LIMIT 1;",
-                (content_hash,)
-            )
-            
-            exists = cur.fetchone() is not None
-            
-            cur.close()
-            
-            if should_close:
-                conn.close()
-            
-            return exists
+            with get_db_connection() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT 1 FROM station_news WHERE hash_noi_dung = %s LIMIT 1;",
+                    (content_hash,)
+                )
+                exists = cur.fetchone() is not None
+                cur.close()
+                return exists
             
         except Exception as e:
             logger.error(f"Check duplicate error: {e}")
-            if should_close and conn:
-                try:
-                    conn.close()
-                except:
-                    pass
             return False
     
     def detect_region_from_text(self, text: str) -> Optional[str]:
@@ -171,7 +155,7 @@ class NewsCrawlerService:
         
         return text
     
-    def crawl_from_rss(self, source_name: str, rss_url: str, batch_check_duplicates: bool = True) -> List[Dict]:
+    def crawl_from_rss(self, source_name: str, rss_url: str) -> List[Dict]:
         """
         Cào tin từ RSS feed
         Miễn phí 100%, không tốn token AI
@@ -179,7 +163,6 @@ class NewsCrawlerService:
         Args:
             source_name: Tên nguồn (VTV, VTC, VOV)
             rss_url: URL RSS feed
-            batch_check_duplicates: Nếu True, check duplicate theo batch (nhanh hơn)
         """
         try:
             logger.info(f"Crawling RSS: {source_name} - {rss_url}")
@@ -194,14 +177,6 @@ class NewsCrawlerService:
             total_checked = 0
             duplicates_found = 0
 
-            conn = None
-            try:
-                if batch_check_duplicates:
-                    conn = psycopg2.connect(**settings.database_url)
-            except Exception as e:
-                logger.warning(f"Cannot create DB connection for batch check: {e}")
-                conn = None
-
             entries_to_process = feed.entries[:self.MAX_ENTRIES_PER_RSS]
             
             for entry in entries_to_process:
@@ -213,7 +188,7 @@ class NewsCrawlerService:
                 if not title or not url:
                     continue
 
-                if self.check_duplicate(url, title, conn=conn):
+                if self.check_duplicate(url, title):
                     duplicates_found += 1
                     continue
 
@@ -246,39 +221,21 @@ class NewsCrawlerService:
                 }
                 
                 news_list.append(news_item)
-
-            if conn:
-                try:
-                    conn.close()
-                except:
-                    pass
             
             logger.info(f"RSS {source_name}: Checked {total_checked} entries, found {len(news_list)} new articles ({duplicates_found} duplicates)")
             return news_list
             
         except Exception as e:
             logger.error(f"Crawl RSS error ({rss_url}): {e}")
-            if conn:
-                try:
-                    conn.close()
-                except:
-                    pass
             return []
     
     def save_news_to_db(self, news_list: List[Dict]) -> Dict:
-        """Lưu tin tức vào database với retry logic"""
+        """Lưu tin tức vào database sử dụng connection pool"""
         if not news_list:
             return {"inserted": 0, "skipped": 0, "errors": []}
         
-        max_retries = 3
-        retry_delay = 2 
-        
-        for attempt in range(max_retries):
-            try:
-                conn = psycopg2.connect(
-                    **settings.database_url,
-                    connect_timeout=10
-                )
+        try:
+            with get_db_connection() as conn:
                 cur = conn.cursor()
                 
                 inserted = 0
@@ -320,7 +277,6 @@ class NewsCrawlerService:
                 
                 conn.commit()
                 cur.close()
-                conn.close()
                 
                 logger.info(f"Saved to DB: {inserted} inserted, {skipped} skipped")
                 return {
@@ -328,20 +284,10 @@ class NewsCrawlerService:
                     "skipped": skipped,
                     "errors": errors[:5]
                 }
-                
-            except psycopg2.OperationalError as e:
-                logger.warning(f"DB connection failed (attempt {attempt+1}/{max_retries}): {e}")
-                if attempt < max_retries - 1:
-                    import time
-                    time.sleep(retry_delay)
-                    continue
-                else:
-                    logger.error(f"Save to DB failed after {max_retries} attempts")
-                    return {"inserted": 0, "skipped": 0, "errors": [f"Connection failed: {str(e)[:100]}"]}
                     
-            except Exception as e:
-                logger.error(f"Save to DB error: {e}")
-                return {"inserted": 0, "skipped": 0, "errors": [str(e)[:100]]}
+        except Exception as e:
+            logger.error(f"Save to DB error: {e}")
+            return {"inserted": 0, "skipped": 0, "errors": [str(e)[:100]]}
     
     def crawl_all_sources(self) -> Dict:
         """

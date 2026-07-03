@@ -38,7 +38,7 @@ const AdminPortal = ({ currentUser, onLogout }) => {
       <aside className="admin-sidebar">
         <div className="admin-sidebar-header">
           <div className="admin-logo">
-            <img src="/emtu-avatar.png" alt="Em Tư Admin" />
+            <img src="/emtu2.0.png" alt="Em Tư Admin" />
           </div>
           <h2>Em Tư Admin</h2>
           <p className="admin-subtitle">Control Panel</p>

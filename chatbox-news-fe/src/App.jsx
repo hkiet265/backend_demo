@@ -364,7 +364,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
           <div className="chat-popup-header">
             <div className="chat-popup-title">
               <div className="chat-popup-icon">
-                <img src="/emtu-avatar.png" alt="Em Tư" className="chat-popup-avatar" />
+                <img src="/emtu2.0.png" alt="Em Tư" className="chat-popup-avatar" />
               </div>
               <div>
                 <h3>Em Tư trợ lý</h3>

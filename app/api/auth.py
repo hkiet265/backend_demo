@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 import logging
 from app.config import settings
 from app.middleware.rate_limiter import limiter, AUTH_RATE_LIMIT
+from app.database import get_db_connection
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -66,52 +67,47 @@ async def register(request: Request, register_request: RegisterRequest):
     - **phone**: User phone (optional)
     """
     try:
-        
-        conn = psycopg2.connect(**settings.database_url)
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        
-        
-        cur.execute("SELECT id FROM app_users WHERE email = %s", (register_request.email,))
-        existing_user = cur.fetchone()
-        
-        if existing_user:
+        with get_db_connection() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            
+            # Check if email exists
+            cur.execute("SELECT id FROM app_users WHERE email = %s", (register_request.email,))
+            existing_user = cur.fetchone()
+            
+            if existing_user:
+                raise HTTPException(status_code=400, detail="Email đã được sử dụng")
+            
+            # Hash password
+            password_hash = hash_password(register_request.password)
+            
+            # Insert user
+            cur.execute("""
+                INSERT INTO app_users (email, password_hash, full_name, phone, role, created_at)
+                VALUES (%s, %s, %s, %s, 'user', NOW())
+                RETURNING id, email, full_name, phone, role, created_at
+            """, (register_request.email, password_hash, register_request.full_name, register_request.phone))
+            
+            user = cur.fetchone()
+            conn.commit()
+            
+            # Generate JWT
+            token = generate_jwt_token(user)
+            
             cur.close()
-            conn.close()
-            raise HTTPException(status_code=400, detail="Email đã được sử dụng")
-        
-        
-        password_hash = hash_password(register_request.password)
-        
-        
-        cur.execute("""
-            INSERT INTO app_users (email, password_hash, full_name, phone, role, created_at)
-            VALUES (%s, %s, %s, %s, 'user', NOW())
-            RETURNING id, email, full_name, phone, role, created_at
-        """, (register_request.email, password_hash, register_request.full_name, register_request.phone))
-        
-        user = cur.fetchone()
-        conn.commit()
-        
-        
-        token = generate_jwt_token(user)
-        
-        
-        cur.close()
-        conn.close()
-        
-        logger.info(f"User registered: {user['email']}")
-        
-        return AuthResponse(
-            access_token=token,
-            user={
-                'id': user['id'],
-                'email': user['email'],
-                'full_name': user['full_name'],
-                'phone': user['phone'],
-                'role': user.get('role', 'user'),
-                'created_at': str(user['created_at'])
-            }
-        )
+            
+            logger.info(f"User registered: {user['email']}")
+            
+            return AuthResponse(
+                access_token=token,
+                user={
+                    'id': user['id'],
+                    'email': user['email'],
+                    'full_name': user['full_name'],
+                    'phone': user['phone'],
+                    'role': user.get('role', 'user'),
+                    'created_at': str(user['created_at'])
+                }
+            )
         
     except HTTPException:
         raise
@@ -130,48 +126,43 @@ async def login(request: Request, login_request: LoginRequest):
     - **password**: User password
     """
     try:
-        conn = psycopg2.connect(**settings.database_url)
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        
-        cur.execute("""
-            SELECT id, email, full_name, phone, role, created_at, password_hash
-            FROM app_users
-            WHERE email = %s
-        """, (login_request.email,))
-        
-        user = cur.fetchone()
-        
-        if not user:
-            cur.close()
-            conn.close()
-            raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
-        
-        if not verify_password(login_request.password, user['password_hash']):
-            cur.close()
-            conn.close()
-            raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
-        
-        user_dict = dict(user)
-        user_dict.pop('password_hash', None)
-        
-        token = generate_jwt_token(user_dict)
+        with get_db_connection() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            
+            cur.execute("""
+                SELECT id, email, full_name, phone, role, created_at, password_hash
+                FROM app_users
+                WHERE email = %s
+            """, (login_request.email,))
+            
+            user = cur.fetchone()
+            
+            if not user:
+                raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
+            
+            if not verify_password(login_request.password, user['password_hash']):
+                raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
+            
+            user_dict = dict(user)
+            user_dict.pop('password_hash', None)
+            
+            token = generate_jwt_token(user_dict)
 
-        cur.close()
-        conn.close()
-        
-        logger.info(f"User logged in: {user['email']}")
-        
-        return AuthResponse(
-            access_token=token,
-            user={
-                'id': user['id'],
-                'email': user['email'],
-                'full_name': user['full_name'],
-                'phone': user['phone'],
-                'role': user.get('role', 'user'),
-                'created_at': str(user['created_at'])
-            }
-        )
+            cur.close()
+            
+            logger.info(f"User logged in: {user['email']}")
+            
+            return AuthResponse(
+                access_token=token,
+                user={
+                    'id': user['id'],
+                    'email': user['email'],
+                    'full_name': user['full_name'],
+                    'phone': user['phone'],
+                    'role': user.get('role', 'user'),
+                    'created_at': str(user['created_at'])
+                }
+            )
         
     except HTTPException:
         raise
@@ -198,68 +189,61 @@ async def update_profile(request: UpdateProfileRequest):
     - **new_password**: New password (optional)
     """
     try:
-        conn = psycopg2.connect(**settings.database_url)
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        
-        
-        cur.execute("SELECT id, email, full_name, password_hash, role FROM app_users WHERE email = %s", (request.email,))
-        user = cur.fetchone()
-        
-        if not user:
-            cur.close()
-            conn.close()
-            raise HTTPException(status_code=404, detail="Người dùng không tồn tại")
-        
-        
-        if request.new_password:
-            if not request.current_password:
-                cur.close()
-                conn.close()
-                raise HTTPException(status_code=400, detail="Cần nhập mật khẩu hiện tại")
+        with get_db_connection() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
             
-            if not verify_password(request.current_password, user['password_hash']):
-                cur.close()
-                conn.close()
-                raise HTTPException(status_code=401, detail="Mật khẩu hiện tại không đúng")
+            # Get current user
+            cur.execute("SELECT id, email, full_name, password_hash, role FROM app_users WHERE email = %s", (request.email,))
+            user = cur.fetchone()
+            
+            if not user:
+                raise HTTPException(status_code=404, detail="Người dùng không tồn tại")
+            
+            # If changing password, verify current password
+            if request.new_password:
+                if not request.current_password:
+                    raise HTTPException(status_code=400, detail="Cần nhập mật khẩu hiện tại")
+                
+                if not verify_password(request.current_password, user['password_hash']):
+                    raise HTTPException(status_code=401, detail="Mật khẩu hiện tại không đúng")
 
-            new_password_hash = hash_password(request.new_password)
-            cur.execute("""
-                UPDATE app_users
-                SET full_name = %s, password_hash = %s
-                WHERE id = %s
-                RETURNING id, email, full_name, phone, role, created_at
-            """, (request.full_name, new_password_hash, user['id']))
-        else:
+                new_password_hash = hash_password(request.new_password)
+                cur.execute("""
+                    UPDATE app_users
+                    SET full_name = %s, password_hash = %s
+                    WHERE id = %s
+                    RETURNING id, email, full_name, phone, role, created_at
+                """, (request.full_name, new_password_hash, user['id']))
+            else:
+                # Update name only
+                cur.execute("""
+                    UPDATE app_users
+                    SET full_name = %s
+                    WHERE id = %s
+                    RETURNING id, email, full_name, phone, role, created_at
+                """, (request.full_name, user['id']))
             
-            cur.execute("""
-                UPDATE app_users
-                SET full_name = %s
-                WHERE id = %s
-                RETURNING id, email, full_name, phone, role, created_at
-            """, (request.full_name, user['id']))
-        
-        updated_user = cur.fetchone()
-        conn.commit()
-        
-        
-        token = generate_jwt_token(user)
-        
-        cur.close()
-        conn.close()
-        
-        logger.info(f"User profile updated: {updated_user['email']}")
-        
-        return AuthResponse(
-            access_token=token,
-            user={
-                'id': updated_user['id'],
-                'email': updated_user['email'],
-                'full_name': updated_user['full_name'],
-                'phone': updated_user['phone'],
-                'role': updated_user.get('role', 'user'),
-                'created_at': str(updated_user['created_at'])
-            }
-        )
+            updated_user = cur.fetchone()
+            conn.commit()
+            
+            # Generate new JWT
+            token = generate_jwt_token(user)
+            
+            cur.close()
+            
+            logger.info(f"User profile updated: {updated_user['email']}")
+            
+            return AuthResponse(
+                access_token=token,
+                user={
+                    'id': updated_user['id'],
+                    'email': updated_user['email'],
+                    'full_name': updated_user['full_name'],
+                    'phone': updated_user['phone'],
+                    'role': updated_user.get('role', 'user'),
+                    'created_at': str(updated_user['created_at'])
+                }
+            )
         
     except HTTPException:
         raise
