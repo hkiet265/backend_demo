@@ -284,7 +284,7 @@ const UnifiedNotificationBell = ({ currentUser }) => {
       </button>
 
       {showPopover && (
-        <div style={{
+        <div className="unified-notification-dropdown" style={{
           position: 'absolute',
           top: 'calc(100% + 12px)',
           right: 0,
