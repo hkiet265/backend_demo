@@ -257,84 +257,27 @@ function BusinessManagementView({
       showToast('⚠️ Vui lòng chọn file có định dạng .csv', 'error');
       e.target.value = '';
       return;
+    } 
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      showToast('⚠️ Vui lòng đăng nhập để thêm doanh nghiệp', 'error');
+      e.target.value = '';
+      return;
     }
 
     try {
-      const text = await file.text();
-      const lines = text.trim().split('\n').filter(line => line.trim());
 
-      // Validate minimum lines
-      if (lines.length < 2) {
-        showToast('⚠️ File CSV phải có ít nhất 2 dòng (dòng tiêu đề + dòng dữ liệu)', 'error');
-        e.target.value = '';
-        return;
-      }
+      const formData = new FormData();
+      formData.append('file', file);
 
-      // Parse headers
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
-      // Validate required headers
-      const requiredHeaders = ['ten_doanh_nghiep'];
-      const hasRequiredHeaders = requiredHeaders.every(required => 
-        headers.some(h => h === required || h === 'name')
-      );
-
-      if (!hasRequiredHeaders) {
-        showToast(
-          '⚠️ File CSV sai định dạng!\n\n' +
-          'Dòng đầu tiên phải có tiêu đề với cột bắt buộc: "ten_doanh_nghiep"\n\n' +
-          'Các cột tùy chọn: tinh_thanh, so_dien_thoai, email, website, nganh_nghe, quy_mo\n\n' +
-          'Ví dụ:\n' +
-          'ten_doanh_nghiep,tinh_thanh,email\n' +
-          'Công ty ABC,Hà Nội,abc@gmail.com',
-          'error'
-        );
-        e.target.value = '';
-        return;
-      }
-
-      // Parse records
-      const records = lines.slice(1).map((line, index) => {
-        const vals = line.split(',').map(v => v.trim().replace(/"/g, ''));
-        const obj = {};
-        headers.forEach((h, i) => { obj[h] = vals[i] || null; });
-        return {
-          ten_doanh_nghiep: obj.ten_doanh_nghiep || obj.name || '',
-          nganh_nghe: obj.nganh_nghe || obj.industry || null,
-          vung_mien: obj.vung_mien || obj.region || null,
-          tinh_thanh: obj.tinh_thanh || obj.location || null,
-          dia_chi: obj.dia_chi || obj.address || null,
-          website: obj.website || null,
-          email: obj.email || null,
-          so_dien_thoai: obj.so_dien_thoai || obj.phone || null,
-          quy_mo: obj.quy_mo || obj.scale || null,
-          trang_thai: obj.trang_thai || 'Hoat_dong',
-          tags: obj.tags || null,
-          mo_ta: obj.mo_ta || obj.description || null,
-        };
-      }).filter(r => r.ten_doanh_nghiep);
-
-      // Validate data records
-      if (records.length === 0) { 
-        showToast('⚠️ Không tìm thấy dữ liệu hợp lệ trong file CSV.\n\nĐảm bảo các dòng dữ liệu có giá trị trong cột "ten_doanh_nghiep"', 'error'); 
-        e.target.value = '';
-        return; 
-      }
-
-      const token = localStorage.getItem('token');
-      if (!token) {
-        showToast('⚠️ Vui lòng đăng nhập để thêm doanh nghiệp', 'error');
-        e.target.value = '';
-        return;
-      }
-
-      const res = await fetch('/api/businesses/bulk-import', {
+      const res = await fetch('http://127.0.0.1:8000/api/secure/import-csv', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}` 
+          // No Content-Type header - FormData sets it automatically
         },
-        body: JSON.stringify({ records })
+        body: formData
       });
       
       if (!res.ok) {
@@ -350,14 +293,14 @@ function BusinessManagementView({
       
       if (data.inserted > 0 && data.skipped === 0) {
         // All success
-        message = `✅ Thêm thành công ${data.inserted} doanh nghiệp mới!`;
+        message = `✅ Thêm thành công ${data.inserted} doanh nghiệp mới! 🔒`;
       } else if (data.inserted > 0 && data.skipped > 0) {
         // Partial success
         message = `⚠️ Thêm được ${data.inserted} doanh nghiệp mới. Bỏ qua ${data.skipped} doanh nghiệp vì đã tồn tại (trùng tên/SĐT/email).`;
         messageType = 'warning';
       } else if (data.inserted === 0 && data.skipped > 0) {
         // All duplicates
-        message = `⚠️ Không thể thêm! doanh nghiệp đã tồn tại`;
+        message = `⚠️ Không thể thêm! ${data.skipped} doanh nghiệp đã tồn tại`;
         messageType = 'error';
       } else {
         // No valid data

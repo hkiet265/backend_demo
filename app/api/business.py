@@ -2,7 +2,7 @@
 Business API Routes
 Endpoints for business management with full CRUD + Import/Export + AI Enrichment + Deduplication
 """
-from fastapi import APIRouter, HTTPException, Query, File, UploadFile, Depends
+from fastapi import APIRouter, HTTPException, Query, File, UploadFile, Depends, Request
 from fastapi.responses import StreamingResponse
 from typing import List, Optional
 from pydantic import BaseModel, Field
@@ -12,7 +12,10 @@ from app.config import settings
 from app.services.ai_enrichment_service import get_enrichment_service
 from app.services.deduplication_service import get_deduplication_service
 from app.services.geocoding_service import get_geocoding_service
+from app.services.csv_security_service import get_csv_security_service
+from app.services.encryption_service import get_encryption_service
 from app.dependencies import get_current_user
+from app.middleware.rate_limiter import limiter
 import logging
 import csv
 import io
@@ -23,6 +26,8 @@ router = APIRouter(prefix="/api/businesses", tags=["business"])
 enrichment_service = get_enrichment_service()
 dedup_service = get_deduplication_service()
 geocoding_service = get_geocoding_service()
+csv_security = get_csv_security_service()
+encryption_service = get_encryption_service()
 
 
 
