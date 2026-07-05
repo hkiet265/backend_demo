@@ -1,7 +1,7 @@
 import { RefreshCw, ChevronLeft, ChevronRight, Search, Heart } from 'lucide-react';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import LoadingSpinner from './LoadingSpinner';
+import Spinner from './atoms/Spinner';
 import Toast from './Toast';
 
 function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearchQuery, setNewsSearchQuery, onNewsClick }) {
@@ -11,7 +11,16 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [toast, setToast] = useState(null);
   const [bookmarkedNews, setBookmarkedNews] = useState(new Set());
-  const itemsPerPage = 8;
+  
+  // Detect mobile
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  const itemsPerPage = isMobile ? 4 : 8;
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -161,6 +170,25 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
   }, [allNews, searchQuery, selectedCategory]);
  
   const categories = useMemo(() => {
+    // Define common Vietnamese news categories
+    const commonCategories = [
+      'Kinh Tế',
+      'Thời Sự', 
+      'Quốc Tế',
+      'Thể Thao',
+      'Xã Hội',
+      'Công Nghệ',
+      'Giải Trí',
+      'Pháp Luật',
+      'Giáo Dục',
+      'Sức Khỏe',
+      'Văn Hóa',
+      'Du Lịch',
+      'Khoa Học',
+      'Đời Sống'
+    ];
+
+    // Get actual categories from data
     const categoryMap = new Map();
     allNews.forEach(news => {
       if (news.chuyen_muc) {
@@ -172,7 +200,13 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
       }
     });
     
-    const uniqueCategories = Array.from(categoryMap.values()).sort();
+    const actualCategories = Array.from(categoryMap.values());
+    
+    // Merge: show common categories first, then any additional unique ones from data
+    const mergedSet = new Set([...commonCategories]);
+    actualCategories.forEach(cat => mergedSet.add(cat));
+    
+    const uniqueCategories = Array.from(mergedSet).sort();
     return ['all', ...uniqueCategories];
   }, [allNews, normalizeCategory]);
  
@@ -225,9 +259,10 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
   const goToPage = (page) => {
     setCurrentPage(page);
 
-    const newsGrid = document.querySelector('.news-grid');
-    if (newsGrid) {
-      newsGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Scroll to top of main content area
+    const mainContent = document.querySelector('.main-content-area');
+    if (mainContent) {
+      mainContent.scrollTop = 0;
     }
   };
 
@@ -332,7 +367,10 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
         </div>
 
         {isFetchNewsLoading ? (
-          <LoadingSpinner message="Em Tư đang lùng sục tin tức khắp nơi cho bạn..." />
+          <div className="loading-state">
+            <Spinner />
+            <p className="loading-state-text">Em Tư đang lùng sục tin tức khắp nơi cho bạn...</p>
+          </div>
         ) : filteredNews.length === 0 ? (
           <div className="empty-state">
             <p>
@@ -386,7 +424,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft size={18} />
-                  Trước
+                  <span>Trước</span>
                 </button>
 
                 <div className="pagination-numbers">
@@ -449,7 +487,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                   onClick={goToNextPage}
                   disabled={currentPage === totalPages}
                 >
-                  Sau
+                  <span>Sau</span>
                   <ChevronRight size={18} />
                 </button>
               </div>

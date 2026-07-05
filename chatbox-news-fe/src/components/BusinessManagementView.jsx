@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import Toast from './Toast';
 
 const PAGE_SIZE = 10;
- 
+
 const FIELD_ICON = {
   'công nghệ': '💻', 'thông tin': '💻', 'phần mềm': '💻', 'ai': '🤖',
   'fintech': '💳', 'tài chính': '💳', 'ngân hàng': '💳',
@@ -57,6 +57,16 @@ function BusinessManagementView({
   const csvInputRef = useRef(null);
   const [toast, setToast] = useState(null);
   const [bookmarkedBusinesses, setBookmarkedBusinesses] = useState(new Set());
+  
+  // Detect mobile
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  const pageSize = isMobile ? 6 : PAGE_SIZE;
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -200,18 +210,23 @@ function BusinessManagementView({
     });
   }, [searchQuery, regionFilter, allBusinesses]);
 
-  const totalPages = Math.max(1, Math.ceil(businesses.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(businesses.length / pageSize));
 
   const pagedBusinesses = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return businesses.slice(start, start + PAGE_SIZE);
-  }, [businesses, currentPage]);
+    const start = (currentPage - 1) * pageSize;
+    return businesses.slice(start, start + pageSize);
+  }, [businesses, currentPage, pageSize]);
 
   useEffect(() => { setCurrentPage(1); }, [searchQuery, regionFilter, allBusinesses]);
 
   const goToPage = (page) => {
     setCurrentPage(page);
-    document.querySelector('.biz-card-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    // Scroll to top of main content area
+    const mainContent = document.querySelector('.main-content-area');
+    if (mainContent) {
+      mainContent.scrollTop = 0;
+    }
   };
   const goToPrevPage = () => { if (currentPage > 1) goToPage(currentPage - 1); };
   const goToNextPage = () => { if (currentPage < totalPages) goToPage(currentPage + 1); };
@@ -337,11 +352,18 @@ function BusinessManagementView({
 
   const openModal = (business) => {
     setSelectedBusiness(business);
-    document.querySelector('.main-content-area')?.style.setProperty('overflow', 'hidden');
+    const scrollContainer = document.querySelector('.main-content-area');
+    if (scrollContainer) {
+      scrollContainer.style.overflow = 'hidden';
+    }
   };
+  
   const closeModal = () => {
     setSelectedBusiness(null);
-    document.querySelector('.main-content-area')?.style.setProperty('overflow', 'auto');
+    const scrollContainer = document.querySelector('.main-content-area');
+    if (scrollContainer) {
+      scrollContainer.style.overflow = '';
+    }
   };
 
   const formatRegionDisplay = (region) => {
@@ -379,76 +401,169 @@ function BusinessManagementView({
   };
 
   return (
-    <div className="main-content-area fade-in-effect">
-  
-      <div className="news-filters">
-        <div className="search-box">
-          <Search size={18} className="search-icon" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm theo tên, ngành nghề, địa chỉ, mô tả..."
-            className="search-input"
-          />
-          {searchQuery && (
-            <button className="clear-search" onClick={handleClearSearch}>✕</button>
-          )}
-          <button className="search-submit-btn" onClick={(e) => e.preventDefault()}>
-            Tìm kiếm
-          </button>
-        </div>
- 
-        <div className="category-filters">
-          {['all', 'Bac', 'Trung', 'Nam'].map(r => (
-            <button
-              key={r}
-              className={`category-filter-btn ${regionFilter === r ? 'active' : ''}`}
-              onClick={() => setRegionFilter(r)}
-            >
-              {r === 'all' ? 'Tất cả' : r === 'Bac' ? '🏙️ Miền Bắc' : r === 'Trung' ? '🌊 Miền Trung' : '🌴 Miền Nam'}
-            </button>
-          ))}
-        </div>
-      </div>
-
- 
-      <div className="data-table-card" style={{ border: 'none', background: 'transparent', padding: '0', boxShadow: 'none' }}>
-        <div className="table-header-action" style={{ marginBottom: '16px' }}>
-          <div className="table-title">
-            <BarChart3 size={20} className="text-emerald" />
-            <h3>tìm việc làm cùng Em Tư</h3>
+    <>
+      <div className="main-content-area fade-in-effect">
+        <div style={{ 
+          marginBottom: '20px',
+          paddingBottom: '16px',
+          borderBottom: '2px solid var(--border-neon)',
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          justifyContent: 'space-between',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          gap: isMobile ? '12px' : '20px'
+        }}>
+          <div>
+            <h3 style={{ 
+              margin: '0 0 6px 0', 
+              fontSize: '18px', 
+              fontWeight: '700',
+              color: 'var(--text-main)',
+              lineHeight: '1.2'
+            }}>
+              Tìm việc làm cùng Em Tư
+            </h3>
+            <p style={{ 
+              margin: '0', 
+              fontSize: '13px', 
+              color: 'var(--text-dim)',
+              lineHeight: '1.4'
+            }}>
+              Khám phá các cơ hội nghề nghiệp phù hợp!
+            </p>
           </div>
-          <div className="header-actions">
+          
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flexShrink: 0 }}>
+            <button 
+              onClick={onRefresh} 
+              className="refresh-btn" 
+              title="Làm mới"
+              style={{
+                width: '42px',
+                height: '42px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <RefreshCw size={18} />
+            </button>
             {currentUser && (
               <>
-                <button className="action-btn" title="Nhập CSV" onClick={() => csvInputRef.current?.click()}>
-                  <Upload size={18} />
-                </button>
-                <button className="action-btn" title="Xuất CSV" onClick={handleExportCSV}>
+                <button 
+                  title="Nhập CSV" 
+                  onClick={() => csvInputRef.current?.click()} 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '10px 20px',
+                    height: '42px',
+                    background: '#F8FAFC',
+                    border: '2px solid var(--border-neon)',
+                    borderRadius: '10px',
+                    color: 'var(--color-secondary)',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    flexShrink: 0
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #D71E28, #B91C1C)';
+                    e.currentTarget.style.color = '#fff';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(185, 28, 28, 0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#F8FAFC';
+                    e.currentTarget.style.color = 'var(--color-secondary)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
                   <Download size={18} />
+                  <span>Nhập</span>
+                </button>
+                <button 
+                  title="Xuất CSV" 
+                  onClick={handleExportCSV} 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '10px 20px',
+                    height: '42px',
+                    background: '#F8FAFC',
+                    border: '2px solid var(--border-neon)',
+                    borderRadius: '10px',
+                    color: 'var(--color-secondary)',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    flexShrink: 0
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #D71E28, #B91C1C)';
+                    e.currentTarget.style.color = '#fff';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(185, 28, 28, 0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#F8FAFC';
+                    e.currentTarget.style.color = 'var(--color-secondary)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <Upload size={18} />
+                  <span>Xuất</span>
                 </button>
                 <input ref={csvInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleImportCSV} />
               </>
             )}
-            <button className="refresh-btn" onClick={onRefresh}>
-              <RefreshCw size={18} />
-            </button>
           </div>
-          <button
-            onClick={handleSimulateRawInput}
-            className={`enrich-action-btn ${isEnriching ? 'running' : ''}`}
-            disabled={isEnriching}
-            style={{ display: 'none' }}
-          >
-            <Sparkles size={16} /> {isEnriching ? 'Đang cào...' : 'Cào dữ liệu'}
-          </button>
         </div>
 
+        <div className="news-filters">
+          <div className="search-box">
+            <Search size={18} className="search-icon" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tìm theo tên, ngành nghề, địa chỉ, mô tả..."
+              className="search-input"
+            />
+            {searchQuery && (
+              <button className="clear-search" onClick={handleClearSearch}>✕</button>
+            )}
+            <button className="search-submit-btn" onClick={(e) => e.preventDefault()}>
+              Tìm kiếm
+            </button>
+          </div>
  
+          <div className="category-filters">
+            {['all', 'Bac', 'Trung', 'Nam'].map(r => (
+              <button
+                key={r}
+                className={`category-filter-btn ${regionFilter === r ? 'active' : ''}`}
+                onClick={() => setRegionFilter(r)}
+              >
+                {r === 'all' ? 'Tất cả' : r === 'Bac' ? '🏙️ Miền Bắc' : r === 'Trung' ? '🌊 Miền Trung' : '🌴 Miền Nam'}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {isLoading ? (
-          <div className="biz-card-grid">
-            {Array.from({ length: 12 }).map((_, i) => <BusinessCardSkeleton key={i} />)}
+          <div className="loading-state">
+            <div className="spinner" />
+            <p>Em Tư đang tìm kiếm doanh nghiệp cho bạn...</p>
           </div>
         ) : businesses.length === 0 ? (
           <div className="empty-state">
@@ -500,12 +615,18 @@ function BusinessManagementView({
                 </div>
               ))}
             </div>
- 
+
             {totalPages > 1 && (
               <div className="pagination">
-                <button className="pagination-btn" onClick={goToPrevPage} disabled={currentPage === 1}>
-                  <ChevronLeft size={18} /> Trước
+                <button 
+                  className="pagination-btn" 
+                  onClick={goToPrevPage}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft size={18} />
+                  <span>Trước</span>
                 </button>
+
                 <div className="pagination-numbers">
                   {(() => {
                     const pages = [];
@@ -560,15 +681,21 @@ function BusinessManagementView({
                     return pages;
                   })()}
                 </div>
-                <button className="pagination-btn" onClick={goToNextPage} disabled={currentPage === totalPages}>
-                  Sau <ChevronRight size={18} />
+
+                <button 
+                  className="pagination-btn" 
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  <span>Sau</span>
+                  <ChevronRight size={18} />
                 </button>
               </div>
             )}
           </>
         )}
       </div>
- 
+
       {selectedBusiness && createPortal(
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content biz-modal-wide" onClick={(e) => e.stopPropagation()}>
@@ -714,7 +841,7 @@ function BusinessManagementView({
         </div>,
         document.body
       )}
-      
+
       {toast && (
         <Toast
           message={toast.message}
@@ -722,8 +849,7 @@ function BusinessManagementView({
           onClose={() => setToast(null)}
         />
       )}
-    </div>
+    </>
   );
 }
-
 export default BusinessManagementView;

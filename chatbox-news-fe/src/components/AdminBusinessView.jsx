@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Building2, Edit, Trash2, Eye, RefreshCw, Search, X, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import Toast from './Toast';
-import ConfirmDialog from './ConfirmDialog';
-import LoadingSpinner from './LoadingSpinner';
+import ConfirmDialog from './molecules/ConfirmDialog/ConfirmDialog';
+import Spinner from './atoms/Spinner';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -168,7 +168,12 @@ const AdminBusinessView = () => {
   }, []);
 
   if (loading && businesses.length === 0) {
-    return <LoadingSpinner fullScreen message="Đang tải doanh nghiệp..." />;
+    return (
+      <div className="loading-state" style={{ minHeight: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <Spinner />
+        <p style={{ marginTop: '16px', color: 'var(--text-dim)' }}>Đang tải doanh nghiệp...</p>
+      </div>
+    );
   }
 
   return (

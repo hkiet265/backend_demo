@@ -19,6 +19,7 @@ function ChatControlView({
   chatInput,
   setChatInput,
   handleSendChat,
+  clearConversation,
   onNewsClick,
   onBusinessCardClick
 }) {
@@ -111,6 +112,23 @@ function ChatControlView({
                   </div>
                 </div>
               )}
+
+              {msg.followupSuggestions && msg.followupSuggestions.length > 0 && (
+                <div className="followup-suggestions">
+                  <p className="suggestions-label">💡 Bạn có thể hỏi:</p>
+                  <div className="suggestions-buttons">
+                    {msg.followupSuggestions.map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        className="suggestion-btn"
+                        onClick={() => handleQuickAction(suggestion)}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -120,23 +138,6 @@ function ChatControlView({
         ) && <TypingIndicator />}
 
         <div ref={chatEndRef} />
-      </div>
- 
-      <div className="quick-actions-top">
-        <button
-          className="quick-action-btn-top"
-          onClick={() => handleQuickAction('Tìm doanh nghiệp')}
-          disabled={isChatLoading}
-        >
-          🏢 Tìm doanh nghiệp
-        </button>
-        <button
-          className="quick-action-btn-top"
-          onClick={() => handleQuickAction('Tìm tin tức')}
-          disabled={isChatLoading}
-        >
-          📰 Tìm tin tức
-        </button>
       </div>
  
       {showScrollButton && (

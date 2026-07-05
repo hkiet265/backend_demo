@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
-import NavigationBar from './components/NavigationBar';
+import NavigationBar from './components/organisms/NavigationBar/NavigationBar';
 import BusinessManagementView from './components/BusinessManagementView';
 import NewsStorageView from './components/NewsStorageView';
 import ChatControlView from './components/ChatControlView';
@@ -222,7 +222,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
     }
   };
  
-  const simulateStreaming = (text, suggestedNews = [], suggestedBusinesses = [], actionButtons = [], onComplete = null) => {
+  const simulateStreaming = (text, suggestedNews = [], suggestedBusinesses = [], actionButtons = [], followupSuggestions = [], onComplete = null) => {
  
     const msgId = Date.now() + Math.random();
     setMessages(prev => [...prev, { 
@@ -231,7 +231,8 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
       text: text,
       suggestedNews: suggestedNews,
       suggestedBusinesses: suggestedBusinesses,
-      actionButtons: actionButtons
+      actionButtons: actionButtons,
+      followupSuggestions: followupSuggestions  // Add followup suggestions
     }]);
     
     setIsChatLoading(false);
@@ -241,6 +242,16 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
     }
   };
  
+  // Session management for conversation memory
+  const [sessionId, setSessionId] = useState(() => {
+    let id = localStorage.getItem('chat_session_id');
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem('chat_session_id', id);
+    }
+    return id;
+  });
+
   const handleSendChat = async (e, actionButtonId = null) => {
     e.preventDefault();
     if (!chatInput.trim() || isChatLoading) return;
@@ -251,7 +262,10 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
     setIsChatLoading(true);
 
     try {
-      const requestBody = { message: userText };
+      const requestBody = { 
+        message: userText,
+        session_id: sessionId  // Add session ID for conversation memory
+      };
       if (actionButtonId) {
         requestBody.action_button_id = actionButtonId;
       }
@@ -265,6 +279,12 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
       if (response.ok) {
         const data = await response.json();
 
+        // Update session_id if backend created a new one
+        if (data.session_id && data.session_id !== sessionId) {
+          setSessionId(data.session_id);
+          localStorage.setItem('chat_session_id', data.session_id);
+        }
+
         let reply = data.answer || "Em Tư đã xử lý yêu cầu của bạn.";
  
         simulateStreaming(
@@ -272,6 +292,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
           data.suggested_news || [], 
           data.suggested_businesses || [],
           data.action_buttons || [],
+          data.followup_suggestions || [],  // Add followup suggestions
           () => {
     
             if (data.suggested_news && data.suggested_news.length > 0) {
@@ -286,8 +307,31 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
     } catch (error) {
       let reply = `Xin lỗi, Em Tư gặp sự cố khi xử lý yêu cầu "${userText}". Backend có thể chưa chạy hoặc có lỗi kết nối.`;
       setTimeout(() => { 
-        simulateStreaming(reply, [], [], []);
+        simulateStreaming(reply, [], [], [], []);
       }, 500);
+    }
+  };
+
+  // Clear conversation function
+  const clearConversation = async () => {
+    try {
+      await fetch(`/api/chat/conversation/${sessionId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      // Generate new session
+      const newId = crypto.randomUUID();
+      setSessionId(newId);
+      localStorage.setItem('chat_session_id', newId);
+      
+      // Clear UI
+      setMessages([]);
+      
+      alert('✅ Đã xóa lịch sử chat!');
+    } catch (error) {
+      console.error('Clear error:', error);
+      alert('❌ Lỗi khi xóa chat');
     }
   };
 
@@ -332,24 +376,6 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
           />
         )}
 
-        {activeTab === 'chat' && (
-          <ChatControlView
-            messages={messages}
-            isChatLoading={isChatLoading}
-            chatInput={chatInput}
-            setChatInput={setChatInput}
-            handleSendChat={handleSendChat}
-            onNewsClick={(newsTitle) => {
-              setNewsSearchQuery(newsTitle);
-              setActiveTab('news');
-            }}
-            onBusinessCardClick={(bizName) => {
-              setSearchQuery(bizName);
-              setActiveTab('business');
-            }}
-          />
-        )}
-
         {activeTab === 'favorites' && (
           <FavoritesView currentUser={currentUser} />
         )}
@@ -358,6 +384,25 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
           <MyBusinessesView currentUser={currentUser} />
         )}
       </div>
+
+      {/* Floating Chat Button - Always visible at bottom-right */}
+      {!isChatOpen && (
+        <button 
+          className="floating-chat-button"
+          onClick={() => setIsChatOpen(true)}
+          title="Chat với Em Tư"
+        >
+          <div className="floating-chat-content">
+            <div className="floating-chat-avatar-wrapper">
+              <img src="/emtu2.0.png" alt="Em Tư" className="floating-chat-avatar" />
+              <div className="floating-chat-status"></div>
+            </div>
+            <div className="floating-chat-text">
+              <span className="floating-chat-name">Chat với Em Tư</span>
+            </div>
+          </div>
+        </button>
+      )}
  
       {isChatOpen && (
         <div className="chat-popup-container">
@@ -371,6 +416,36 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
                 <p>Tìm tin tức kiếm Em Tư</p>
               </div>
             </div>
+            <button 
+              className="clear-chat-btn"
+              onClick={clearConversation}
+              title="Xóa lịch sử chat"
+              style={{ 
+                marginRight: '8px',
+                padding: '8px 16px',
+                background: 'white',
+                border: '2px solid #E5E7EB',
+                borderRadius: '8px',
+                color: '#D71E28',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#FEF2F2';
+                e.currentTarget.style.borderColor = '#D71E28';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'white';
+                e.currentTarget.style.borderColor = '#E5E7EB';
+              }}
+            >
+              🗑️ Xóa chat
+            </button>
             <button className="chat-popup-close" onClick={() => setIsChatOpen(false)}>✕</button>
           </div>
           <div className="chat-popup-content">
@@ -380,6 +455,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
               chatInput={chatInput}
               setChatInput={setChatInput}
               handleSendChat={handleSendChat}
+              clearConversation={clearConversation}
               onNewsClick={(newsTitle) => {
                 setNewsSearchQuery(newsTitle);
                 setActiveTab('news');

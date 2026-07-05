@@ -1,0 +1,44 @@
+.spinner {
+  display: inline-block;
+}
+
+.spinner-circle {
+  border-radius: 50%;
+  border-style: solid;
+  border-top-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Sizes */
+.spinner-sm .spinner-circle {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.spinner-md .spinner-circle {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+.spinner-lg .spinner-circle {
+  width: 48px;
+  height: 48px;
+  border-width: 4px;
+}
+
+/* Colors */
+.spinner-primary .spinner-circle {
+  border-color: var(--color-primary);
+  border-top-color: transparent;
+}
+
+.spinner-white .spinner-circle {
+  border-color: white;
+  border-top-color: transparent;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

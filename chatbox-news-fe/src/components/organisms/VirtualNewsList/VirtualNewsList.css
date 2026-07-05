@@ -1,0 +1,40 @@
+.virtual-list-container {
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.virtual-list-inner {
+  width: 100%;
+}
+
+.virtual-list-item {
+  will-change: transform;
+}
+
+/* Scrollbar styling */
+.virtual-list-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.virtual-list-container::-webkit-scrollbar-track {
+  background: var(--bg-input);
+  border-radius: 4px;
+}
+
+.virtual-list-container::-webkit-scrollbar-thumb {
+  background: var(--border-neon);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.virtual-list-container::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .virtual-list-container::-webkit-scrollbar {
+    width: 4px;
+  }
+}

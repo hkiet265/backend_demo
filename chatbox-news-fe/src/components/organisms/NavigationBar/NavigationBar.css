@@ -1,0 +1,12 @@
+/* Navigation Bar - Already in App.css, this is for component isolation */
+/* If you want to move styles here later, copy from App.css */
+
+/* Currently styles are in App.css:
+ * - .premium-navbar
+ * - .nav-branding
+ * - .nav-tabs-wrapper
+ * - .nav-user-dropdown
+ * - etc.
+ */
+
+/* This file is prepared for future CSS module migration */
