@@ -783,6 +783,11 @@ Hãy trả lời câu hỏi dựa trên danh sách công ty trên. Trả lời b
                     temperature=0.7
                 )
                 
+                # Check if AI returned None (quota/rate limit exceeded)
+                if ai_response is None:
+                    logger.error("❌ Groq AI returned None - all keys exhausted")
+                    return self._error_response("AI service quota exceeded", "quota_exceeded")
+                
                 return {
                     'answer': ai_response,
                     'suggested_businesses': businesses[:3],  # Show top 3 from original list
@@ -946,15 +951,28 @@ Bạn cần thêm thông tin gì không? 😊"""
             return True
         return False
     
-    def _error_response(self, error_msg: str) -> Dict:
+    def _error_response(self, error_msg: str, error_type: str = 'generic') -> Dict:
         """Format error response"""
+        # Friendly messages based on error type
+        if (error_type == 'quota_exceeded' or 
+            error_type == 'token_limit' or 
+            'quota' in error_msg.lower() or 
+            'rate_limit' in error_msg.lower() or 
+            'context_length' in error_msg.lower() or 
+            'token' in error_msg.lower()):
+            # Gộp chung quota và token thành 1 thông báo
+            friendly_message = 'Ui, nói chuyện nhiều quá làm mình bị hụt hơi rồi. Cho mình thở một tí nhé!'
+        else:
+            friendly_message = 'Ui, nói chuyện nhiều quá làm mình bị hụt hơi rồi. Cho mình thở một tí nhé!'
+        
         return {
-            'answer': 'Em gặp chút vấn đề kỹ thuật. Bạn thử lại sau nhé! 😅',
+            'answer': friendly_message,
             'suggested_businesses': [],
             'documents': [],
             'search_method': 'error',
             'rag_used': False,
-            'error': error_msg
+            'error': error_msg,
+            'error_type': error_type
         }
     
     def get_metrics(self) -> Dict:
