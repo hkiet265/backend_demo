@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Heart, Trash2, Calendar, MapPin, Phone, Globe, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import Toast from './Toast';
-import ConfirmDialog from './ConfirmDialog';
+import ConfirmDialog from './molecules/ConfirmDialog/ConfirmDialog';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -251,7 +251,7 @@ const FavoritesView = ({ currentUser }) => {
               onClick={() => setNewsPage(p => Math.max(1, p - 1))}
               disabled={newsPage === 1}
             >
-              <ChevronLeft size={18} /> Trước
+              <ChevronLeft size={18} /> <span>Trước</span>
             </button>
             <div className="pagination-numbers">
               {Array.from({ length: newsTotalPages }, (_, i) => i + 1).map(page => (
@@ -269,7 +269,7 @@ const FavoritesView = ({ currentUser }) => {
               onClick={() => setNewsPage(p => Math.min(newsTotalPages, p + 1))}
               disabled={newsPage === newsTotalPages}
             >
-              Sau <ChevronRight size={18} />
+              <span>Sau</span> <ChevronRight size={18} />
             </button>
           </div>
         )}
@@ -366,7 +366,7 @@ const FavoritesView = ({ currentUser }) => {
               onClick={() => setBusinessPage(p => Math.max(1, p - 1))}
               disabled={businessPage === 1}
             >
-              <ChevronLeft size={18} /> Trước
+              <ChevronLeft size={18} /> <span>Trước</span>
             </button>
             <div className="pagination-numbers">
               {Array.from({ length: businessTotalPages }, (_, i) => i + 1).map(page => (
@@ -384,7 +384,7 @@ const FavoritesView = ({ currentUser }) => {
               onClick={() => setBusinessPage(p => Math.min(businessTotalPages, p + 1))}
               disabled={businessPage === businessTotalPages}
             >
-              Sau <ChevronRight size={18} />
+              <span>Sau</span> <ChevronRight size={18} />
             </button>
           </div>
         )}

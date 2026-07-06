@@ -10,14 +10,14 @@ from app.config import settings
 from app.services import (
     EmbeddingService,
     VectorService,
-    RAGService,
-    ChatService
+    RAGService
 )
+from app.services.hybrid_chat_service import get_hybrid_chat_service, HybridChatService
  
 _embedding_service = None
 _vector_service = None
 _rag_service = None
-_chat_service = None
+_hybrid_chat_service = None
 
 
 @lru_cache()
@@ -26,7 +26,7 @@ def get_embedding_service() -> EmbeddingService:
     global _embedding_service
     if _embedding_service is None:
         _embedding_service = EmbeddingService(
-            api_key=settings.GEMINI_API_KEY,
+            api_key=None,
             model=settings.EMBEDDING_MODEL,
             dimension=settings.EMBEDDING_DIMENSION
         )
@@ -61,14 +61,13 @@ def get_rag_service() -> RAGService:
     return _rag_service
 
 
-@lru_cache()
-def get_chat_service() -> ChatService:
-    """Get or create chat service singleton"""
-    global _chat_service
-    if _chat_service is None:
+def get_hybrid_service() -> HybridChatService:
+    """Get or create hybrid chat service singleton"""
+    global _hybrid_chat_service
+    if _hybrid_chat_service is None:
         rag_service = get_rag_service()
-        _chat_service = ChatService(rag_service=rag_service)
-    return _chat_service
+        _hybrid_chat_service = get_hybrid_chat_service(rag_service)
+    return _hybrid_chat_service
 
 
 
@@ -117,3 +116,49 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
     except Exception as e:
         logger.error(f"❌ Authentication failed: {e}")
         raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+
+
+async def get_current_user_optional(authorization: Optional[str] = Header(None)):
+    """
+    Get current user if authenticated, None if not
+    Used for endpoints that work for both anonymous and logged-in users
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    if not authorization:
+        logger.info("📭 No auth token - anonymous user")
+        return None
+    
+    try:
+        if authorization.startswith("Bearer "):
+            token = authorization.replace("Bearer ", "")
+        else:
+            token = authorization
+        
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        user_id = payload.get("user_id")
+        email = payload.get("email")
+        
+        if not user_id or not email:
+            logger.warning("⚠️ Invalid token - treating as anonymous")
+            return None
+        
+        logger.info(f"✅ Authenticated user: {email} (ID: {user_id})")
+        
+        return {
+            "id": user_id,
+            "email": email,
+            "full_name": payload.get("full_name"),
+            "role": payload.get("role", "user")
+        }
+        
+    except jwt.ExpiredSignatureError:
+        logger.warning("⚠️ Token expired - treating as anonymous")
+        return None
+    except jwt.InvalidTokenError:
+        logger.warning("⚠️ Invalid token - treating as anonymous")
+        return None
+    except Exception as e:
+        logger.warning(f"⚠️ Auth error: {e} - treating as anonymous")
+        return None

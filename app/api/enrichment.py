@@ -8,7 +8,7 @@ import logging
 from app.dependencies import get_current_user
 from app.services.website_scraper_service import get_scraper_service
 from app.services.lead_scoring_service import get_scoring_service
-from app.services.ner_service import get_ner_service
+# from app.services.ner_service import get_ner_service  # REMOVED - quota issues
 from app.services.news_clustering_service import get_clustering_service
 from app.database import get_db_connection
 from psycopg2.extras import RealDictCursor
@@ -228,56 +228,11 @@ async def extract_news_entities(
     """
     Trích xuất thực thể từ tin tức
     """
-    try:
-        with get_db_connection() as conn:
-            cur = conn.cursor(cursor_factory=RealDictCursor)
-            
-            cur.execute("""
-                SELECT id, tieu_de, tom_tat, noi_dung_gon
-                FROM station_news
-                WHERE id = %s;
-            """, (news_id,))
-            
-            news = cur.fetchone()
-            
-            if not news:
-                raise HTTPException(status_code=404, detail="News not found")
-            
-            # Extract entities
-            ner_service = get_ner_service()
-            
-            content = ""
-            if news['tieu_de']:
-                content += news['tieu_de'] + ". "
-            if news['tom_tat']:
-                content += news['tom_tat'] + ". "
-            if news['noi_dung_gon']:
-                content += news['noi_dung_gon']
-            
-            entities = ner_service.extract_entities(content, use_ai=use_ai)
-            
-            # Update DB
-            cur.execute("""
-                UPDATE station_news
-                SET thuc_the = %s
-                WHERE id = %s;
-            """, (str(entities), news_id))
-            
-            conn.commit()
-            cur.close()
-            
-            return {
-                "status": "success",
-                "news_id": news_id,
-                "entities": entities
-            }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Extract entities error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
+    return {
+        "status": "disabled",
+        "message": "NER service đã bị tắt do vượt quota API. Sử dụng semantic search thay thế.",
+        "news_id": news_id
+    }
 
 @router.get("/cluster-news")
 async def cluster_similar_news(

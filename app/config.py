@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     GEMINI_API_KEY_9: str = ""
     GEMINI_API_KEY_10: str = ""
     
-    EMBEDDING_MODEL: str = "models/gemini-embedding-001"
-    EMBEDDING_DIMENSION: int = 3072
+    EMBEDDING_MODEL: str = "gemini-embedding-2"
+    EMBEDDING_DIMENSION: int = 768
     CHAT_MODEL: str = "gemini-2.5-flash"
 
     GROQ_API_KEY_1: str = ""
@@ -53,6 +53,9 @@ class Settings(BaseSettings):
 
     USE_GROQ_FOR_GENERATION: bool = True
     FALLBACK_TO_GEMINI: bool = True
+
+    USE_AI_CHAT: bool = False 
+    AI_CHAT_DEFAULT: bool = False  
 
     RAG_TOP_K: int = 5
     RAG_SIMILARITY_THRESHOLD: float = 0.3

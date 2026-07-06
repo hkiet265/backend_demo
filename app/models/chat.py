@@ -16,12 +16,14 @@ class ActionButton(BaseModel):
 class ChatRequest(BaseModel):
     """Chat request from user"""
     message: str = Field(..., min_length=1, description="User message")
+    session_id: Optional[str] = Field(None, description="Conversation session ID")
     action_button_id: Optional[str] = Field(None, description="Clicked action button ID")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "message": "tin về vàng",
+                "session_id": "uuid-here",
                 "action_button_id": None
             }
         }
@@ -47,10 +49,11 @@ class BusinessItem(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    """Chat response with RAG information"""
+    """Chat response with RAG information and conversation memory"""
     answer: str = Field(..., description="AI-generated answer")
     suggested_news: List[NewsItem] = Field(default_factory=list)
     suggested_businesses: List[BusinessItem] = Field(default_factory=list)
+    followup_suggestions: List[str] = Field(default_factory=list, description="Follow-up question suggestions")
     action_buttons: List[ActionButton] = Field(default_factory=list)
     
     # RAG Metrics
@@ -58,14 +61,19 @@ class ChatResponse(BaseModel):
     tokens_saved: Optional[int] = Field(None, description="Estimated tokens saved by RAG")
     response_time_ms: Optional[float] = Field(None, description="Response time in milliseconds")
     
+    # Conversation
+    session_id: Optional[str] = Field(None, description="Conversation session ID")
+    
     class Config:
         json_schema_extra = {
             "example": {
                 "answer": "Theo 3 nguồn tin gần đây, giá vàng...",
                 "suggested_news": [],
                 "suggested_businesses": [],
+                "followup_suggestions": ["Giá vàng hôm nay?", "Dự báo giá vàng"],
                 "action_buttons": [],
                 "rag_used": True,
-                "tokens_saved": 498500
+                "tokens_saved": 498500,
+                "session_id": "uuid-here"
             }
         }

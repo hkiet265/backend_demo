@@ -5,10 +5,11 @@ import AdminUsersView from '../components/AdminUsersView';
 import LogfireView from '../components/LogfireView';
 import AdminNewsView from '../components/AdminNewsView';
 import AdminBusinessView from '../components/AdminBusinessView';
-import { BarChart3, LogOut, Home, Users, Activity, Newspaper, Building2 } from 'lucide-react';
+import { BarChart3, LogOut, Home, Users, Activity, Newspaper, Building2, Menu, X } from 'lucide-react';
 
 const AdminPortal = ({ currentUser, onLogout }) => {
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [showSidebar, setShowSidebar] = useState(false);
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -18,6 +19,11 @@ const AdminPortal = ({ currentUser, onLogout }) => {
 
   const handleBackToHome = () => {
     navigate('/');
+  };
+
+  const handleNavClick = (section) => {
+    setActiveSection(section);
+    setShowSidebar(false); // Close sidebar on mobile after clicking
   };
  
   if (!currentUser || currentUser.role !== 'admin') {
@@ -34,8 +40,19 @@ const AdminPortal = ({ currentUser, onLogout }) => {
 
   return (
     <div className="admin-portal">
+      {/* Mobile hamburger button */}
+      <button 
+        className="admin-mobile-hamburger"
+        onClick={() => setShowSidebar(!showSidebar)}
+        aria-label="Toggle menu"
+      >
+        {showSidebar ? <X size={24} /> : <Menu size={24} />}
+      </button>
 
-      <aside className="admin-sidebar">
+      {/* Overlay for mobile */}
+      {showSidebar && <div className="admin-sidebar-overlay" onClick={() => setShowSidebar(false)} />}
+
+      <aside className={`admin-sidebar ${showSidebar ? 'show' : ''}`}>
         <div className="admin-sidebar-header">
           <div className="admin-logo">
             <img src="/emtu2.0.png" alt="Em Tư Admin" />
@@ -47,7 +64,7 @@ const AdminPortal = ({ currentUser, onLogout }) => {
         <nav className="admin-nav">
           <button
             className={`admin-nav-item ${activeSection === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveSection('dashboard')}
+            onClick={() => handleNavClick('dashboard')}
           >
             <BarChart3 size={20} />
             <span>Dashboard</span>
@@ -55,7 +72,7 @@ const AdminPortal = ({ currentUser, onLogout }) => {
           
           <button
             className={`admin-nav-item ${activeSection === 'users' ? 'active' : ''}`}
-            onClick={() => setActiveSection('users')}
+            onClick={() => handleNavClick('users')}
           >
             <Users size={20} />
             <span>Users</span>
@@ -63,7 +80,7 @@ const AdminPortal = ({ currentUser, onLogout }) => {
           
           <button
             className={`admin-nav-item ${activeSection === 'news' ? 'active' : ''}`}
-            onClick={() => setActiveSection('news')}
+            onClick={() => handleNavClick('news')}
           >
             <Newspaper size={20} />
             <span>News Management</span>
@@ -71,7 +88,7 @@ const AdminPortal = ({ currentUser, onLogout }) => {
           
           <button
             className={`admin-nav-item ${activeSection === 'business' ? 'active' : ''}`}
-            onClick={() => setActiveSection('business')}
+            onClick={() => handleNavClick('business')}
           >
             <Building2 size={20} />
             <span>Business Management</span>
@@ -79,7 +96,7 @@ const AdminPortal = ({ currentUser, onLogout }) => {
           
           <button
             className={`admin-nav-item ${activeSection === 'logfire' ? 'active' : ''}`}
-            onClick={() => setActiveSection('logfire')}
+            onClick={() => handleNavClick('logfire')}
           >
             <Activity size={20} />
             <span>Logfire Monitoring</span>

@@ -8,7 +8,7 @@ import logging
 from app.dependencies import get_current_user
 from app.services.audit_log_service import get_audit_service
 from app.services.alert_system_service import get_alert_service
-from app.services.nlp_search_service import get_nlp_search_service
+# from app.services.nlp_search_service import get_nlp_search_service  # REMOVED - duplicate với semantic
 from app.services.notification_service import get_notification_service
 from app.database import get_db_connection
 
@@ -388,6 +388,7 @@ async def get_invalid_data_alerts(
 
 
 # ==================== NLP SEARCH ====================
+# DISABLED - Use /api/chat/message with hybrid service instead
 
 @router.get("/search/nlp")
 async def nlp_search(
@@ -398,30 +399,14 @@ async def nlp_search(
     """
     Advanced NLP-powered search
     
-    Examples:
-    - "Tìm công ty công nghệ ở Hà Nội"
-    - "Doanh nghiệp fintech miền Nam"
-    - "Tin tức về AI"
+    DEPRECATED: Use /api/chat/message for better hybrid search
     """
-    try:
-        nlp_service = get_nlp_search_service()
-        
-        with get_db_connection() as conn:
-            result = await nlp_service.nlp_search(
-                conn,
-                query=q,
-                use_semantic=use_semantic
-            )
-            
-            return {
-                "status": "success",
-                "query": q,
-                **result
-            }
-        
-    except Exception as e:
-        logger.error(f"NLP search error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "status": "deprecated",
+        "message": "NLP search đã được thay thế bằng Hybrid Chat Service. Vui lòng dùng /api/chat/message",
+        "redirect_to": "/api/chat/message",
+        "query": q
+    }
 
 
 @router.get("/search/semantic/businesses")
@@ -432,27 +417,15 @@ async def semantic_search_businesses(
 ):
     """
     Semantic search for businesses using embeddings
+    
+    DEPRECATED: Use /api/chat/message for better results
     """
-    try:
-        nlp_service = get_nlp_search_service()
-        
-        with get_db_connection() as conn:
-            results = await nlp_service.semantic_search_businesses(
-                conn,
-                query=q,
-                limit=limit
-            )
-            
-            return {
-                "status": "success",
-                "query": q,
-                "results": results,
-                "count": len(results)
-            }
-        
-    except Exception as e:
-        logger.error(f"Semantic search error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "status": "deprecated",
+        "message": "Semantic search đã tích hợp vào Hybrid Chat. Dùng /api/chat/message để có kết quả tốt hơn.",
+        "redirect_to": "/api/chat/message",
+        "query": q
+    }
 
 
 @router.get("/health")
@@ -464,6 +437,6 @@ async def health_check():
         "features": [
             "audit_logs",
             "alert_system",
-            "nlp_search"
+            "hybrid_chat"
         ]
     }

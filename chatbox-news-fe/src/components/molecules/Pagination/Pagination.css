@@ -1,0 +1,4 @@
+/* Import from main App.css pagination styles */
+@import '../../../App.css';
+
+/* Additional pagination-specific overrides can go here */

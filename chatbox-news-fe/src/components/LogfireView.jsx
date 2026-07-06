@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Zap, Clock, TrendingUp, AlertCircle, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
-import LoadingSpinner from './LoadingSpinner';
+import Spinner from './atoms/Spinner';
 
 const LogfireView = () => {
   const [monitoring, setMonitoring] = useState(null);
@@ -34,7 +34,12 @@ const LogfireView = () => {
   }, []);
 
   if (loading && !monitoring) {
-    return <LoadingSpinner fullScreen message="Đang tải monitoring data..." />;
+    return (
+      <div className="loading-state" style={{ minHeight: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <Spinner />
+        <p style={{ marginTop: '16px', color: 'var(--text-dim)' }}>Đang tải monitoring data...</p>
+      </div>
+    );
   }
 
   if (!monitoring) {

@@ -144,6 +144,7 @@ async def startup_event():
     try:
         scheduler = BackgroundScheduler(timezone="Asia/Ho_Chi_Minh")
 
+        # Job 1: Auto-crawl news every 30 minutes
         scheduler.add_job(
             func=auto_crawl_news,
             trigger=IntervalTrigger(minutes=30),
@@ -153,8 +154,18 @@ async def startup_event():
             next_run_time=datetime.now()
         )
         
+        scheduler.add_job(
+            func=auto_cleanup_conversations,
+            trigger=IntervalTrigger(hours=6),
+            id='conversation_cleanup',
+            name='Auto Conversation Cleanup',
+            replace_existing=True,
+            next_run_time=datetime.now()
+        )
+        
         scheduler.start()
         logger.info("✅ Auto-crawling enabled: News every 30 minutes")
+        logger.info("✅ Auto-cleanup enabled: Conversations > 24h every 6 hours")
         
     except Exception as e:
         logger.error(f"❌ Failed to start scheduler: {e}")
@@ -173,10 +184,6 @@ async def shutdown_event():
 
 
 def auto_crawl_news():
-    """
-    Background job: Auto-crawl news from RSS feeds
-    Chạy định kỳ, miễn phí, KHÔNG tốn token AI
-    """
     try:
         logger.info("🤖 [AUTO-CRAWL] Starting news crawl...")
         
@@ -197,6 +204,26 @@ def auto_crawl_news():
         
     except Exception as e:
         logger.error(f"❌ [AUTO-CRAWL] Failed: {e}")
+
+
+def auto_cleanup_conversations():
+    """
+    Background job: Cleanup old conversations (> 24 hours)
+    Giữ database gọn nhẹ, xóa conversations cũ
+    """
+    try:
+        logger.info("🧹 [AUTO-CLEANUP] Starting conversation cleanup...")
+        
+        from app.services.conversation_service import get_conversation_service
+        conv_service = get_conversation_service()
+        
+        # Delete conversations older than 1 day (24 hours)
+        deleted = conv_service.cleanup_old_conversations(days=1)
+        
+        logger.info(f"✅ [AUTO-CLEANUP] Completed - Deleted {deleted} old messages")
+        
+    except Exception as e:
+        logger.error(f"❌ [AUTO-CLEANUP] Failed: {e}")
 
 
 if __name__ == "__main__":

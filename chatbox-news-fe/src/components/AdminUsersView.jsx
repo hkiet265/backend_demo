@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Shield, UserCheck, Calendar, Mail, Phone, MoreVertical, Edit, Trash2, X } from 'lucide-react';
-import LoadingSpinner from './LoadingSpinner';
+import Spinner from './atoms/Spinner';
 import Toast from './Toast';
-import ConfirmDialog from './ConfirmDialog';
+import ConfirmDialog from './molecules/ConfirmDialog/ConfirmDialog';
 
 const AdminUsersView = () => {
   const [users, setUsers] = useState([]);
@@ -127,7 +127,12 @@ const AdminUsersView = () => {
   };
 
   if (loading && users.length === 0) {
-    return <LoadingSpinner fullScreen message="Đang tải danh sách users..." />;
+    return (
+      <div className="loading-state" style={{ minHeight: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <Spinner />
+        <p style={{ marginTop: '16px', color: 'var(--text-dim)' }}>Đang tải danh sách users...</p>
+      </div>
+    );
   }
 
   return (

@@ -1,7 +1,22 @@
-import { Building2, Newspaper, LogOut, User, Settings, ChevronDown, Heart, Briefcase, Menu, X } from 'lucide-react';
+import { Building2, Newspaper, LogOut, User, Settings, ChevronDown, Heart, Menu, X } from 'lucide-react';
 import { useState } from 'react';
-import UnifiedNotificationBell from './UnifiedNotificationBell';
+import UnifiedNotificationBell from '../../UnifiedNotificationBell';
+import './NavigationBar.css';
 
+/**
+ * Navigation Bar Component (Organism)
+ * Main navigation bar for the application
+ * 
+ * @param {Object} props
+ * @param {string} props.activeTab - Current active tab
+ * @param {Function} props.setActiveTab - Set active tab
+ * @param {boolean} props.isChatOpen - Chat open state
+ * @param {Function} props.setIsChatOpen - Set chat open state
+ * @param {Object} props.currentUser - Current user object
+ * @param {Function} props.onLogout - Logout handler
+ * @param {Function} props.onShowAuth - Show auth modal
+ * @param {Function} props.onShowEditProfile - Show edit profile
+ */
 function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, currentUser, onLogout, onShowAuth, onShowEditProfile }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -50,7 +65,7 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
                 className={`nav-tab-item ${activeTab === 'my-businesses' ? 'active' : ''}`}
                 onClick={() => setActiveTab('my-businesses')}
               >
-                <Briefcase size={16} /> DN Của Tôi
+                DN Của Tôi
               </button>
             </>
           )}
@@ -73,14 +88,6 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
         <div className="nav-desktop-actions">
           {currentUser ? (
             <>
-              <button 
-                className="nav-chat-button"
-                onClick={() => setIsChatOpen(!isChatOpen)}
-              >
-                <img src="/emtu2.0.png" alt="Em Tư" className="nav-chat-icon" />
-                <span>Hãy Hỏi Em Tư</span>
-              </button>
-
               <div className="nav-user-dropdown">
                 <button 
                   className="nav-user-btn" 
@@ -110,14 +117,6 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
             </>
           ) : (
             <>
-              <button 
-                className="nav-chat-button"
-                onClick={() => setIsChatOpen(!isChatOpen)}
-              >
-                <img src="/emtu2.0.png" alt="Em Tư" className="nav-chat-icon" />
-                <span>Hãy Hỏi Em Tư</span>
-              </button>
-
               <button className="nav-login-btn" onClick={onShowAuth}>
                 <span>Đăng nhập</span>
               </button>
@@ -161,7 +160,6 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
                   className={`mobile-menu-item ${activeTab === 'my-businesses' ? 'active' : ''}`}
                   onClick={() => handleTabChange('my-businesses')}
                 >
-                  <Briefcase size={18} />
                   <span>DN Của Tôi</span>
                 </button>
               </>
@@ -173,17 +171,6 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
             {/* Action buttons inside dropdown */}
             {currentUser ? (
               <>
-                <button 
-                  className="mobile-menu-item mobile-menu-action"
-                  onClick={() => {
-                    setShowMobileMenu(false);
-                    setIsChatOpen(!isChatOpen);
-                  }}
-                >
-                  <img src="/emtu2.0.png" alt="Em Tư" className="mobile-menu-avatar" />
-                  <span>Hãy Hỏi Em Tư</span>
-                </button>
-
                 <button 
                   className="mobile-menu-item mobile-menu-action"
                   onClick={() => {
@@ -208,17 +195,6 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
               </>
             ) : (
               <>
-                <button 
-                  className="mobile-menu-item mobile-menu-action"
-                  onClick={() => {
-                    setShowMobileMenu(false);
-                    setIsChatOpen(!isChatOpen);
-                  }}
-                >
-                  <img src="/emtu2.0.png" alt="Em Tư" className="mobile-menu-avatar" />
-                  <span>Hãy Hỏi Em Tư</span>
-                </button>
-
                 <button 
                   className="mobile-menu-item mobile-menu-action mobile-menu-login"
                   onClick={() => {

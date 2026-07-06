@@ -5,11 +5,12 @@ Business logic and external service integrations
 from .embedding_service import EmbeddingService
 from .vector_service import VectorService
 from .rag_service import RAGService
-from .chat_service import ChatService
+from .sentiment_service import SentimentService, get_sentiment_service
 
 __all__ = [
     "EmbeddingService",
     "VectorService",
     "RAGService",
-    "ChatService",
+    "SentimentService",
+    "get_sentiment_service",
 ]

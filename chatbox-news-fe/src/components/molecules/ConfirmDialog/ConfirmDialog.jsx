@@ -1,5 +1,19 @@
 import { AlertTriangle, X } from 'lucide-react';
+import './ConfirmDialog.css';
 
+/**
+ * Confirm Dialog Component (Molecule)
+ * Shows confirmation dialog before destructive actions
+ * 
+ * @param {Object} props
+ * @param {string} props.title - Dialog title
+ * @param {string} props.message - Dialog message
+ * @param {string} props.confirmText - Confirm button text
+ * @param {string} props.cancelText - Cancel button text
+ * @param {Function} props.onConfirm - Confirm callback
+ * @param {Function} props.onCancel - Cancel callback
+ * @param {string} props.type - Dialog type: 'warning', 'danger', 'info'
+ */
 const ConfirmDialog = ({ 
   title = 'Xác nhận', 
   message, 
