@@ -7779,10 +7779,10 @@ html, body, #root {
       width: 64px;
     }
     3.6% {
-      width: 190px;
+      width: 220px;
     }
     25% {
-      width: 190px;
+      width: 220px;
     }
     28.6% {
       width: 64px;
@@ -7793,10 +7793,15 @@ html, body, #root {
   }
 
   .floating-chat-button:hover {
-    width: 190px !important;
+    width: 220px !important;
   }
 
   .floating-chat-avatar {
+    width: 50px;
+    height: 50px;
+  }
+
+  .floating-chat-avatar-wrapper {
     width: 50px;
     height: 50px;
   }
@@ -7812,7 +7817,7 @@ html, body, #root {
   }
 
   .floating-chat-text {
-    min-width: 110px;
+    min-width: 130px;
   }
 
   .chatbox-messages {
@@ -7851,6 +7856,15 @@ html, body, #root {
     max-width: none !important;
   }
 
+}
+
+/* Hide the heart button on card list previews on mobile widths only — it's
+   already available inside the detail modal (.modal-bookmark-btn-mobile). */
+@media (max-width: 768px) {
+  .biz-card .bookmark-heart-btn,
+  .database-news-card .bookmark-heart-btn {
+    display: none !important;
+  }
 }
 
 /* Small phones */
@@ -8672,11 +8686,11 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  margin: 24px 0;
-  padding: 16px;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 10px;
   background: white;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 2px solid var(--border-neon);
 }
 
@@ -8684,14 +8698,14 @@ html, body, #root {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 44px;
-  height: 44px;
-  padding: 0 16px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 12px;
   background: white;
   border: 2px solid var(--border-neon);
   border-radius: 8px;
   color: var(--text-main);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -8714,8 +8728,8 @@ html, body, #root {
 }
 
 .pagination-number {
-  min-width: 44px;
-  height: 44px;
+  min-width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8723,7 +8737,7 @@ html, body, #root {
   border: 2px solid var(--border-neon);
   border-radius: 8px;
   color: var(--text-main);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;

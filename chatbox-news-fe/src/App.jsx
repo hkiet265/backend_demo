@@ -410,7 +410,6 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
           <div className="floating-chat-content">
             <div className="floating-chat-avatar-wrapper">
               <img src="/logochatbot.png" alt="Company" className="floating-chat-avatar" />
-              <div className="floating-chat-status"></div>
             </div>
             <div className="floating-chat-text">
               <span className="floating-chat-name">Chat với Company</span>
