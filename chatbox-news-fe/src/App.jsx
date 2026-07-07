@@ -127,46 +127,61 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [messages, setMessages] = useState([
-    { id: Date.now(), sender: 'ai', text: 'Chào bạn! Em là Em Tư đây. Em chuyên giúp bạn tìm tin tức nha. Hỏi em về tin gì cũng được!' }
+    { id: Date.now(), sender: 'ai', text: 'Chào anh/chị! 👋 Em là Company đây, chuyên "săn" tin tức và soi doanh nghiệp cho anh/chị. Hỏi em bất cứ điều gì nha! 😄' }
   ]);
  
   const fetchAllNews = async () => {
     try {
       setIsFetchNewsLoading(true);
-      const response = await fetch('/api/news?page=1&page_size=1000');
-      if (response.ok) {
-        const data = await response.json();
- 
-        const mappedNews = (data.data || []).map(news => ({
-          id: news.id,
-          tieu_de: news.title,
-          tom_tat: news.summary,
-          nha_dai: news.source,
-          vung_mien: news.region,
-          chuyen_muc: news.category,
-          created_at: news.created_at,
-          url: news.url,
-          anh_dai_dien: news.image,
-          thoi_gian_dang: news.published_at,
-          tu_khoa: news.keywords,
-          do_tin_cay: news.trust_score,
-          trang_thai: news.status
-        }));
 
-        const sortedNews = mappedNews.sort((a, b) => {
-          const dateA = new Date(a.created_at || a.thoi_gian_dang || 0);
-          const dateB = new Date(b.created_at || b.thoi_gian_dang || 0);
-          return dateB - dateA;
-        });
-        
-        console.log('📰 Đã tải tin tức:', sortedNews.length, 'bài');
-        if (sortedNews.length > 0) {
-          console.log('📅 Tin mới nhất:', sortedNews[0].tieu_de, '- Thời gian:', sortedNews[0].created_at);
-          console.log('📅 Tin cũ nhất:', sortedNews[sortedNews.length - 1].tieu_de, '- Thời gian:', sortedNews[sortedNews.length - 1].created_at);
-        }
-        
-        setAllNews(sortedNews);
+      // /api/news caps page_size at 1000 — station_news already has 1357+
+      // rows and keeps growing (auto-crawl every 30 min), so a single fetch
+      // silently drops the oldest articles. That's exactly why searching for
+      // a title that genuinely exists in the DB could come back empty: it
+      // was simply never loaded into this page's state. Page through
+      // everything instead of trusting one request to cover it all.
+      const PAGE_SIZE = 1000;
+      let allRows = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const resp = await fetch(`/api/news?page=${page}&page_size=${PAGE_SIZE}`);
+        if (!resp.ok) break;
+        const pageData = await resp.json();
+        allRows = allRows.concat(pageData.data || []);
+        totalPages = pageData.total_pages || 1;
+        page += 1;
+      } while (page <= totalPages);
+
+      const mappedNews = allRows.map(news => ({
+        id: news.id,
+        tieu_de: news.title,
+        tom_tat: news.summary,
+        nha_dai: news.source,
+        vung_mien: news.region,
+        chuyen_muc: news.category,
+        created_at: news.created_at,
+        url: news.url,
+        anh_dai_dien: news.image,
+        thoi_gian_dang: news.published_at,
+        tu_khoa: news.keywords,
+        do_tin_cay: news.trust_score,
+        trang_thai: news.status
+      }));
+
+      const sortedNews = mappedNews.sort((a, b) => {
+        const dateA = new Date(a.created_at || a.thoi_gian_dang || 0);
+        const dateB = new Date(b.created_at || b.thoi_gian_dang || 0);
+        return dateB - dateA;
+      });
+
+      console.log('📰 Đã tải tin tức:', sortedNews.length, 'bài');
+      if (sortedNews.length > 0) {
+        console.log('📅 Tin mới nhất:', sortedNews[0].tieu_de, '- Thời gian:', sortedNews[0].created_at);
+        console.log('📅 Tin cũ nhất:', sortedNews[sortedNews.length - 1].tieu_de, '- Thời gian:', sortedNews[sortedNews.length - 1].created_at);
       }
+
+      setAllNews(sortedNews);
     } catch (error) {
       console.error("Lỗi lấy danh sách bài viết từ Supabase:", error);
     } finally {
@@ -285,7 +300,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
           localStorage.setItem('chat_session_id', data.session_id);
         }
 
-        let reply = data.answer || "Em Tư đã xử lý yêu cầu của bạn.";
+        let reply = data.answer || "Company đã xử lý yêu cầu của bạn.";
  
         simulateStreaming(
           reply, 
@@ -305,7 +320,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
         throw new Error('API call failed');
       }
     } catch (error) {
-      let reply = `Xin lỗi, Em Tư gặp sự cố khi xử lý yêu cầu "${userText}". Backend có thể chưa chạy hoặc có lỗi kết nối.`;
+      let reply = `Xin lỗi, Company gặp sự cố khi xử lý yêu cầu "${userText}". Backend có thể chưa chạy hoặc có lỗi kết nối.`;
       setTimeout(() => { 
         simulateStreaming(reply, [], [], [], []);
       }, 500);
@@ -390,15 +405,15 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
         <button 
           className="floating-chat-button"
           onClick={() => setIsChatOpen(true)}
-          title="Chat với Em Tư"
+          title="Chat với Company"
         >
           <div className="floating-chat-content">
             <div className="floating-chat-avatar-wrapper">
-              <img src="/emtu2.0.png" alt="Em Tư" className="floating-chat-avatar" />
+              <img src="/logochatbot.png" alt="Company" className="floating-chat-avatar" />
               <div className="floating-chat-status"></div>
             </div>
             <div className="floating-chat-text">
-              <span className="floating-chat-name">Chat với Em Tư</span>
+              <span className="floating-chat-name">Chat với Company</span>
             </div>
           </div>
         </button>
@@ -409,43 +424,13 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
           <div className="chat-popup-header">
             <div className="chat-popup-title">
               <div className="chat-popup-icon">
-                <img src="/emtu2.0.png" alt="Em Tư" className="chat-popup-avatar" />
+                <img src="/logochatbot.png" alt="Company" className="chat-popup-avatar" />
               </div>
               <div>
-                <h3>Em Tư trợ lý</h3>
-                <p>Tìm tin tức kiếm Em Tư</p>
+                <h3>Company trợ lý</h3>
+                <p>hãy hỏi khi cần trợ giúp</p>
               </div>
             </div>
-            <button 
-              className="clear-chat-btn"
-              onClick={clearConversation}
-              title="Xóa lịch sử chat"
-              style={{ 
-                marginRight: '8px',
-                padding: '8px 16px',
-                background: 'white',
-                border: '2px solid #E5E7EB',
-                borderRadius: '8px',
-                color: '#D71E28',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#FEF2F2';
-                e.currentTarget.style.borderColor = '#D71E28';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'white';
-                e.currentTarget.style.borderColor = '#E5E7EB';
-              }}
-            >
-              🗑️ Xóa chat
-            </button>
             <button className="chat-popup-close" onClick={() => setIsChatOpen(false)}>✕</button>
           </div>
           <div className="chat-popup-content">
@@ -459,12 +444,10 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
               onNewsClick={(newsTitle) => {
                 setNewsSearchQuery(newsTitle);
                 setActiveTab('news');
-                setIsChatOpen(false);
               }}
               onBusinessCardClick={(bizName) => {
                 setSearchQuery(bizName);
                 setActiveTab('business');
-                setIsChatOpen(false);
               }}
             />
           </div>

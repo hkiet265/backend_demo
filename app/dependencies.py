@@ -10,13 +10,11 @@ from app.config import settings
 from app.services import (
     EmbeddingService,
     VectorService,
-    RAGService
 )
-from app.services.hybrid_chat_service import get_hybrid_chat_service, HybridChatService
- 
+from app.ai.pipeline import get_layered_chat_pipeline, LayeredChatPipeline
+
 _embedding_service = None
 _vector_service = None
-_rag_service = None
 _hybrid_chat_service = None
 
 
@@ -46,27 +44,18 @@ def get_vector_service() -> VectorService:
     return _vector_service
 
 
-@lru_cache()
-def get_rag_service() -> RAGService:
-    """Get or create RAG service singleton"""
-    global _rag_service
-    if _rag_service is None:
-        vector_service = get_vector_service()
-        _rag_service = RAGService(
-            vector_service=vector_service,
-            gemini_api_key=settings.GEMINI_API_KEY,
-            chat_model=settings.CHAT_MODEL,
-            use_groq=True
-        )
-    return _rag_service
+def get_hybrid_service() -> LayeredChatPipeline:
+    """
+    Get or create the chat pipeline singleton.
 
-
-def get_hybrid_service() -> HybridChatService:
-    """Get or create hybrid chat service singleton"""
+    Was feature-flagged between the legacy HybridChatService monolith and
+    this layered pipeline during migration; the legacy path has since been
+    removed (see AI_MIGRATION_PLAN.md). Kept as get_hybrid_service() so
+    app/api/chat.py doesn't need to change.
+    """
     global _hybrid_chat_service
     if _hybrid_chat_service is None:
-        rag_service = get_rag_service()
-        _hybrid_chat_service = get_hybrid_chat_service(rag_service)
+        _hybrid_chat_service = get_layered_chat_pipeline()
     return _hybrid_chat_service
 
 

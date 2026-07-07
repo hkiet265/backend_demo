@@ -30,11 +30,11 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
     <nav className="premium-navbar">
       <div className="nav-branding">
         <div className="nav-logo-glow">
-          <img src="/emtu2.0.png" alt="Em Tư" className="nav-logo-image" />
+          <img src="/logochatbot.png" alt="Company" className="nav-logo-image" />
         </div>
         <div className="nav-brand-text">
-          <h1>Em Tư</h1>
-          <p className="nav-description">Tìm tin tức kiếm Em Tư</p>
+          <h1>Company</h1>
+          <p className="nav-description">tuyển dụng thông minh - tin tức cập nhật</p>
         </div>
         
         <div className="nav-tabs-wrapper">
@@ -42,14 +42,14 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
             className={`nav-tab-item ${activeTab === 'business' ? 'active' : ''}`}
             onClick={() => setActiveTab('business')}
           >
-            <Building2 size={16} /> Em Tư Doanh Nghiệp
+            <Building2 size={16} /> Doanh Nghiệp
           </button>
           
           <button 
             className={`nav-tab-item ${activeTab === 'news' ? 'active' : ''}`}
             onClick={() => setActiveTab('news')}
           >
-            <Newspaper size={16} /> Em Tư Tin Tức
+            <Newspaper size={16} /> Tin Tức
           </button>
 
           {currentUser && (
@@ -135,7 +135,7 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
               onClick={() => handleTabChange('business')}
             >
               <Building2 size={18} />
-              <span>Em Tư Doanh Nghiệp</span>
+              <span>Company Doanh Nghiệp</span>
             </button>
             
             <button 
@@ -143,7 +143,7 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
               onClick={() => handleTabChange('news')}
             >
               <Newspaper size={18} />
-              <span>Em Tư Tin Tức</span>
+              <span>Company Tin Tức</span>
             </button>
 
             {currentUser && (

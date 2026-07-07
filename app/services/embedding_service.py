@@ -86,7 +86,7 @@ class EmbeddingService:
                         
                         # Mark current key as exhausted and rotate
                         current_key = self.api_key_manager.get_current_key()
-                        self.api_key_manager.mark_key_quota_exceeded(current_key, retry_after=60)
+                        self.api_key_manager.mark_key_quota_exceeded(current_key, retry_after_seconds=60)
                         
                         # Reconfigure with new key
                         self.api_key_manager.configure_genai()

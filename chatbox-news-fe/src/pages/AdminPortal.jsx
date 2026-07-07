@@ -55,9 +55,9 @@ const AdminPortal = ({ currentUser, onLogout }) => {
       <aside className={`admin-sidebar ${showSidebar ? 'show' : ''}`}>
         <div className="admin-sidebar-header">
           <div className="admin-logo">
-            <img src="/emtu2.0.png" alt="Em Tư Admin" />
+            <img src="/logochatbot.png" alt="Company Admin" />
           </div>
-          <h2>Em Tư Admin</h2>
+          <h2>Company Admin</h2>
           <p className="admin-subtitle">Control Panel</p>
         </div>
 

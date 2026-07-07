@@ -1,16 +1,38 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: emtu_redis
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - emtu_network
+    restart: unless-stopped
+
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: emtu_backend
+    depends_on:
+      redis:
+        condition: service_healthy
     environment:
       - DB_HOST=aws-1-ap-northeast-1.pooler.supabase.com
-      - DB_PORT=5432
+      # Transaction-mode pooler (6543), not session-mode (5432, pool_size 15
+      # was exhausted — every DB call in this app opens/closes its own
+      # connection instead of sharing a pool, session mode can't absorb that).
+      - DB_PORT=6543
       - DB_USER=postgres.bfiocjgmrhngahagpoas
       - DB_PASSWORD=Hokhaikiet265@
       - DB_NAME=postgres
       - DB_SSLMODE=require
+      - REDIS_URL=redis://redis:6379/0
       - GEMINI_API_KEY_1=${GEMINI_API_KEY_1}
       - GEMINI_API_KEY_2=${GEMINI_API_KEY_2}
       - GEMINI_API_KEY_3=${GEMINI_API_KEY_3}
@@ -26,8 +48,11 @@ services:
       - GROQ_API_KEY_3=${GROQ_API_KEY_3}
       - USE_GROQ_FOR_GENERATION=true
       - FALLBACK_TO_GEMINI=true
-      - EMBEDDING_MODEL=models/text-embedding-004
-      - CHAT_MODEL=gemini-1.5-flash
+      # Was models/text-embedding-004 + gemini-1.5-flash — both retired by
+      # Google (404 on generateContent/embedContent). Matched to .env's
+      # working values.
+      - EMBEDDING_MODEL=gemini-embedding-2
+      - CHAT_MODEL=gemini-2.5-flash
       - EMBEDDING_DIMENSION=768
       - JWT_SECRET=emtu_secret_key_2024
       - JWT_EXPIRATION_DAYS=30
@@ -71,3 +96,6 @@ services:
 networks:
   emtu_network:
     driver: bridge
+
+volumes:
+  redis_data:

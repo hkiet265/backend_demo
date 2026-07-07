@@ -1,9 +1,27 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: emtu_redis_prod
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - emtu_network
+    restart: always
+
   backend:
     build:
       context: .
       dockerfile: Dockerfile.prod
     container_name: emtu_backend_prod
+    depends_on:
+      redis:
+        condition: service_healthy
     environment:
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
@@ -11,6 +29,9 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
       - DB_SSLMODE=${DB_SSLMODE}
+      # Set REDIS_URL in .env to point at an external managed Redis instead,
+      # if you don't want the bundled redis container.
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - GEMINI_API_KEY_1=${GEMINI_API_KEY_1}
       - GEMINI_API_KEY_2=${GEMINI_API_KEY_2}
       - GEMINI_API_KEY_3=${GEMINI_API_KEY_3}
@@ -61,3 +82,6 @@ networks:
     driver: bridge
   shared-web:
     external: true
+
+volumes:
+  redis_data:
