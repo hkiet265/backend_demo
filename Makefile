@@ -2,7 +2,7 @@
 
 # Help command
 help:
-	@echo "🐳 Em Tư Docker Commands"
+	@echo "🐳 Company Docker Commands"
 	@echo ""
 	@echo "Development:"
 	@echo "  make build          - Build all containers"

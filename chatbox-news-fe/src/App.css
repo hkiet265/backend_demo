@@ -1079,10 +1079,10 @@ html, body, #root {
     width: 72px;
   }
   3.6% {  /* 0.5s - fully expanded */
-    width: 210px;
+    width: 240px;
   }
   25% {  /* 3.5s - still expanded with text */
-    width: 210px;
+    width: 240px;
   }
   28.6% {  /* 4s - collapsed */
     width: 72px;
@@ -1098,7 +1098,7 @@ html, body, #root {
     0 12px 32px rgba(215, 30, 40, 0.25),
     0 4px 12px rgba(0, 0, 0, 0.12);
   animation-play-state: paused;
-  width: 210px !important;
+  width: 240px !important;
 }
 
 .floating-chat-button:active {
@@ -1116,13 +1116,21 @@ html, body, #root {
 .floating-chat-avatar-wrapper {
   position: relative;
   flex-shrink: 0;
-}
-
-.floating-chat-avatar {
   width: 56px;
   height: 56px;
   border-radius: 50%;
+  overflow: hidden;
+}
+
+.floating-chat-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
   object-fit: cover;
+  /* logochatbot.png's character isn't centered in its own square canvas —
+     scale up and nudge so the crop window recenters it inside the circle
+     instead of showing it off to one side. */
+  transform: scale(1.08) translate(-2%, -3%);
   border: none;
   box-shadow: none;
   background: transparent;
@@ -1246,6 +1254,7 @@ html, body, #root {
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
+  transform: scale(1.08) translate(-2%, -3%);
 }
 
 .chat-popup-title h3 {
@@ -7842,10 +7851,6 @@ html, body, #root {
     max-width: none !important;
   }
 
-  /* Bookmark heart button */
-  .bookmark-heart-btn {
-    display: none !important;
-  }
 }
 
 /* Small phones */

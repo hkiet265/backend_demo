@@ -106,13 +106,13 @@ function AuthView({ onLoginSuccess }) {
       <div className="auth-card"> 
         <div className="auth-header">
           <div className="auth-logo">
-            <img src="/emtu2.0.png" alt="Em Tư" className="auth-avatar" />
+            <img src="/logochatbot.png" alt="Company" className="auth-avatar" />
           </div>
           <h2>{isLogin ? 'Đăng nhập' : 'Đăng ký'}</h2>
           <p>
             {isLogin 
-              ? 'chào mừng bạn đến với Em Tư' 
-              : 'Tạo tài khoản mới để sử dụng Em Tư'}
+              ? 'chào mừng bạn đến với Company' 
+              : 'Tạo tài khoản mới để sử dụng Company'}
           </p>
         </div>
  

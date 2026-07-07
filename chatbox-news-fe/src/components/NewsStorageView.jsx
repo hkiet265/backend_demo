@@ -298,7 +298,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
               color: 'var(--text-main)',
               lineHeight: '1.2'
             }}>
-              Xem tin tức cùng Em Tư
+              Xem tin tức cùng Company
             </h3>
             <p style={{ 
               margin: '0', 
@@ -369,13 +369,13 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
         {isFetchNewsLoading ? (
           <div className="loading-state">
             <Spinner />
-            <p className="loading-state-text">Em Tư đang lùng sục tin tức khắp nơi cho bạn...</p>
+            <p className="loading-state-text">Company đang lùng sục tin tức khắp nơi cho bạn...</p>
           </div>
         ) : filteredNews.length === 0 ? (
           <div className="empty-state">
             <p>
               {searchQuery || selectedCategory !== 'all' 
-                ? `em Tư Không tìm thấy tin tức phù hợp với "${searchQuery || selectedCategory}"`
+                ? `Company Không tìm thấy tin tức phù hợp với "${searchQuery || selectedCategory}"`
                 : 'Kho tin tức trống'}
             </p>
           </div>

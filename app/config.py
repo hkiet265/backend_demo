@@ -44,6 +44,8 @@ class Settings(BaseSettings):
 
     LOGFIRE_TOKEN: str = ""
     LOGFIRE_READ_TOKEN: str = ""
+
+    REDIS_URL: str = ""
     
     ENCRYPTION_KEY: str = ""
 
@@ -54,8 +56,23 @@ class Settings(BaseSettings):
     USE_GROQ_FOR_GENERATION: bool = True
     FALLBACK_TO_GEMINI: bool = True
 
-    USE_AI_CHAT: bool = False 
-    AI_CHAT_DEFAULT: bool = False  
+    # Đổi nhà cung cấp AI mà không cần sửa code: chỉnh 2 dòng này trong .env.
+    # LLM_PROVIDERS: chuỗi thứ tự fallback cho sinh câu trả lời/smalltalk,
+    # ví dụ "groq,gemini" hoặc "deepseek,claude". Xem app/services/llm_provider.py
+    # để biết danh sách provider hỗ trợ (groq, gemini, openai, deepseek, claude).
+    LLM_PROVIDERS: str = "groq,gemini"
+    QUERY_UNDERSTANDING_PROVIDER: str = "gemini"
+
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_MODEL: str = "deepseek-chat"
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20241022"
+
+    USE_AI_CHAT: bool = False
+    AI_CHAT_DEFAULT: bool = False
 
     RAG_TOP_K: int = 5
     RAG_SIMILARITY_THRESHOLD: float = 0.3

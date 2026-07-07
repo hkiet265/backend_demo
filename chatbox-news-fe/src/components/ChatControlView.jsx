@@ -25,6 +25,7 @@ function ChatControlView({
 }) {
   const chatEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const chatInputRef = useRef(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
 
   const checkIfAtBottom = () => {
@@ -45,6 +46,16 @@ function ChatControlView({
   useEffect(() => {
     scrollToBottom();
   }, [messages, isChatLoading]);
+
+  // The input is disabled while waiting for a reply (disabled={isChatLoading}),
+  // and a disabled element can't hold focus — the browser drops it. Once
+  // loading finishes and the input re-enables, nothing put focus back, so
+  // the user had to click the input again for every single message.
+  useEffect(() => {
+    if (!isChatLoading) {
+      chatInputRef.current?.focus();
+    }
+  }, [isChatLoading]);
  
   const handleQuickAction = (actionText) => {
     setChatInput(actionText);
@@ -160,10 +171,11 @@ function ChatControlView({
 
       <form onSubmit={handleSendChat} className="chatbox-input-form">
         <input
+          ref={chatInputRef}
           type="text"
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
-          placeholder="Hãy hỏi Em Tư"
+          placeholder="Hãy hỏi Company"
           disabled={isChatLoading}
         />
         <button type="submit" disabled={isChatLoading || !chatInput.trim()}>

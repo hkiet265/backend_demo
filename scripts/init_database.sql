@@ -1,4 +1,4 @@
--- Em Tư Database Initialization Script
+-- Company Database Initialization Script
 -- This script sets up all tables and sample data
 
 -- Enable pgvector extension

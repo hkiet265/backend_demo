@@ -40,12 +40,20 @@ ON station_news(vung_mien, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_news_category_created 
 ON station_news(chuyen_muc, created_at DESC);
 
--- Full-text search index cho tìm kiếm tiếng Việt
--- (Requires PostgreSQL with Vietnamese dictionary)
--- CREATE INDEX IF NOT EXISTS idx_news_fulltext 
--- ON station_news USING gin(
---     to_tsvector('vietnamese', COALESCE(tieu_de, '') || ' ' || COALESCE(tom_tat, ''))
--- );
+-- Full-text search tiếng Việt
+-- Instance Postgres này (Supabase) KHÔNG có text-search config 'vietnamese'
+-- (SELECT cfgname FROM pg_ts_config → không có), nên to_tsvector('vietnamese', ...) sẽ lỗi.
+-- Dùng pg_trgm (trigram) thay thế: không cần dictionary theo ngôn ngữ, tăng tốc
+-- trực tiếp các query ILIKE '%...%' đang dùng trong hybrid_chat_service.py /
+-- semantic_business_service.py.
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
+CREATE INDEX IF NOT EXISTS idx_news_tieude_trgm
+ON station_news USING gin (tieu_de gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS idx_news_tomtat_trgm
+ON station_news USING gin (tom_tat gin_trgm_ops);
 
 -- ===============================================
 -- BUSINESSES_DEMO TABLE INDEXES
@@ -68,8 +76,15 @@ CREATE INDEX IF NOT EXISTS idx_business_updated
 ON businesses_demo(updated_at DESC);
 
 -- Index cho search theo tên doanh nghiệp
-CREATE INDEX IF NOT EXISTS idx_business_name 
+CREATE INDEX IF NOT EXISTS idx_business_name
 ON businesses_demo(ten_doanh_nghiep);
+
+-- Trigram index cho ILIKE '%...%' fuzzy match tên công ty / ngành nghề
+CREATE INDEX IF NOT EXISTS idx_business_name_trgm
+ON businesses_demo USING gin (ten_doanh_nghiep gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS idx_business_nganh_trgm
+ON businesses_demo USING gin (nganh_nghe gin_trgm_ops);
 
 -- Composite index cho filter thường dùng
 CREATE INDEX IF NOT EXISTS idx_business_region_trust 

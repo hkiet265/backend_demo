@@ -12,7 +12,9 @@ const UnifiedNotificationBell = ({ currentUser }) => {
   const [showPopover, setShowPopover] = useState(false);
   const [activeTab, setActiveTab] = useState('all'); // all, alerts, notifications
   const [unreadCount, setUnreadCount] = useState(0);
+  const [panelPos, setPanelPos] = useState({ top: 0, right: 16 });
   const popoverRef = useRef(null);
+  const bellBtnRef = useRef(null);
 
   const API_BASE = '';
 
@@ -233,8 +235,18 @@ const UnifiedNotificationBell = ({ currentUser }) => {
   return (
     <div style={{ position: 'relative' }} ref={popoverRef}>
       <button
+        ref={bellBtnRef}
         className={`unified-bell-btn ${unreadCount > 0 ? 'has-alerts' : ''}`}
-        onClick={() => setShowPopover(!showPopover)}
+        onClick={() => {
+          if (!showPopover && bellBtnRef.current) {
+            const rect = bellBtnRef.current.getBoundingClientRect();
+            setPanelPos({
+              top: rect.bottom + 12,
+              right: Math.max(16, window.innerWidth - rect.right),
+            });
+          }
+          setShowPopover(!showPopover);
+        }}
         title={`${unreadCount} thông báo mới`}
         style={{
           position: 'relative',
@@ -285,10 +297,11 @@ const UnifiedNotificationBell = ({ currentUser }) => {
 
       {showPopover && (
         <div className="unified-notification-dropdown" style={{
-          position: 'absolute',
-          top: 'calc(100% + 12px)',
-          right: 0,
-          width: '450px',
+          position: 'fixed',
+          top: `${panelPos.top}px`,
+          right: `${panelPos.right}px`,
+          left: 'auto',
+          width: 'min(450px, calc(100vw - 32px))',
           maxHeight: '600px',
           background: 'white',
           border: '2px solid var(--border-neon)',
@@ -525,10 +538,10 @@ const UnifiedNotificationBell = ({ currentUser }) => {
                         }}>
                           {getSeverityIcon(severity)}
                         </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
                             gap: '8px',
                             marginBottom: '6px',
                             flexWrap: 'wrap'
@@ -567,7 +580,9 @@ const UnifiedNotificationBell = ({ currentUser }) => {
                             fontSize: '14px',
                             fontWeight: '600',
                             color: 'var(--text-main)',
-                            lineHeight: '1.4'
+                            lineHeight: '1.4',
+                            overflowWrap: 'break-word',
+                            wordBreak: 'break-word'
                           }}>
                             {isBusinessAlert ? item.business_name : item.title}
                           </p>
@@ -575,7 +590,9 @@ const UnifiedNotificationBell = ({ currentUser }) => {
                             margin: 0,
                             fontSize: '13px',
                             color: 'var(--text-dim)',
-                            lineHeight: '1.5'
+                            lineHeight: '1.5',
+                            overflowWrap: 'break-word',
+                            wordBreak: 'break-word'
                           }}>
                             {item.message}
                           </p>

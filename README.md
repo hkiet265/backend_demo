@@ -1,4 +1,4 @@
-# Em Tư News - AI-Powered News & Business Management Platform
+# Company News - AI-Powered News & Business Management Platform
 
 Nền tảng quản lý tin tức và doanh nghiệp được hỗ trợ bởi AI, tích hợp RAG (Retrieval-Augmented Generation) cho chatbot thông minh.
 
@@ -46,7 +46,7 @@ Chờ 30-60 giây để containers khởi động, sau đó truy cập:
 
 ## 📖 Tổng quan
 
-**Em Tư News** là nền tảng AI bao gồm:
+**Company News** là nền tảng AI bao gồm:
 
 ### Core Features
 

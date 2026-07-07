@@ -421,7 +421,7 @@ function BusinessManagementView({
               color: 'var(--text-main)',
               lineHeight: '1.2'
             }}>
-              Tìm việc làm cùng Em Tư
+              Tìm việc làm cùng Company
             </h3>
             <p style={{ 
               margin: '0', 
@@ -554,7 +554,7 @@ function BusinessManagementView({
                 className={`category-filter-btn ${regionFilter === r ? 'active' : ''}`}
                 onClick={() => setRegionFilter(r)}
               >
-                {r === 'all' ? 'Tất cả' : r === 'Bac' ? '🏙️ Miền Bắc' : r === 'Trung' ? '🌊 Miền Trung' : '🌴 Miền Nam'}
+                {r === 'all' ? 'Tất cả' : r === 'Bac' ? ' Miền Bắc' : r === 'Trung' ? ' Miền Trung' : 'Miền Nam'}
               </button>
             ))}
           </div>
@@ -563,11 +563,11 @@ function BusinessManagementView({
         {isLoading ? (
           <div className="loading-state">
             <div className="spinner" />
-            <p>Em Tư đang tìm kiếm doanh nghiệp cho bạn...</p>
+            <p>Company đang tìm kiếm doanh nghiệp cho bạn...</p>
           </div>
         ) : businesses.length === 0 ? (
           <div className="empty-state">
-            <p>{searchQuery ? `Không tìm thấy doanh nghiệp nào khớp với "${searchQuery}"` : 'Em Tư không tìm thấy doanh nghiêp nào cả'}</p>
+            <p>{searchQuery ? `Không tìm thấy doanh nghiệp nào khớp với "${searchQuery}"` : 'Company không tìm thấy doanh nghiêp nào cả'}</p>
           </div>
         ) : (
           <>
