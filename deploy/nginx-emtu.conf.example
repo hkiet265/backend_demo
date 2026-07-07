@@ -6,16 +6,24 @@
 
 server {
     listen 80;
-    server_name staging.emtu.deligo.vn;
-    return 301 https://$host$request_uri;
+    server_name company.deligroupvn.com;
+
+    # keep this reachable over plain HTTP forever so certbot webroot renewal keeps working
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
 }
 
 server {
     listen 443 ssl;
-    server_name staging.emtu.deligo.vn;
+    server_name company.deligroupvn.com;
 
-    ssl_certificate /etc/letsencrypt/live/staging.emtu.deligo.vn/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/staging.emtu.deligo.vn/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/company.deligroupvn.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/company.deligroupvn.com/privkey.pem;
 
     add_header X-Frame-Options "SAMEORIGIN";
     add_header X-Content-Type-Options "nosniff";
