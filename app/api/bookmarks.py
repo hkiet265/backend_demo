@@ -289,6 +289,24 @@ async def check_business_bookmarked(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/businesses/{business_id}/count")
+async def get_business_favorite_count(business_id: int):
+    """Real count of how many users have favorited this business (public, no auth needed)"""
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT COUNT(*) FROM user_bookmarks_businesses WHERE business_id = %s",
+                (business_id,)
+            )
+            count = cur.fetchone()[0]
+            cur.close()
+        return {"business_id": business_id, "favorite_count": count}
+    except Exception as e:
+        logger.error(f"Error counting business favorites: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/stats")
 async def get_bookmark_stats(
     current_user: dict = Depends(get_current_user)

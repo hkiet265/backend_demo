@@ -1,4 +1,4 @@
-import { Building2, Newspaper, LogOut, User, Settings, ChevronDown, Heart, Menu, X } from 'lucide-react';
+import { Home, Building2, Newspaper, LogOut, User, Settings, ChevronDown, Heart, Menu, X, Bookmark } from 'lucide-react';
 import { useState } from 'react';
 import UnifiedNotificationBell from '../../UnifiedNotificationBell';
 import './NavigationBar.css';
@@ -38,7 +38,14 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
         </div>
         
         <div className="nav-tabs-wrapper">
-          <button 
+          <button
+            className={`nav-tab-item ${activeTab === 'home' ? 'active' : ''}`}
+            onClick={() => setActiveTab('home')}
+          >
+            <Home size={16} /> Trang Chủ
+          </button>
+
+          <button
             className={`nav-tab-item ${activeTab === 'business' ? 'active' : ''}`}
             onClick={() => setActiveTab('business')}
           >
@@ -89,11 +96,13 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
           {currentUser ? (
             <>
               <div className="nav-user-dropdown">
-                <button 
-                  className="nav-user-btn" 
+                <button
+                  className="nav-user-btn"
                   onClick={() => setShowUserMenu(!showUserMenu)}
                 >
-                  <User size={18} />
+                  <span className="nav-user-avatar">
+                    <User size={16} />
+                  </span>
                   <span className="nav-user-name">{currentUser.full_name}</span>
                   <ChevronDown size={16} className={`dropdown-arrow ${showUserMenu ? 'open' : ''}`} />
                 </button>
@@ -125,91 +134,117 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
         </div>
       </div>
 
-      {/* Mobile menu dropdown - positioned on the right side */}
+      {/* Mobile slide-in drawer */}
       {showMobileMenu && (
         <>
-          <div className="mobile-menu-overlay" onClick={() => setShowMobileMenu(false)} />
-          <div className="mobile-menu-dropdown">
-            <button 
-              className={`mobile-menu-item ${activeTab === 'business' ? 'active' : ''}`}
-              onClick={() => handleTabChange('business')}
-            >
-              <Building2 size={18} />
-              <span>Company Doanh Nghiệp</span>
-            </button>
-            
-            <button 
-              className={`mobile-menu-item ${activeTab === 'news' ? 'active' : ''}`}
-              onClick={() => handleTabChange('news')}
-            >
-              <Newspaper size={18} />
-              <span>Company Tin Tức</span>
-            </button>
+          <div className="mobile-drawer-overlay" onClick={() => setShowMobileMenu(false)} />
+          <div className="mobile-drawer">
+            <div className="mobile-drawer-topbar">
+              <button className="mobile-drawer-close" onClick={() => setShowMobileMenu(false)}>
+                <X size={22} />
+              </button>
+            </div>
 
-            {currentUser && (
-              <>
-                <button 
-                  className={`mobile-menu-item ${activeTab === 'favorites' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('favorites')}
-                >
-                  <Heart size={18} />
-                  <span>Yêu Thích</span>
-                </button>
-                
-                <button 
-                  className={`mobile-menu-item ${activeTab === 'my-businesses' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('my-businesses')}
-                >
-                  <span>DN Của Tôi</span>
-                </button>
-              </>
-            )}
+            <div className="mobile-drawer-profile">
+              <img src="/logochatbot.png" alt="Company" className="mobile-drawer-avatar" />
+              {currentUser ? (
+                <div>
+                  <p className="mobile-drawer-greeting">Chào {currentUser.full_name}!</p>
+                  <p className="mobile-drawer-subtext">{currentUser.email}</p>
+                </div>
+              ) : (
+                <div>
+                  <p className="mobile-drawer-greeting">Chào bạn!</p>
+                  <p className="mobile-drawer-subtext">Đăng nhập để trải nghiệm toàn bộ tính năng</p>
+                </div>
+              )}
+            </div>
 
-            {/* Divider */}
-            <div className="mobile-menu-divider"></div>
-
-            {/* Action buttons inside dropdown */}
             {currentUser ? (
-              <>
-                <button 
-                  className="mobile-menu-item mobile-menu-action"
-                  onClick={() => {
-                    setShowMobileMenu(false);
-                    onShowEditProfile();
-                  }}
+              <div className="mobile-drawer-auth-row">
+                <button
+                  className="mobile-drawer-btn mobile-drawer-btn-outline"
+                  onClick={() => { setShowMobileMenu(false); onShowEditProfile(); }}
                 >
-                  <Settings size={18} />
-                  <span>Chỉnh sửa hồ sơ</span>
+                  <Settings size={15} /> Chỉnh sửa hồ sơ
                 </button>
-
-                <button 
-                  className="mobile-menu-item mobile-menu-action mobile-menu-logout"
-                  onClick={() => {
-                    setShowMobileMenu(false);
-                    onLogout();
-                  }}
+                <button
+                  className="mobile-drawer-btn mobile-drawer-btn-outline mobile-drawer-btn-danger"
+                  onClick={() => { setShowMobileMenu(false); onLogout(); }}
                 >
-                  <LogOut size={18} />
-                  <span>Đăng xuất</span>
+                  <LogOut size={15} /> Đăng xuất
                 </button>
-              </>
+              </div>
             ) : (
-              <>
-                <button 
-                  className="mobile-menu-item mobile-menu-action mobile-menu-login"
-                  onClick={() => {
-                    setShowMobileMenu(false);
-                    onShowAuth();
-                  }}
+              <div className="mobile-drawer-auth-row">
+                <button
+                  className="mobile-drawer-btn mobile-drawer-btn-primary"
+                  onClick={() => { setShowMobileMenu(false); onShowAuth('login'); }}
                 >
-                  <User size={18} />
-                  <span>Đăng nhập</span>
+                  Đăng nhập
                 </button>
-              </>
+                <button
+                  className="mobile-drawer-btn mobile-drawer-btn-outline"
+                  onClick={() => { setShowMobileMenu(false); onShowAuth('register'); }}
+                >
+                  Đăng ký
+                </button>
+              </div>
             )}
+
+            <p className="mobile-drawer-section-title">Truy cập nhanh</p>
+            <div className="mobile-drawer-quick-grid">
+              <button className="mobile-drawer-quick-item" onClick={() => handleTabChange('news')}>
+                <Newspaper size={18} />
+                <span>Tin tức</span>
+              </button>
+              <button className="mobile-drawer-quick-item" onClick={() => handleTabChange('business')}>
+                <Building2 size={18} />
+                <span>Doanh nghiệp</span>
+              </button>
+              {currentUser && (
+                <>
+                  <button className="mobile-drawer-quick-item" onClick={() => handleTabChange('favorites')}>
+                    <Heart size={18} />
+                    <span>Yêu thích</span>
+                  </button>
+                  <button className="mobile-drawer-quick-item" onClick={() => handleTabChange('my-businesses')}>
+                    <Bookmark size={18} />
+                    <span>DN của tôi</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </>
       )}
+
+      {/* Bottom tab bar - mobile only */}
+      <div className="mobile-bottom-tabbar">
+        <button className={`bottom-tab-item ${activeTab === 'home' ? 'active' : ''}`} onClick={() => handleTabChange('home')}>
+          <Home size={20} />
+          <span>Trang chủ</span>
+        </button>
+        <button className={`bottom-tab-item ${activeTab === 'business' ? 'active' : ''}`} onClick={() => handleTabChange('business')}>
+          <Building2 size={20} />
+          <span>Doanh nghiệp</span>
+        </button>
+        <button className={`bottom-tab-item ${activeTab === 'news' ? 'active' : ''}`} onClick={() => handleTabChange('news')}>
+          <Newspaper size={20} />
+          <span>Tin tức</span>
+        </button>
+        <button
+          className={`bottom-tab-item ${activeTab === 'favorites' ? 'active' : ''}`}
+          onClick={() => currentUser ? handleTabChange('favorites') : onShowAuth('login')}
+        >
+          <Heart size={20} />
+          <span>Yêu thích</span>
+        </button>
+        <button className="bottom-tab-item" onClick={() => setShowMobileMenu(true)}>
+          <User size={20} />
+          <span>Tài khoản</span>
+        </button>
+      </div>
     </nav>
   );
 }

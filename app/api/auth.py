@@ -8,11 +8,13 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import hashlib
 import jwt
+import secrets
 from datetime import datetime, timedelta
 import logging
 from app.config import settings
 from app.middleware.rate_limiter import limiter, AUTH_RATE_LIMIT
 from app.database import get_db_connection
+from app.services.email_service import send_password_reset_email
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -130,26 +132,31 @@ async def login(request: Request, login_request: LoginRequest):
             cur = conn.cursor(cursor_factory=RealDictCursor)
             
             cur.execute("""
-                SELECT id, email, full_name, phone, role, created_at, password_hash
+                SELECT id, email, full_name, phone, role, created_at, password_hash, status
                 FROM app_users
                 WHERE email = %s
             """, (login_request.email,))
-            
+
             user = cur.fetchone()
-            
+
             if not user:
                 raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
-            
+
             if not verify_password(login_request.password, user['password_hash']):
                 raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
-            
+
+            if user.get('status') == 'locked':
+                raise HTTPException(status_code=403, detail="Tài khoản của bạn đã bị khóa")
+
             user_dict = dict(user)
             user_dict.pop('password_hash', None)
-            
+
             token = generate_jwt_token(user_dict)
 
+            cur.execute("UPDATE app_users SET last_login = NOW() WHERE id = %s", (user['id'],))
+            conn.commit()
             cur.close()
-            
+
             logger.info(f"User logged in: {user['email']}")
             
             return AuthResponse(
@@ -169,6 +176,91 @@ async def login(request: Request, login_request: LoginRequest):
     except Exception as e:
         logger.error(f"Login failed: {e}")
         raise HTTPException(status_code=500, detail=f"Đăng nhập thất bại: {str(e)}")
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/forgot-password")
+@limiter.limit(AUTH_RATE_LIMIT)
+async def forgot_password(request: Request, forgot_request: ForgotPasswordRequest):
+    """
+    Request a password reset link. Always returns a generic success message
+    (even if the email doesn't exist) to avoid leaking which emails are registered.
+    """
+    generic_response = {
+        "status": "success",
+        "message": "Nếu email tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được gửi."
+    }
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT id, email FROM app_users WHERE email = %s", (forgot_request.email,))
+            user = cur.fetchone()
+
+            if not user:
+                return generic_response
+
+            reset_token = secrets.token_urlsafe(32)
+            expires_at = datetime.utcnow() + timedelta(hours=1)
+
+            cur.execute("""
+                UPDATE app_users SET reset_token = %s, reset_token_expires = %s WHERE id = %s
+            """, (reset_token, expires_at, user['id']))
+            conn.commit()
+            cur.close()
+
+            send_password_reset_email(user['email'], reset_token)
+            logger.info(f"Password reset requested for: {user['email']}")
+
+            return generic_response
+
+    except Exception as e:
+        logger.error(f"Forgot password failed: {e}")
+        raise HTTPException(status_code=500, detail="Không thể xử lý yêu cầu, vui lòng thử lại")
+
+
+@router.post("/reset-password")
+@limiter.limit(AUTH_RATE_LIMIT)
+async def reset_password(request: Request, reset_request: ResetPasswordRequest):
+    """Set a new password using a valid, non-expired reset token"""
+    if len(reset_request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Mật khẩu phải có ít nhất 6 ký tự")
+
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("""
+                SELECT id, email, reset_token_expires FROM app_users WHERE reset_token = %s
+            """, (reset_request.token,))
+            user = cur.fetchone()
+
+            if not user or not user['reset_token_expires'] or user['reset_token_expires'] < datetime.utcnow():
+                raise HTTPException(status_code=400, detail="Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn")
+
+            new_password_hash = hash_password(reset_request.new_password)
+            cur.execute("""
+                UPDATE app_users SET password_hash = %s, reset_token = NULL, reset_token_expires = NULL
+                WHERE id = %s
+            """, (new_password_hash, user['id']))
+            conn.commit()
+            cur.close()
+
+            logger.info(f"Password reset completed for: {user['email']}")
+
+            return {"status": "success", "message": "Đặt lại mật khẩu thành công, vui lòng đăng nhập lại"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Reset password failed: {e}")
+        raise HTTPException(status_code=500, detail="Không thể đặt lại mật khẩu, vui lòng thử lại")
 
 
 class UpdateProfileRequest(BaseModel):

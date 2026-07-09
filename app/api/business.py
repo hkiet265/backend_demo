@@ -18,6 +18,8 @@ import logging
 import csv
 import io
 import hashlib
+import os
+import uuid
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/businesses", tags=["business"])
@@ -51,6 +53,9 @@ class BusinessCreate(BaseModel):
     tags: Optional[str] = None
     ghi_chu: Optional[str] = None
     mo_ta: Optional[str] = None
+    nhan_su: Optional[int] = Field(None, ge=0)
+    dang_tuyen: Optional[int] = Field(None, ge=0)
+    logo_url: Optional[str] = None
 
 
 class BusinessUpdate(BaseModel):
@@ -77,6 +82,9 @@ class BusinessUpdate(BaseModel):
     tags: Optional[str] = None
     ghi_chu: Optional[str] = None
     mo_ta: Optional[str] = None
+    nhan_su: Optional[int] = Field(None, ge=0)
+    dang_tuyen: Optional[int] = Field(None, ge=0)
+    logo_url: Optional[str] = None
 
 
 class BulkImportRequest(BaseModel):
@@ -86,34 +94,58 @@ class BulkImportRequest(BaseModel):
 @router.get("")
 async def get_all_businesses(
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=100),
+    page_size: int = Query(50, ge=1, le=200),
     region: Optional[str] = None,
-    industry: Optional[str] = None
+    industry: Optional[str] = None,
+    province: Optional[str] = None,
+    status: Optional[str] = None,
+    scale: Optional[str] = None,
+    source: Optional[str] = None
 ):
     """
     Get all businesses with pagination and filters
-    
+
     - **page**: Page number (starts from 1)
-    - **page_size**: Number of items per page (max 100)
+    - **page_size**: Number of items per page (max 200)
     - **region**: Filter by region (optional)
     - **industry**: Filter by industry (optional)
+    - **province**: Filter by tinh_thanh (optional)
+    - **status**: Filter by exact trang_thai (optional)
+    - **scale**: Filter by exact quy_mo (optional)
+    - **source**: Filter by nguon_du_lieu (optional)
     """
     try:
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
-        
-        
+
+
         conditions = []
         params = []
-        
+
         if region:
             conditions.append("vung_mien ILIKE %s")
             params.append(f"%{region}%")
-        
+
         if industry:
             conditions.append("nganh_nghe ILIKE %s")
             params.append(f"%{industry}%")
-        
+
+        if province:
+            conditions.append("tinh_thanh ILIKE %s")
+            params.append(f"%{province}%")
+
+        if status:
+            conditions.append("trang_thai = %s")
+            params.append(status)
+
+        if scale:
+            conditions.append("quy_mo = %s")
+            params.append(scale)
+
+        if source:
+            conditions.append("nguon_du_lieu ILIKE %s")
+            params.append(f"%{source}%")
+
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         
         
@@ -127,19 +159,20 @@ async def get_all_businesses(
         query = f"""
             SELECT id, ten_doanh_nghiep, so_dien_thoai, vung_mien, tinh_thanh,
                    email, website, mo_ta, quy_mo, nganh_nghe, trang_thai,
-                   do_tin_cay, facebook, zalo, linkedin, dia_chi, tags, created_by_user_id
+                   do_tin_cay, facebook, zalo, linkedin, dia_chi, tags, created_by_user_id,
+                   nhan_su, dang_tuyen, created_at, logo_url, nguon_du_lieu, ma_so_thue, updated_at
             FROM businesses_demo
             {where_clause}
             ORDER BY id DESC
             LIMIT %s OFFSET %s;
         """
-        
+
         cur.execute(query, params)
         rows = cur.fetchall()
-        
+
         cur.close()
         conn.close()
-        
+
         businesses = []
         for r in rows:
             businesses.append({
@@ -160,7 +193,14 @@ async def get_all_businesses(
                 "linkedin": r[14],
                 "address": r[15],
                 "tags": r[16],
-                "created_by_user_id": r[17]
+                "created_by_user_id": r[17],
+                "nhan_su": r[18],
+                "dang_tuyen": r[19],
+                "created_at": r[20].isoformat() if r[20] else None,
+                "logo_url": r[21],
+                "source": r[22],
+                "tax_code": r[23],
+                "updated_at": r[24].isoformat() if r[24] else None
             })
         
         return {
@@ -204,19 +244,19 @@ async def get_my_businesses(
             SELECT id, ten_doanh_nghiep, so_dien_thoai, vung_mien, tinh_thanh,
                    email, website, mo_ta, quy_mo, nganh_nghe, trang_thai,
                    do_tin_cay, facebook, zalo, linkedin, dia_chi, tags, created_by_user_id,
-                   updated_at
+                   updated_at, nhan_su, dang_tuyen, created_at
             FROM businesses_demo
             WHERE created_by_user_id = %s
             ORDER BY updated_at DESC
             LIMIT %s OFFSET %s;
         """
-        
+
         cur.execute(query, (current_user["id"], page_size, offset))
         rows = cur.fetchall()
-        
+
         cur.close()
         conn.close()
-        
+
         businesses = []
         for r in rows:
             businesses.append({
@@ -238,8 +278,10 @@ async def get_my_businesses(
                 "address": r[15],
                 "tags": r[16],
                 "created_by_user_id": r[17],
-                "created_at": r[18].isoformat() if r[18] else None,
-                "updated_at": r[18].isoformat() if r[18] else None
+                "updated_at": r[18].isoformat() if r[18] else None,
+                "nhan_su": r[19],
+                "dang_tuyen": r[20],
+                "created_at": r[21].isoformat() if r[21] else None
             })
         
         return {
@@ -346,18 +388,20 @@ async def get_business(business_id: int):
         cur.execute("""
             SELECT id, ten_doanh_nghiep, so_dien_thoai, vung_mien, tinh_thanh,
                    email, website, mo_ta, quy_mo, nganh_nghe, trang_thai,
-                   do_tin_cay, facebook, zalo, linkedin, dia_chi, tags
+                   do_tin_cay, facebook, zalo, linkedin, dia_chi, tags,
+                   nhan_su, dang_tuyen, logo_url, ma_so_thue, ngay_thanh_lap,
+                   nguon_du_lieu, created_at, updated_at
             FROM businesses_demo
             WHERE id = %s;
         """, (business_id,))
-        
+
         row = cur.fetchone()
         cur.close()
         conn.close()
-        
+
         if not row:
             raise HTTPException(status_code=404, detail="Business not found")
-        
+
         return {
             "status": "success",
             "data": {
@@ -377,7 +421,15 @@ async def get_business(business_id: int):
                 "zalo": row[13],
                 "linkedin": row[14],
                 "address": row[15],
-                "tags": row[16]
+                "tags": row[16],
+                "nhan_su": row[17],
+                "dang_tuyen": row[18],
+                "logo_url": row[19],
+                "tax_code": row[20],
+                "founded_date": row[21].isoformat() if row[21] else None,
+                "source": row[22],
+                "created_at": row[23].isoformat() if row[23] else None,
+                "updated_at": row[24].isoformat() if row[24] else None
             }
         }
         
@@ -473,10 +525,11 @@ async def create_business(business: BusinessCreate, current_user: dict = Depends
                 ten_doanh_nghiep, nganh_nghe, vung_mien, tinh_thanh, quan_huyen,
                 dia_chi, website, email, so_dien_thoai, facebook, zalo, linkedin,
                 lat, lng, quy_mo, ma_so_thue, ngay_thanh_lap, trang_thai,
-                nguon_du_lieu, do_tin_cay, tags, ghi_chu, mo_ta, created_by_user_id, updated_at
+                nguon_du_lieu, do_tin_cay, tags, ghi_chu, mo_ta, nhan_su, dang_tuyen,
+                logo_url, created_by_user_id, updated_at
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW()
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW()
             ) RETURNING id;
         """, (
             business.ten_doanh_nghiep, business.nganh_nghe, business.vung_mien,
@@ -486,6 +539,7 @@ async def create_business(business: BusinessCreate, current_user: dict = Depends
             business.lat, business.lng, business.quy_mo, business.ma_so_thue,
             business.ngay_thanh_lap, business.trang_thai, business.nguon_du_lieu,
             business.do_tin_cay, business.tags, business.ghi_chu, business.mo_ta,
+            business.nhan_su, business.dang_tuyen, business.logo_url,
             current_user["id"]  # Save user who created this business
         ))
         
@@ -521,20 +575,20 @@ async def update_business(
             SELECT ten_doanh_nghiep, nganh_nghe, vung_mien, tinh_thanh, quan_huyen,
                    dia_chi, website, email, so_dien_thoai, facebook, zalo, linkedin,
                    quy_mo, ma_so_thue, ngay_thanh_lap, trang_thai, tags, ghi_chu, mo_ta,
-                   do_tin_cay
+                   do_tin_cay, nhan_su, dang_tuyen, logo_url
             FROM businesses_demo WHERE id = %s;
         """, (business_id,))
-        
+
         current_row = cur.fetchone()
         if not current_row:
             raise HTTPException(status_code=404, detail="Business not found")
-        
+
         # Map current values
         field_names = [
             'ten_doanh_nghiep', 'nganh_nghe', 'vung_mien', 'tinh_thanh', 'quan_huyen',
             'dia_chi', 'website', 'email', 'so_dien_thoai', 'facebook', 'zalo', 'linkedin',
             'quy_mo', 'ma_so_thue', 'ngay_thanh_lap', 'trang_thai', 'tags', 'ghi_chu', 'mo_ta',
-            'do_tin_cay'
+            'do_tin_cay', 'nhan_su', 'dang_tuyen', 'logo_url'
         ]
         current_values = dict(zip(field_names, current_row))
 
@@ -579,10 +633,9 @@ async def update_business(
         # Save edit history
         for history in history_records:
             cur.execute("""
-                INSERT INTO business_edit_history 
+                INSERT INTO business_edit_history
                 (business_id, user_id, field_name, old_value, new_value, edited_at)
-                VALUES (%s, %s, %s, %s, %s, NOW())
-                ON CONFLICT (business_id, edited_at, field_name) DO NOTHING;
+                VALUES (%s, %s, %s, %s, %s, NOW());
             """, (
                 business_id,
                 current_user["id"],
@@ -656,6 +709,70 @@ async def delete_business(business_id: int, current_user: dict = Depends(get_cur
         raise
     except Exception as e:
         logger.error(f"Delete business error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+ALLOWED_LOGO_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml"}
+ALLOWED_LOGO_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
+
+
+@router.post("/{business_id}/upload-logo")
+async def upload_business_logo(
+    business_id: int,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload a logo image for a business — only the owner or an admin may do this"""
+    try:
+        ext = os.path.splitext(file.filename or "")[1].lower()
+        if file.content_type not in ALLOWED_LOGO_TYPES or ext not in ALLOWED_LOGO_EXTENSIONS:
+            raise HTTPException(status_code=400, detail="Chỉ chấp nhận ảnh PNG, JPG, WEBP hoặc SVG")
+
+        contents = await file.read()
+        max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+        if len(contents) > max_bytes:
+            raise HTTPException(status_code=400, detail=f"Ảnh vượt quá {settings.MAX_UPLOAD_SIZE_MB}MB")
+
+        conn = psycopg2.connect(**settings.database_url)
+        cur = conn.cursor()
+
+        cur.execute("SELECT created_by_user_id FROM businesses_demo WHERE id = %s;", (business_id,))
+        result = cur.fetchone()
+        if not result:
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Doanh nghiệp không tồn tại")
+
+        created_by_user_id = result[0]
+        is_admin = current_user.get("role") == "admin"
+        is_owner = created_by_user_id == current_user["id"]
+        if not (is_admin or is_owner):
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=403, detail="Chỉ người tạo hoặc admin mới có quyền cập nhật logo")
+
+        logos_dir = os.path.join(settings.UPLOAD_DIR, "logos")
+        os.makedirs(logos_dir, exist_ok=True)
+        filename = f"{business_id}_{uuid.uuid4().hex}{ext}"
+        file_path = os.path.join(logos_dir, filename)
+        with open(file_path, "wb") as f:
+            f.write(contents)
+
+        logo_url = f"/uploads/logos/{filename}"
+        cur.execute(
+            "UPDATE businesses_demo SET logo_url = %s, updated_at = NOW() WHERE id = %s;",
+            (logo_url, business_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return {"status": "success", "logo_url": logo_url}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Upload logo error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

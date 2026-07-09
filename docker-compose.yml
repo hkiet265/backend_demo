@@ -64,6 +64,7 @@ services:
     volumes:
       - ./app:/app/app
       - ./scripts:/app/scripts
+      - ./uploads:/app/uploads
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -84,6 +85,8 @@ services:
     volumes:
       - ./chatbox-news-fe/src:/app/src
       - ./chatbox-news-fe/public:/app/public
+      - ./chatbox-news-fe/vite.config.js:/app/vite.config.js
+      - ./chatbox-news-fe/index.html:/app/index.html
       - /app/node_modules
     depends_on:
       - backend

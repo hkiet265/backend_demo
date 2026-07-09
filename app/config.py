@@ -49,6 +49,17 @@ class Settings(BaseSettings):
     
     ENCRYPTION_KEY: str = ""
 
+    # Password reset emails — leave SMTP_HOST empty to disable actual sending
+    # (the request still succeeds and generates a valid token; the email is
+    # just logged instead, so the forgot-password flow works end-to-end once
+    # real SMTP credentials are filled in later).
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "Company <no-reply@company.local>"
+    FRONTEND_BASE_URL: str = "http://localhost:5173"
+
     JWT_SECRET: str = "emtu_secret_key_2024_change_in_production"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_DAYS: int = 30
@@ -73,6 +84,9 @@ class Settings(BaseSettings):
 
     USE_AI_CHAT: bool = False
     AI_CHAT_DEFAULT: bool = False
+
+    UPLOAD_DIR: str = "uploads"
+    MAX_UPLOAD_SIZE_MB: int = 5
 
     RAG_TOP_K: int = 5
     RAG_SIMILARITY_THRESHOLD: float = 0.3

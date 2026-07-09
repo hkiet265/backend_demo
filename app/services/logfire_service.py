@@ -269,6 +269,28 @@ class LogfireQueryService:
         
         return errors
     
+    async def get_error_level_summary(self, hours: int = 24) -> List[Dict]:
+        """Real count of log records grouped by level (error/warning/info) — no per-status-code
+        breakdown is available since the `records` table isn't queried for HTTP status codes here."""
+        if not self.is_enabled():
+            return []
+
+        min_timestamp = datetime.now(UTC) - timedelta(hours=hours)
+        sql = """
+        SELECT level, COUNT(*) as count
+        FROM records
+        WHERE level IN ('error', 'warning', 'info')
+        GROUP BY level
+        ORDER BY count DESC
+        """
+        result = await self.query_json(sql, min_timestamp, limit=10)
+        if "error" in result:
+            return []
+        return [
+            {"level": row.get('level', 'unknown').upper(), "count": row.get('count', 0)}
+            for row in result.get('data', [])
+        ]
+
     async def get_system_health(self) -> Dict[str, str]:
         """Get system health status (from config + fallback)"""
         # Don't query Logfire for health - use config instead to avoid rate limiting
