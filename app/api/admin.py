@@ -4,10 +4,12 @@ Dashboard metrics and statistics for admins
 """
 from fastapi import APIRouter, HTTPException, Request
 from app.middleware.rate_limiter import limiter, GENERAL_RATE_LIMIT
+from app.api.auth import hash_password
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from app.config import settings
 import logging
+import secrets
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
@@ -121,7 +123,7 @@ async def get_admin_stats(request: Request):
 
 @router.get("/monitoring")
 @limiter.limit(GENERAL_RATE_LIMIT)
-async def get_monitoring_stats(request: Request):
+async def get_monitoring_stats(request: Request, hours: int = 24):
     """
     Get monitoring and performance statistics from Logfire (real-time)
     
@@ -140,23 +142,27 @@ async def get_monitoring_stats(request: Request):
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
         cur.execute("""
-            SELECT 
-                pg_size_pretty(pg_database_size(current_database())) as db_size
+            SELECT
+                pg_size_pretty(pg_database_size(current_database())) as db_size,
+                pg_database_size(current_database()) as db_bytes
         """)
         db_info = cur.fetchone()
-        
+
         cur.execute("""
-            SELECT 
+            SELECT
                 'station_news' as table_name,
-                pg_size_pretty(pg_total_relation_size('station_news')) as size
+                pg_size_pretty(pg_total_relation_size('station_news')) as size,
+                pg_total_relation_size('station_news') as bytes
             UNION ALL
-            SELECT 
+            SELECT
                 'businesses_demo',
-                pg_size_pretty(pg_total_relation_size('businesses_demo'))
+                pg_size_pretty(pg_total_relation_size('businesses_demo')),
+                pg_total_relation_size('businesses_demo')
             UNION ALL
-            SELECT 
+            SELECT
                 'app_users',
-                pg_size_pretty(pg_total_relation_size('app_users'))
+                pg_size_pretty(pg_total_relation_size('app_users')),
+                pg_total_relation_size('app_users')
         """)
         table_sizes = cur.fetchall()
         
@@ -165,8 +171,9 @@ async def get_monitoring_stats(request: Request):
         
         if logfire.is_enabled():
             logger.info("📊 Fetching real-time metrics from Logfire...")
-            api_metrics = await logfire.get_request_metrics(hours=24)
-            recent_errors = await logfire.get_recent_errors(hours=24, limit=10)
+            api_metrics = await logfire.get_request_metrics(hours=hours)
+            recent_errors = await logfire.get_recent_errors(hours=hours, limit=10)
+            error_summary = await logfire.get_error_level_summary(hours=hours)
             system_health = await logfire.get_system_health()
         else:
             logger.warning("⚠️ Logfire read token not configured, using fallback data")
@@ -191,18 +198,22 @@ async def get_monitoring_stats(request: Request):
                 "crawler": "active",
                 "uptime": "Unknown (Logfire not configured)"
             }
-        
+            error_summary = []
+
         return {
             "status": "success",
             "data": {
                 "api_metrics": api_metrics,
                 "database": {
                     "size": db_info['db_size'],
+                    "bytes": db_info['db_bytes'],
                     "tables": table_sizes
                 },
                 "recent_errors": recent_errors,
+                "error_summary": error_summary,
                 "system_health": system_health,
-                "logfire_enabled": logfire.is_enabled()
+                "logfire_enabled": logfire.is_enabled(),
+                "window_hours": hours
             }
         }
         
@@ -225,7 +236,7 @@ async def get_users(request: Request):
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
         cur.execute("""
-            SELECT id, email, full_name, phone, role, created_at
+            SELECT id, email, full_name, phone, role, created_at, status, last_login
             FROM app_users
             ORDER BY created_at DESC
         """)
@@ -263,6 +274,60 @@ async def admin_health():
         "service": "admin",
         "timestamp": datetime.now().isoformat()
     }
+
+
+@router.post("/users")
+@limiter.limit(GENERAL_RATE_LIMIT)
+async def create_user(request: Request):
+    """
+    Admin creates a new user account.
+    A random temporary password is generated and returned once (not stored in plaintext)
+    since SMTP is not configured to email it automatically.
+    """
+    try:
+        body = await request.json()
+        email = (body.get('email') or '').strip().lower()
+        full_name = (body.get('full_name') or '').strip()
+        phone = body.get('phone')
+        role = body.get('role', 'user')
+
+        if not email or not full_name:
+            raise HTTPException(status_code=400, detail="Email và họ tên là bắt buộc")
+        if role not in ('admin', 'user'):
+            raise HTTPException(status_code=400, detail="Vai trò không hợp lệ")
+
+        conn = psycopg2.connect(**settings.database_url)
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        cur.execute("SELECT id FROM app_users WHERE email = %s", (email,))
+        if cur.fetchone():
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail="Email đã được sử dụng")
+
+        temp_password = secrets.token_urlsafe(9)
+        password_hash = hash_password(temp_password)
+
+        cur.execute("""
+            INSERT INTO app_users (email, password_hash, full_name, phone, role, status, created_at)
+            VALUES (%s, %s, %s, %s, %s, 'active', NOW())
+            RETURNING id, email, full_name, phone, role, status, created_at, last_login
+        """, (email, password_hash, full_name, phone, role))
+
+        new_user = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        logger.info(f"Admin created user: {email}")
+
+        return {"status": "success", "user": new_user, "temp_password": temp_password}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create user error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/users/{user_id}")
@@ -310,6 +375,55 @@ async def update_user(user_id: int, request: Request):
         
     except Exception as e:
         logger.error(f"Update user error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/users/{user_id}/status")
+@limiter.limit(GENERAL_RATE_LIMIT)
+async def update_user_status(user_id: int, request: Request):
+    """
+    Change a user's account status (active / pending / locked)
+    """
+    try:
+        body = await request.json()
+        new_status = body.get('status')
+        if new_status not in ('active', 'pending', 'locked'):
+            raise HTTPException(status_code=400, detail="status phải là active, pending hoặc locked")
+
+        conn = psycopg2.connect(**settings.database_url)
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        if new_status == 'locked':
+            cur.execute("SELECT role FROM app_users WHERE id = %s", (user_id,))
+            target = cur.fetchone()
+            if not target:
+                cur.close()
+                conn.close()
+                raise HTTPException(status_code=404, detail="User not found")
+            if target['role'] == 'admin':
+                cur.close()
+                conn.close()
+                raise HTTPException(status_code=403, detail="Không thể khóa tài khoản admin")
+
+        cur.execute("""
+            UPDATE app_users SET status = %s WHERE id = %s
+            RETURNING id, email, full_name, role, status
+        """, (new_status, user_id))
+
+        updated_user = cur.fetchone()
+        if not updated_user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return {"status": "success", "user": updated_user}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update user status error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

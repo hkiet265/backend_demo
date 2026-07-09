@@ -8,6 +8,9 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from app.config import settings
 from app.database import get_db_connection
+from app.services.news_crawler_service import get_crawler_service
+from app.dependencies import get_current_user
+from fastapi import Depends
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,19 +20,21 @@ router = APIRouter(prefix="/api/news", tags=["news"])
 @router.get("")
 async def get_all_news(
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=1000),
+    page_size: int = Query(50, ge=1, le=5000),
     category: Optional[str] = None,
     source: Optional[str] = None,
-    region: Optional[str] = None
+    region: Optional[str] = None,
+    published_only: bool = Query(False, description="Chỉ trả về tin đã được admin duyệt (dùng cho trang công khai)")
 ):
     """
     Get all news with pagination and filters
-    
+
     - **page**: Page number (starts from 1)
     - **page_size**: Number of items per page (max 1000)
     - **category**: Filter by category (optional)
     - **source**: Filter by news source (optional)
     - **region**: Filter by region (optional)
+    - **published_only**: When true, only news with trang_thai='Da_duyet' is returned (public-facing pages)
     """
     try:
         with get_db_connection() as conn:
@@ -37,19 +42,23 @@ async def get_all_news(
 
             conditions = []
             params = []
-            
+
             if category:
                 conditions.append("chuyen_muc ILIKE %s")
                 params.append(f"%{category}%")
-            
+
             if source:
                 conditions.append("nha_dai ILIKE %s")
                 params.append(f"%{source}%")
-            
+
             if region:
                 conditions.append("vung_mien ILIKE %s")
                 params.append(f"%{region}%")
-            
+
+            if published_only:
+                conditions.append("trang_thai = %s")
+                params.append("Da_duyet")
+
             where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
 
             cur.execute(f"SELECT COUNT(*) FROM station_news {where_clause};", params)
@@ -61,18 +70,18 @@ async def get_all_news(
             query = f"""
                 SELECT id, tieu_de, tom_tat, nha_dai, vung_mien, chuyen_muc,
                        created_at, url, anh_dai_dien, thoi_gian_dang, tu_khoa,
-                       do_tin_cay, trang_thai
+                       do_tin_cay, trang_thai, luot_xem, noi_bat
                 FROM station_news
                 {where_clause}
                 ORDER BY created_at DESC
                 LIMIT %s OFFSET %s;
             """
-            
+
             cur.execute(query, params)
             rows = cur.fetchall()
-            
+
             cur.close()
-        
+
         news_list = []
         for r in rows:
             news_list.append({
@@ -88,7 +97,9 @@ async def get_all_news(
                 "published_at": r['thoi_gian_dang'].isoformat() if r['thoi_gian_dang'] else None,
                 "keywords": r['tu_khoa'] if r['tu_khoa'] else [],
                 "trust_score": r['do_tin_cay'],
-                "status": r['trang_thai']
+                "status": r['trang_thai'],
+                "views": r['luot_xem'] or 0,
+                "featured": bool(r['noi_bat'])
             })
         
         return {
@@ -110,7 +121,8 @@ async def search_news(
     q: str = Query("", description="Search query"),
     category: str = Query("", description="Filter by category"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=100)
+    page_size: int = Query(10, ge=1, le=100),
+    published_only: bool = Query(False, description="Chỉ trả về tin đã được admin duyệt (dùng cho trang công khai)")
 ):
     """
     Search news by title or summary
@@ -118,18 +130,22 @@ async def search_news(
     try:
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
-        
+
         conditions = []
         params = []
-        
+
         if q:
             conditions.append("(tieu_de ILIKE %s OR tom_tat ILIKE %s)")
             params.extend([f"%{q}%", f"%{q}%"])
-        
+
         if category:
             conditions.append("chuyen_muc ILIKE %s")
             params.append(f"%{category}%")
-        
+
+        if published_only:
+            conditions.append("trang_thai = %s")
+            params.append("Da_duyet")
+
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
 
         cur.execute(f"SELECT COUNT(*) FROM station_news {where_clause};", params)
@@ -189,18 +205,24 @@ async def get_news(news_id: int):
         cur.execute("""
             SELECT id, tieu_de, tom_tat, nha_dai, vung_mien, chuyen_muc,
                    created_at, url, anh_dai_dien, thoi_gian_dang, tu_khoa,
-                   noi_dung_gon, do_tin_cay, trang_thai, thuc_the
+                   noi_dung_gon, do_tin_cay, trang_thai, thuc_the, luot_xem, noi_bat
             FROM station_news
             WHERE id = %s;
         """, (news_id,))
-        
+
         row = cur.fetchone()
+
+        if not row:
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="News not found")
+
+        cur.execute("UPDATE station_news SET luot_xem = COALESCE(luot_xem, 0) + 1 WHERE id = %s RETURNING luot_xem;", (news_id,))
+        updated_views = cur.fetchone()[0]
+        conn.commit()
         cur.close()
         conn.close()
-        
-        if not row:
-            raise HTTPException(status_code=404, detail="News not found")
-        
+
         return {
             "status": "success",
             "data": {
@@ -218,7 +240,9 @@ async def get_news(news_id: int):
                 "content": row[11],
                 "trust_score": row[12],
                 "status": row[13],
-                "entities": row[14] if row[14] else []
+                "entities": row[14] if row[14] else [],
+                "views": updated_views,
+                "featured": bool(row[16])
             }
         }
         
@@ -226,6 +250,25 @@ async def get_news(news_id: int):
         raise
     except Exception as e:
         logger.error(f"Get news error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/backfill-images")
+async def backfill_images(
+    limit: int = Query(50, ge=1, le=200, description="Số tin xử lý mỗi lần gọi"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Lấy og:image cho các tin cũ chưa có ảnh (crawler cũ không lưu ảnh).
+    Gọi nhiều lần với limit vừa phải để phủ hết ~1500+ tin cũ mà không
+    làm một request bị treo quá lâu.
+    """
+    try:
+        crawler = get_crawler_service()
+        result = crawler.backfill_missing_images(limit=limit)
+        return {"status": "success", **result}
+    except Exception as e:
+        logger.error(f"Backfill images error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -272,7 +315,10 @@ async def update_news(news_id: int, news_data: dict):
         if 'trang_thai' in news_data:
             update_fields.append("trang_thai = %s")
             params.append(news_data['trang_thai'])
-        
+        if 'noi_bat' in news_data:
+            update_fields.append("noi_bat = %s")
+            params.append(bool(news_data['noi_bat']))
+
         if not update_fields:
             raise HTTPException(status_code=400, detail="No fields to update")
         

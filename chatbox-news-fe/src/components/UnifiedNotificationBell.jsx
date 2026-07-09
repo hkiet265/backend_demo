@@ -1,73 +1,93 @@
-import { useState, useEffect, useRef } from 'react';
-import { Bell, AlertTriangle, Clock, X, Newspaper, Settings, Check, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  Bell, AlertTriangle, Clock, X, Newspaper, Wrench, Heart,
+  Check, Trash2, Bookmark, Filter, RefreshCw, ChevronDown
+} from 'lucide-react';
 
-/**
- * UnifiedNotificationBell - Combined notification center
- * Includes: Business Alerts + System Notifications
- */
+const SAVED_KEY = 'saved_notification_ids';
+
+// Maps a notification's `type`/category onto one of the 4 mockup tabs.
+// Business alerts (from /api/ux/alerts/detect) are ephemeral, not persisted
+// notification rows, so they only ever appear under "Cảnh báo".
+function getTabForItem(item) {
+  if (item.type === 'business_alert' || item.type === 'alert') return 'alerts';
+  if (item.type === 'social') return 'personal';
+  if (item.type === 'news' || item.type === 'system') return 'system';
+  return 'system';
+}
+
+const CATEGORY_STYLE = {
+  alerts: { bg: '#FEE2E2', color: '#dc2626', icon: AlertTriangle },
+  system: { bg: '#FEF3C7', color: '#D97706', icon: Newspaper },
+  personal: { bg: '#DCFCE7', color: '#16A34A', icon: Heart },
+  maintenance: { bg: '#EDE9FE', color: '#7C3AED', icon: Wrench },
+};
+
+function getItemStyle(item) {
+  if (item.category === 'system' || item.type === 'system') return CATEGORY_STYLE.maintenance;
+  return CATEGORY_STYLE[getTabForItem(item)] || CATEGORY_STYLE.system;
+}
+
+const PRIORITY_PILL = {
+  critical: { label: 'Cao', bg: '#FEE2E2', color: '#dc2626' },
+  urgent: { label: 'Cao', bg: '#FEE2E2', color: '#dc2626' },
+  high: { label: 'Cao', bg: '#FEE2E2', color: '#dc2626' },
+  medium: { label: 'Trung bình', bg: '#FEF3C7', color: '#D97706' },
+  low: { label: 'Thấp', bg: '#DCFCE7', color: '#16A34A' },
+};
+
 const UnifiedNotificationBell = ({ currentUser }) => {
   const [businessAlerts, setBusinessAlerts] = useState([]);
   const [systemNotifications, setSystemNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [showPopover, setShowPopover] = useState(false);
-  const [activeTab, setActiveTab] = useState('all'); // all, alerts, notifications
+  const [showModal, setShowModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('all'); // all | alerts | system | personal
   const [unreadCount, setUnreadCount] = useState(0);
-  const [panelPos, setPanelPos] = useState({ top: 0, right: 16 });
-  const popoverRef = useRef(null);
-  const bellBtnRef = useRef(null);
+  const [priorityFilter, setPriorityFilter] = useState(null); // null | high | medium | low
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [savedIds, setSavedIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(SAVED_KEY) || '[]')); }
+    catch (e) { return new Set(); }
+  });
 
   const API_BASE = '';
 
-  // Fetch business alerts
   const fetchBusinessAlerts = async () => {
     const token = localStorage.getItem('token');
     if (!token) return [];
 
     try {
-      // Get user's businesses
       const businessResponse = await fetch(`${API_BASE}/api/businesses/my-businesses?page=1&page_size=100`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
       if (!businessResponse.ok) return [];
 
       const businessData = await businessResponse.json();
       const myBusinessIds = (businessData.data || []).map(b => b.id);
-
       if (myBusinessIds.length === 0) return [];
 
-      // Get alerts for all businesses
       const alertResponse = await fetch(`${API_BASE}/api/ux/alerts/detect`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ threshold_days: 180 })
       });
-
       if (!alertResponse.ok) return [];
 
       const alertData = await alertResponse.json();
-      
-      // Filter alerts for user's businesses only
-      const myAlerts = (alertData.alerts || []).filter(alert => 
-        myBusinessIds.includes(alert.business_id)
-      ).map(alert => ({
+      return (alertData.alerts || []).filter(alert => myBusinessIds.includes(alert.business_id)).map(alert => ({
         ...alert,
+        id: `biz-alert-${alert.business_id}-${alert.alert_type}`,
         type: 'business_alert',
         created_at: new Date().toISOString(),
         is_read: false
       }));
-
-      return myAlerts;
     } catch (error) {
       console.error('Error fetching business alerts:', error);
       return [];
     }
   };
 
-  // Fetch system notifications
   const fetchSystemNotifications = async () => {
     const token = localStorage.getItem('token');
     if (!token) return [];
@@ -76,33 +96,23 @@ const UnifiedNotificationBell = ({ currentUser }) => {
       const response = await fetch(`${API_BASE}/api/notifications/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
       if (!response.ok) return [];
 
       const data = await response.json();
-      return (data.notifications || []).map(notif => ({
-        ...notif,
-        type: 'system_notification'
-      }));
+      return (data.notifications || []).map(notif => ({ ...notif, type: notif.type || 'system' }));
     } catch (error) {
       console.error('Error fetching system notifications:', error);
       return [];
     }
   };
 
-  // Fetch all notifications
   const fetchAllNotifications = async () => {
     setLoading(true);
     try {
-      const [alerts, notifications] = await Promise.all([
-        fetchBusinessAlerts(),
-        fetchSystemNotifications()
-      ]);
-
+      const [alerts, notifications] = await Promise.all([fetchBusinessAlerts(), fetchSystemNotifications()]);
       setBusinessAlerts(alerts);
       setSystemNotifications(notifications);
 
-      // Calculate unread count
       const alertsUnread = alerts.filter(a => a.severity === 'critical' || a.severity === 'high').length;
       const notifsUnread = notifications.filter(n => !n.is_read).length;
       setUnreadCount(alertsUnread + notifsUnread);
@@ -116,60 +126,21 @@ const UnifiedNotificationBell = ({ currentUser }) => {
   useEffect(() => {
     if (currentUser) {
       fetchAllNotifications();
-      // Refresh every 3 minutes
       const interval = setInterval(fetchAllNotifications, 3 * 60 * 1000);
       return () => clearInterval(interval);
     }
   }, [currentUser]);
 
-  // Click outside to close
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (popoverRef.current && !popoverRef.current.contains(event.target)) {
-        setShowPopover(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const getSeverityColor = (severity) => {
-    const colors = {
-      critical: '#dc2626',
-      high: '#ea580c',
-      medium: '#f59e0b',
-      low: '#84cc16',
-      urgent: '#dc2626'
-    };
-    return colors[severity] || '#6b7280';
+  const toggleSaved = (id) => {
+    setSavedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      localStorage.setItem(SAVED_KEY, JSON.stringify([...next]));
+      return next;
+    });
   };
 
-  const getSeverityIcon = (severity) => {
-    if (severity === 'critical' || severity === 'high' || severity === 'urgent') {
-      return <AlertTriangle size={16} />;
-    }
-    return <Clock size={16} />;
-  };
-
-  const getSeverityLabel = (severity) => {
-    const labels = {
-      critical: 'Nghiêm trọng',
-      high: 'Cao',
-      medium: 'Trung bình',
-      low: 'Thấp',
-      urgent: 'Khẩn cấp'
-    };
-    return labels[severity] || severity;
-  };
-
-  const getAlertTypeLabel = (type) => {
-    const labels = {
-      outdated: 'Dữ liệu cũ',
-      missing_field: 'Thiếu thông tin',
-      invalid: 'Không hợp lệ'
-    };
-    return labels[type] || type;
-  };
+  const getSeverityLabel = (severity) => PRIORITY_PILL[severity]?.label || severity || 'Trung bình';
 
   const formatTime = (dateStr) => {
     const date = new Date(dateStr);
@@ -199,6 +170,26 @@ const UnifiedNotificationBell = ({ currentUser }) => {
     }
   };
 
+  const markAllAsRead = async () => {
+    const token = localStorage.getItem('token');
+    // "Hệ thống" spans two backend types (news + system) — the endpoint only
+    // filters by a single type, so scope with two calls for that tab.
+    const typesToMark = activeTab === 'alerts' ? ['alert']
+      : activeTab === 'personal' ? ['social']
+      : activeTab === 'system' ? ['news', 'system']
+      : [null];
+
+    try {
+      await Promise.all(typesToMark.map(type => fetch(
+        `${API_BASE}/api/notifications/mark-all-read${type ? `?type=${type}` : ''}`,
+        { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } }
+      )));
+      fetchAllNotifications();
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  };
+
   const deleteSystemNotification = async (notificationId) => {
     const token = localStorage.getItem('token');
     try {
@@ -212,439 +203,262 @@ const UnifiedNotificationBell = ({ currentUser }) => {
     }
   };
 
-  // Get filtered items based on active tab
-  const getFilteredItems = () => {
-    if (activeTab === 'alerts') {
-      return businessAlerts;
-    } else if (activeTab === 'notifications') {
-      return systemNotifications;
-    } else {
-      // Combine and sort by date
-      const combined = [
-        ...businessAlerts,
-        ...systemNotifications
-      ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      return combined;
-    }
+  const combined = [...businessAlerts, ...systemNotifications].sort(
+    (a, b) => new Date(b.created_at) - new Date(a.created_at)
+  );
+
+  const tabCounts = {
+    all: combined.length,
+    alerts: combined.filter(i => getTabForItem(i) === 'alerts').length,
+    system: combined.filter(i => getTabForItem(i) === 'system').length,
+    personal: combined.filter(i => getTabForItem(i) === 'personal').length,
   };
 
-  const filteredItems = getFilteredItems();
+  let filteredItems = activeTab === 'all' ? combined : combined.filter(i => getTabForItem(i) === activeTab);
+  if (priorityFilter) {
+    filteredItems = filteredItems.filter(i => {
+      const severity = i.type === 'business_alert' ? i.severity : (i.priority || 'medium');
+      return getSeverityLabel(severity) === getSeverityLabel(priorityFilter);
+    });
+  }
 
   if (!currentUser) return null;
 
   return (
-    <div style={{ position: 'relative' }} ref={popoverRef}>
+    <>
       <button
-        ref={bellBtnRef}
         className={`unified-bell-btn ${unreadCount > 0 ? 'has-alerts' : ''}`}
-        onClick={() => {
-          if (!showPopover && bellBtnRef.current) {
-            const rect = bellBtnRef.current.getBoundingClientRect();
-            setPanelPos({
-              top: rect.bottom + 12,
-              right: Math.max(16, window.innerWidth - rect.right),
-            });
-          }
-          setShowPopover(!showPopover);
-        }}
+        onClick={() => setShowModal(true)}
         title={`${unreadCount} thông báo mới`}
         style={{
-          position: 'relative',
-          background: '#F8FAFC',
-          border: '1px solid #E8EDF3',
-          borderRadius: '50%',
-          width: '42px',
-          height: '42px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          transition: 'all 0.2s ease',
-          color: '#D71E28',
-          boxShadow: showPopover ? '0 4px 16px rgba(0, 0, 0, 0.12)' : '0 2px 8px rgba(0, 0, 0, 0.08)'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-          e.currentTarget.style.transform = 'scale(1.05)';
-          e.currentTarget.style.background = '#FFFFFF';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.boxShadow = showPopover ? '0 4px 16px rgba(0, 0, 0, 0.12)' : '0 2px 8px rgba(0, 0, 0, 0.08)';
-          e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.background = '#F8FAFC';
+          position: 'relative', background: '#F8FAFC', border: '1px solid #E8EDF3', borderRadius: '50%',
+          width: '42px', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', transition: 'all 0.2s ease', color: '#3B0199',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
         }}
       >
         <Bell size={20} />
         {unreadCount > 0 && (
           <span style={{
-            position: 'absolute',
-            top: '-4px',
-            right: '-4px',
-            background: '#dc2626',
-            color: 'white',
-            fontSize: '11px',
-            fontWeight: '700',
-            padding: '2px 6px',
-            borderRadius: '10px',
-            minWidth: '18px',
-            textAlign: 'center',
-            boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)'
+            position: 'absolute', top: '-4px', right: '-4px', background: '#dc2626', color: 'white',
+            fontSize: '11px', fontWeight: '700', padding: '2px 6px', borderRadius: '10px',
+            minWidth: '18px', textAlign: 'center', boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)'
           }}>
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
-      {showPopover && (
-        <div className="unified-notification-dropdown" style={{
-          position: 'fixed',
-          top: `${panelPos.top}px`,
-          right: `${panelPos.right}px`,
-          left: 'auto',
-          width: 'min(450px, calc(100vw - 32px))',
-          maxHeight: '600px',
-          background: 'white',
-          border: '2px solid var(--border-neon)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
-          zIndex: 1000,
-          animation: 'dropdownSlide 0.2s ease',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          {/* Header */}
-          <div style={{
-            padding: '16px 20px',
-            borderBottom: '2px solid var(--border-neon)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            background: '#F8FAFC'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Bell size={20} style={{ color: 'var(--color-primary)' }} />
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: 'var(--text-main)' }}>
-                  Thông báo
-                </h3>
+      {showModal && createPortal(
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div
+            className="modal-content"
+            style={{ maxWidth: '720px', padding: '28px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button className="modal-close" onClick={() => setShowModal(false)}><X size={20} /></button>
+
+            <div className="edit-profile-header">
+              <div className="edit-profile-icon-badge">
+                <Bell size={24} />
               </div>
-              <button
-                onClick={() => setShowPopover(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-dim)',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: '4px',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = '#F1F5F9';
-                  e.target.style.color = 'var(--color-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'transparent';
-                  e.target.style.color = 'var(--text-dim)';
-                }}
-              >
-                <X size={20} />
-              </button>
+              <div>
+                <h2>Thông báo</h2>
+                <p>Cập nhật hoạt động, cảnh báo và tin tức dành cho bạn</p>
+              </div>
             </div>
 
-            {/* Tabs */}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => setActiveTab('all')}
-                style={{
-                  flex: 1,
-                  padding: '8px 12px',
-                  background: activeTab === 'all' ? 'linear-gradient(135deg, #D71E28, #B91C1C)' : 'white',
-                  border: `2px solid ${activeTab === 'all' ? '#D71E28' : 'var(--border-neon)'}`,
-                  borderRadius: '8px',
-                  color: activeTab === 'all' ? 'white' : 'var(--text-main)',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Tất cả ({businessAlerts.length + systemNotifications.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('alerts')}
-                style={{
-                  flex: 1,
-                  padding: '8px 12px',
-                  background: activeTab === 'alerts' ? 'linear-gradient(135deg, #D71E28, #B91C1C)' : 'white',
-                  border: `2px solid ${activeTab === 'alerts' ? '#D71E28' : 'var(--border-neon)'}`,
-                  borderRadius: '8px',
-                  color: activeTab === 'alerts' ? 'white' : 'var(--text-main)',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '4px'
-                }}
-              >
-                <AlertTriangle size={14} />
-                Cảnh báo ({businessAlerts.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('notifications')}
-                style={{
-                  flex: 1,
-                  padding: '8px 12px',
-                  background: activeTab === 'notifications' ? 'linear-gradient(135deg, #D71E28, #B91C1C)' : 'white',
-                  border: `2px solid ${activeTab === 'notifications' ? '#D71E28' : 'var(--border-neon)'}`,
-                  borderRadius: '8px',
-                  color: activeTab === 'notifications' ? 'white' : 'var(--text-main)',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '4px'
-                }}
-              >
-                <Newspaper size={14} />
-                Hệ thống ({systemNotifications.length})
-              </button>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+              {[
+                { key: 'all', label: `Tất cả (${tabCounts.all})`, icon: null },
+                { key: 'alerts', label: `Cảnh báo (${tabCounts.alerts})`, icon: AlertTriangle },
+                { key: 'system', label: `Hệ thống (${tabCounts.system})`, icon: Newspaper },
+                { key: 'personal', label: `Cá nhân (${tabCounts.personal})`, icon: Heart },
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  style={{
+                    flex: '1 1 140px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    padding: '10px 12px',
+                    background: activeTab === tab.key ? 'linear-gradient(135deg, #3B0199, #2A0177)' : 'white',
+                    border: `2px solid ${activeTab === tab.key ? '#3B0199' : 'var(--border-neon)'}`,
+                    borderRadius: '10px', color: activeTab === tab.key ? 'white' : 'var(--text-main)',
+                    fontSize: '13.5px', fontWeight: '700', cursor: 'pointer'
+                  }}
+                >
+                  {tab.icon && <tab.icon size={14} />}
+                  {tab.label}
+                </button>
+              ))}
             </div>
-          </div>
 
-          {/* Content */}
-          <div style={{
-            flex: 1,
-            overflowY: 'auto',
-            maxHeight: '450px'
-          }}>
-            {loading ? (
-              <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)' }}>
-                <div className="spinner" style={{ margin: '0 auto 12px' }} />
-                <p style={{ fontSize: '14px', margin: 0 }}>Đang tải...</p>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+              <button
+                onClick={markAllAsRead}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 16px',
+                  border: '2px solid var(--border-neon)', borderRadius: '10px', background: 'white',
+                  color: 'var(--text-main)', fontSize: '13.5px', fontWeight: '600', cursor: 'pointer'
+                }}
+              >
+                <Check size={15} /> Đánh dấu đã đọc
+              </button>
+
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setShowFilterMenu(v => !v)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 16px',
+                    border: '2px solid var(--border-neon)', borderRadius: '10px', background: 'white',
+                    color: 'var(--text-main)', fontSize: '13.5px', fontWeight: '600', cursor: 'pointer'
+                  }}
+                >
+                  <Filter size={15} /> {priorityFilter ? getSeverityLabel(priorityFilter) : 'Bộ lọc'} <ChevronDown size={14} />
+                </button>
+                {showFilterMenu && (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setShowFilterMenu(false)} />
+                    <div style={{
+                      position: 'absolute', top: 'calc(100% + 6px)', left: 0, background: 'white',
+                      border: '2px solid var(--border-neon)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                      zIndex: 20, minWidth: '160px', overflow: 'hidden'
+                    }}>
+                      {[null, 'high', 'medium', 'low'].map(level => (
+                        <button
+                          key={level || 'none'}
+                          onClick={() => { setPriorityFilter(level); setShowFilterMenu(false); }}
+                          style={{
+                            display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px',
+                            background: priorityFilter === level ? '#FEF2F2' : 'white', border: 'none',
+                            color: priorityFilter === level ? 'var(--color-primary)' : 'var(--text-main)',
+                            fontSize: '13.5px', fontWeight: 600, cursor: 'pointer'
+                          }}
+                        >
+                          {level ? getSeverityLabel(level) : 'Tất cả mức độ'}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
-            ) : filteredItems.length === 0 ? (
-              <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)' }}>
-                <Bell size={48} style={{ marginBottom: '12px', opacity: 0.3 }} />
-                <p style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>
-                  {activeTab === 'alerts' ? 'Không có cảnh báo' : activeTab === 'notifications' ? 'Không có thông báo' : 'Không có thông báo nào'}
-                </p>
-                <p style={{ fontSize: '13px', margin: '4px 0 0 0', opacity: 0.7 }}>
-                  Mọi thứ đều ổn định
-                </p>
-              </div>
-            ) : (
-              <div style={{ padding: '8px' }}>
-                {filteredItems.map((item, index) => {
+            </div>
+
+            <div style={{ maxHeight: '55vh', overflowY: 'auto', paddingRight: '4px' }}>
+              {loading ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)' }}>
+                  <div className="spinner" style={{ margin: '0 auto 12px' }} />
+                  <p style={{ fontSize: '14px', margin: 0 }}>Đang tải...</p>
+                </div>
+              ) : filteredItems.length === 0 ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)' }}>
+                  <Bell size={48} style={{ marginBottom: '12px', opacity: 0.3 }} />
+                  <p style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>Không có thông báo nào</p>
+                  <p style={{ fontSize: '13px', margin: '4px 0 0 0', opacity: 0.7 }}>Mọi thứ đều ổn định</p>
+                </div>
+              ) : (
+                filteredItems.map((item, index) => {
                   const isBusinessAlert = item.type === 'business_alert';
                   const severity = isBusinessAlert ? item.severity : (item.priority || 'medium');
-                  
+                  const pill = PRIORITY_PILL[severity] || PRIORITY_PILL.medium;
+                  const style = getItemStyle(item);
+                  const Icon = style.icon;
+                  const itemKey = `${item.type}-${item.id || index}`;
+
                   return (
                     <div
-                      key={`${item.type}-${item.id || index}`}
+                      key={itemKey}
                       style={{
-                        padding: '12px',
-                        margin: '8px 0',
-                        background: '#F8FAFC',
-                        border: `2px solid ${getSeverityColor(severity)}`,
-                        borderLeft: `6px solid ${getSeverityColor(severity)}`,
-                        borderRadius: '8px',
-                        transition: 'all 0.2s ease',
-                        cursor: 'pointer',
+                        display: 'flex', gap: '14px', padding: '16px', marginBottom: '12px',
+                        border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)',
+                        background: item.is_read === false || isBusinessAlert ? '#FFFFFF' : '#FAFBFC',
                         position: 'relative'
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateX(4px)';
-                        e.currentTarget.style.boxShadow = `0 4px 12px ${getSeverityColor(severity)}40`;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateX(0)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
                     >
-                      {/* Action buttons for system notifications */}
-                      {!isBusinessAlert && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '8px',
-                          right: '8px',
-                          display: 'flex',
-                          gap: '4px'
-                        }}>
-                          {!item.is_read && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                markAsRead(item.id);
-                              }}
-                              style={{
-                                background: 'rgba(34, 197, 94, 0.1)',
-                                border: 'none',
-                                borderRadius: '4px',
-                                padding: '4px',
-                                cursor: 'pointer',
-                                color: '#22c55e',
-                                display: 'flex',
-                                opacity: 0.6,
-                                transition: 'opacity 0.2s'
-                              }}
-                              onMouseEnter={(e) => e.target.style.opacity = 1}
-                              onMouseLeave={(e) => e.target.style.opacity = 0.6}
-                              title="Đánh dấu đã đọc"
-                            >
-                              <Check size={14} />
-                            </button>
-                          )}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteSystemNotification(item.id);
-                            }}
-                            style={{
-                              background: 'rgba(239, 68, 68, 0.1)',
-                              border: 'none',
-                              borderRadius: '4px',
-                              padding: '4px',
-                              cursor: 'pointer',
-                              color: '#ef4444',
-                              display: 'flex',
-                              opacity: 0.6,
-                              transition: 'opacity 0.2s'
-                            }}
-                            onMouseEnter={(e) => e.target.style.opacity = 1}
-                            onMouseLeave={(e) => e.target.style.opacity = 0.6}
-                            title="Xóa thông báo"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                      {!item.is_read && (
+                        <span style={{
+                          position: 'absolute', top: '14px', left: '-4px', width: '8px', height: '8px',
+                          borderRadius: '50%', background: isBusinessAlert ? '#dc2626' : '#22c55e'
+                        }} />
                       )}
 
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', paddingRight: !isBusinessAlert ? '60px' : '0' }}>
-                        <div style={{ 
-                          color: getSeverityColor(severity),
-                          marginTop: '2px',
-                          flexShrink: 0
-                        }}>
-                          {getSeverityIcon(severity)}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            marginBottom: '6px',
-                            flexWrap: 'wrap'
-                          }}>
-                            <span style={{
-                              fontSize: '11px',
-                              fontWeight: '700',
-                              padding: '2px 8px',
-                              borderRadius: '8px',
-                              background: getSeverityColor(severity),
-                              color: 'white',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.5px'
-                            }}>
-                              {getSeverityLabel(severity)}
-                            </span>
-                            {isBusinessAlert && (
-                              <span style={{
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                padding: '2px 8px',
-                                borderRadius: '8px',
-                                background: 'rgba(14, 165, 233, 0.1)',
-                                color: 'var(--color-primary)'
-                              }}>
-                                {getAlertTypeLabel(item.alert_type)}
-                              </span>
-                            )}
-                            <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-                              <Clock size={11} style={{ verticalAlign: 'middle', marginRight: '2px' }} />
-                              {formatTime(item.created_at)}
-                            </span>
-                          </div>
-                          <p style={{
-                            margin: '0 0 4px 0',
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            color: 'var(--text-main)',
-                            lineHeight: '1.4',
-                            overflowWrap: 'break-word',
-                            wordBreak: 'break-word'
-                          }}>
+                      <div style={{
+                        width: '48px', height: '48px', minWidth: '48px', borderRadius: '12px',
+                        background: style.bg, color: style.color, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        <Icon size={22} />
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
+                          <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-main)' }}>
                             {isBusinessAlert ? item.business_name : item.title}
                           </p>
-                          <p style={{
-                            margin: 0,
-                            fontSize: '13px',
-                            color: 'var(--text-dim)',
-                            lineHeight: '1.5',
-                            overflowWrap: 'break-word',
-                            wordBreak: 'break-word'
+                          <span style={{
+                            flexShrink: 0, fontSize: '12px', fontWeight: 700, padding: '3px 10px',
+                            borderRadius: '20px', background: pill.bg, color: pill.color
                           }}>
-                            {item.message}
-                          </p>
+                            {pill.label}
+                          </span>
                         </div>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '13.5px', color: 'var(--text-dim)', lineHeight: 1.5 }}>
+                          {item.message}
+                        </p>
+                        <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Clock size={12} /> {formatTime(item.created_at)}
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+                        <button
+                          onClick={() => toggleSaved(itemKey)}
+                          title={savedIds.has(itemKey) ? 'Bỏ lưu' : 'Lưu thông báo'}
+                          style={{
+                            width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: '2px solid var(--border-neon)', borderRadius: '8px', cursor: 'pointer',
+                            background: savedIds.has(itemKey) ? '#FEF2F2' : 'white',
+                            color: savedIds.has(itemKey) ? 'var(--color-primary)' : 'var(--text-dim)'
+                          }}
+                        >
+                          <Bookmark size={16} fill={savedIds.has(itemKey) ? 'currentColor' : 'none'} />
+                        </button>
+                        {!isBusinessAlert && (
+                          <button
+                            onClick={() => deleteSystemNotification(item.id)}
+                            title="Xóa thông báo"
+                            style={{
+                              width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              border: '2px solid rgba(239,68,68,0.3)', borderRadius: '8px', cursor: 'pointer',
+                              background: 'white', color: '#ef4444'
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
-                })}
-              </div>
-            )}
-          </div>
+                })
+              )}
+            </div>
 
-          {/* Footer */}
-          {filteredItems.length > 0 && (
-            <div style={{
-              padding: '12px 16px',
-              borderTop: '2px solid var(--border-neon)',
-              background: '#F8FAFC',
-              textAlign: 'center'
-            }}>
+            {filteredItems.length > 0 && (
               <button
                 onClick={fetchAllNotifications}
                 style={{
-                  background: 'transparent',
-                  border: '2px solid var(--border-neon)',
-                  color: 'var(--color-primary)',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  width: '100%'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'var(--color-primary)';
-                  e.target.style.color = 'white';
-                  e.target.style.borderColor = 'var(--color-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'transparent';
-                  e.target.style.color = 'var(--color-primary)';
-                  e.target.style.borderColor = 'var(--border-neon)';
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%',
+                  marginTop: '8px', padding: '12px', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)',
+                  background: 'white', color: 'var(--color-primary)', fontSize: '14px', fontWeight: 700, cursor: 'pointer'
                 }}
               >
-                🔄 Làm mới
+                <RefreshCw size={16} /> Làm mới
               </button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 };
 

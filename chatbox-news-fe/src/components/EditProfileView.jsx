@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, User, Lock, Eye, EyeOff } from 'lucide-react';
+import { X, User, Lock, Eye, EyeOff, Save, ShieldAlert } from 'lucide-react';
 
 function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
   const [fullName, setFullName] = useState(currentUser?.full_name || '');
@@ -17,7 +17,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
     e.preventDefault();
     setError('');
     setSuccess('');
- 
+
     if (!fullName.trim()) {
       setError('Vui lòng nhập họ và tên');
       return;
@@ -27,7 +27,7 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
       setError('Họ và tên phải có ít nhất 2 ký tự');
       return;
     }
- 
+
     if (newPassword || confirmPassword || currentPassword) {
       if (!currentPassword) {
         setError('Vui lòng nhập mật khẩu hiện tại');
@@ -50,13 +50,11 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      
       const payload = {
         full_name: fullName.trim(),
         email: currentUser.email,
       };
- 
+
       if (newPassword) {
         payload.current_password = currentPassword;
         payload.new_password = newPassword;
@@ -75,11 +73,11 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
       if (!response.ok) {
         throw new Error(data.detail || 'Cập nhật thất bại');
       }
- 
+
       localStorage.setItem('user', JSON.stringify(data.user));
 
       setSuccess('✅ Cập nhật thành công!');
- 
+
       setTimeout(() => {
         onUpdateSuccess(data.user);
         onClose();
@@ -99,7 +97,15 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
           <X size={20} />
         </button>
 
-        <h2 className="modal-title">✏️ Chỉnh sửa thông tin</h2>
+        <div className="edit-profile-header">
+          <div className="edit-profile-icon-badge">
+            <User size={24} />
+          </div>
+          <div>
+            <h2>Chỉnh sửa thông tin</h2>
+            <p>Cập nhật thông tin tài khoản và mật khẩu của bạn</p>
+          </div>
+        </div>
 
         {error && (
           <div className="auth-error" style={{ marginBottom: '16px' }}>
@@ -113,96 +119,119 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="edit-profile-form"> 
-          <div className="form-group">
-            <label>📧 Email (không thể thay đổi)</label>
-            <input
-              type="email"
-              value={currentUser?.email || ''}
-              disabled
-              className="form-input disabled"
-            />
-          </div>
- 
-          <div className="form-group">
-            <label>👤 Họ và tên</label>
-            <div className="input-with-icon-inline">
-             
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Nhập họ và tên mới"
-                className="form-input"
-                required
-              />
+        <form onSubmit={handleSubmit} className="edit-profile-form">
+          <div className="edit-profile-section">
+            <div className="edit-profile-section-title">
+              <User size={16} /> Thông tin tài khoản
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <div className="form-label-row">
+                  <label style={{ margin: 0 }}>Email</label>
+                  <span className="form-badge">Không thể thay đổi</span>
+                </div>
+                <div className="input-with-icon-inline">
+                  <input
+                    type="email"
+                    value={currentUser?.email || ''}
+                    disabled
+                    className="form-input disabled"
+                  />
+                  <Lock size={16} className="toggle-password-btn" style={{ pointerEvents: 'none' }} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <div className="form-label-row">
+                  <label style={{ margin: 0 }}>Họ và tên</label>
+                  <span className="form-badge" style={{ visibility: 'hidden' }}>Không thể thay đổi</span>
+                </div>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Nhập họ và tên mới"
+                  className="form-input"
+                  style={{ paddingLeft: '14px' }}
+                  required
+                />
+              </div>
             </div>
           </div>
 
-          <div className="divider">
-            <span>Đổi mật khẩu (tùy chọn)</span>
-          </div>
- 
-          <div className="form-group">
-            <label>🔐 Mật khẩu hiện tại</label>
-            <div className="input-with-icon-inline">
-              
-              <input
-                type={showCurrentPassword ? 'text' : 'password'}
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Nhập mật khẩu hiện tại"
-                className="form-input"
-              />
-              <button
-                type="button"
-                className="toggle-password-btn"
-                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-              >
-                {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+          <div className="edit-profile-section">
+            <div className="edit-profile-section-title danger">
+              <ShieldAlert size={16} /> Đổi mật khẩu (tùy chọn)
             </div>
-          </div>
- 
-          <div className="form-group">
-            <label>🔑 Mật khẩu mới</label>
-            <div className="input-with-icon-inline">
-             
-              <input
-                type={showNewPassword ? 'text' : 'password'}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-                className="form-input"
-              />
-              <button
-                type="button"
-                className="toggle-password-btn"
-                onClick={() => setShowNewPassword(!showNewPassword)}
-              >
-                {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Mật khẩu hiện tại</label>
+                <div className="input-with-icon-inline">
+                  <input
+                    type={showCurrentPassword ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Nhập mật khẩu hiện tại"
+                    className="form-input"
+                    style={{ paddingLeft: '14px' }}
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    className="toggle-password-btn"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  >
+                    {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Mật khẩu mới</label>
+                <div className="input-with-icon-inline">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Nhập mật khẩu mới"
+                    className="form-input"
+                    style={{ paddingLeft: '14px' }}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="toggle-password-btn"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                  >
+                    {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                <p className="form-hint">Ít nhất 6 ký tự</p>
+              </div>
             </div>
-          </div>
- 
-          <div className="form-group">
-            <label>✅ Xác nhận mật khẩu mới</label>
-            <div className="input-with-icon-inline">
-              
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Nhập lại mật khẩu mới"
-                className="form-input"
-              />
-              <button
-                type="button"
-                className="toggle-password-btn"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+
+            <div className="form-group">
+              <label>Xác nhận mật khẩu mới</label>
+              <div className="input-with-icon-inline">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Nhập lại mật khẩu mới"
+                  className="form-input"
+                  style={{ paddingLeft: '14px' }}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  className="toggle-password-btn"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -219,8 +248,9 @@ function EditProfileView({ currentUser, onClose, onUpdateSuccess }) {
               type="submit"
               className="btn-submit"
               disabled={loading}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              {loading ? '⏳ Đang lưu...' : '💾 Lưu thay đổi'}
+              {loading ? '⏳ Đang lưu...' : <><Save size={16} /> Lưu thay đổi</>}
             </button>
           </div>
         </form>

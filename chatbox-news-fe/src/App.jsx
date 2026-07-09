@@ -2,17 +2,21 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import NavigationBar from './components/organisms/NavigationBar/NavigationBar';
+import HomeDashboardView from './components/HomeDashboardView';
 import BusinessManagementView from './components/BusinessManagementView';
 import NewsStorageView from './components/NewsStorageView';
 import ChatControlView from './components/ChatControlView';
 import AuthView from './components/AuthView';
+import ResetPasswordView from './components/ResetPasswordView';
 import EditProfileView from './components/EditProfileView';
 import FavoritesView from './components/FavoritesView';
 import MyBusinessesView from './components/MyBusinessesView';
+import BusinessDetailView from './components/BusinessDetailView';
 import AdminPortal from './pages/AdminPortal';
 
 function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState('login');
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
  
@@ -47,7 +51,8 @@ function App() {
     setCurrentUser(null);
   };
 
-  const handleShowAuth = () => {
+  const handleShowAuth = (mode = 'login') => {
+    setAuthModalMode(mode);
     setShowAuthModal(true);
   };
 
@@ -63,8 +68,10 @@ function App() {
     <BrowserRouter>
       <Routes>
  
-        <Route 
-          path="/admin" 
+        <Route path="/reset-password" element={<ResetPasswordView />} />
+
+        <Route
+          path="/admin"
           element={
             <AdminPortal 
               currentUser={currentUser} 
@@ -88,7 +95,7 @@ function App() {
                 <div className="auth-modal-overlay" onClick={() => setShowAuthModal(false)}>
                   <div className="auth-modal-wrapper" onClick={(e) => e.stopPropagation()}>
                     <button className="auth-modal-close" onClick={() => setShowAuthModal(false)}>✕</button>
-                    <AuthView onLoginSuccess={handleLoginSuccess} />
+                    <AuthView onLoginSuccess={handleLoginSuccess} initialMode={authModalMode} />
                   </div>
                 </div>
               )}
@@ -110,7 +117,7 @@ function App() {
 
 function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
  
-  const [activeTab, setActiveTab] = useState('business');
+  const [activeTab, setActiveTab] = useState('home');
 
   const [isChatOpen, setIsChatOpen] = useState(false);
  
@@ -123,6 +130,12 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
   const [allNews, setAllNews] = useState([]);
   const [isFetchNewsLoading, setIsFetchNewsLoading] = useState(true);
   const [newsSearchQuery, setNewsSearchQuery] = useState('');
+  const [openNewsId, setOpenNewsId] = useState(null);
+  const [selectedBusinessId, setSelectedBusinessId] = useState(null);
+
+  const openBusinessDetail = (businessId) => {
+    setSelectedBusinessId(businessId);
+  };
  
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -145,7 +158,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
       let page = 1;
       let totalPages = 1;
       do {
-        const resp = await fetch(`/api/news?page=${page}&page_size=${PAGE_SIZE}`);
+        const resp = await fetch(`/api/news?page=${page}&page_size=${PAGE_SIZE}&published_only=true`);
         if (!resp.ok) break;
         const pageData = await resp.json();
         allRows = allRows.concat(pageData.data || []);
@@ -267,12 +280,12 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
     return id;
   });
 
-  const handleSendChat = async (e, actionButtonId = null) => {
-    e.preventDefault();
-    if (!chatInput.trim() || isChatLoading) return;
+  // Extracted from handleSendChat so dashboard quick-actions can fire a
+  // message straight into the chat (already sent, just waiting on the AI)
+  // without needing a form submit event.
+  const sendChatMessage = async (userText, actionButtonId = null) => {
+    if (!userText.trim() || isChatLoading) return;
 
-    const userText = chatInput.trim();
-    setChatInput('');
     setMessages(prev => [...prev, { id: Date.now() + Math.random(), sender: 'user', text: userText }]);
     setIsChatLoading(true);
 
@@ -321,10 +334,26 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
       }
     } catch (error) {
       let reply = `Xin lỗi, Company gặp sự cố khi xử lý yêu cầu "${userText}". Backend có thể chưa chạy hoặc có lỗi kết nối.`;
-      setTimeout(() => { 
+      setTimeout(() => {
         simulateStreaming(reply, [], [], [], []);
       }, 500);
     }
+  };
+
+  const handleSendChat = (e, actionButtonId = null) => {
+    e.preventDefault();
+    if (!chatInput.trim() || isChatLoading) return;
+    const userText = chatInput.trim();
+    setChatInput('');
+    sendChatMessage(userText, actionButtonId);
+  };
+
+  // Opens the chat popup with a prompt already sent — used by the home
+  // dashboard's "Bạn muốn AI làm gì?" quick-action cards so the user lands
+  // straight on the typing indicator instead of an empty input.
+  const openChatWithPrompt = (prompt) => {
+    setIsChatOpen(true);
+    sendChatMessage(prompt);
   };
 
   // Clear conversation function
@@ -352,8 +381,8 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
 
   return (
     <div className="dashboard-master-container">
-      <NavigationBar 
-        activeTab={activeTab} 
+      <NavigationBar
+        activeTab={activeTab}
         setActiveTab={setActiveTab}
         isChatOpen={isChatOpen}
         setIsChatOpen={setIsChatOpen}
@@ -364,6 +393,27 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
       />
 
       <div className="dynamic-workspace-layout">
+        {activeTab === 'home' && (
+          <HomeDashboardView
+            currentUser={currentUser}
+            allBusinesses={allBusinesses}
+            allNews={allNews}
+            isFetchBusinessLoading={isFetchBusinessLoading}
+            isFetchNewsLoading={isFetchNewsLoading}
+            onOpenChatWithPrompt={openChatWithPrompt}
+            onGoToBusiness={(bizName) => {
+              if (bizName) setSearchQuery(bizName);
+              setActiveTab('business');
+            }}
+            onGoToNews={(newsTitle, newsId) => {
+              if (newsId) setOpenNewsId(newsId);
+              else if (newsTitle) setNewsSearchQuery(newsTitle);
+              setActiveTab('news');
+            }}
+            onOpenBusinessDetail={openBusinessDetail}
+          />
+        )}
+
         {activeTab === 'business' && (
           <BusinessManagementView
             searchQuery={searchQuery}
@@ -372,11 +422,13 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
             setRegionFilter={setRegionFilter}
             handleClearSearch={handleClearSearch}
             allBusinesses={allBusinesses}
+            allNews={allNews}
             isLoading={isFetchBusinessLoading}
             isEnriching={isEnriching}
             handleSimulateRawInput={handleSimulateRawInput}
             onRefresh={fetchAllBusinesses}
             currentUser={currentUser}
+            onOpenBusinessDetail={openBusinessDetail}
           />
         )}
 
@@ -387,6 +439,8 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
             fetchAllNews={fetchAllNews}
             newsSearchQuery={newsSearchQuery}
             setNewsSearchQuery={setNewsSearchQuery}
+            openNewsId={openNewsId}
+            onOpenNewsIdHandled={() => setOpenNewsId(null)}
             onNewsClick={() => setIsChatOpen(false)}
           />
         )}
@@ -396,9 +450,25 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
         )}
 
         {activeTab === 'my-businesses' && (
-          <MyBusinessesView currentUser={currentUser} />
+          <MyBusinessesView currentUser={currentUser} allNews={allNews} onOpenBusinessDetail={openBusinessDetail} />
         )}
       </div>
+
+      {selectedBusinessId && (
+        <BusinessDetailView
+          businessId={selectedBusinessId}
+          allNews={allNews}
+          currentUser={currentUser}
+          onClose={() => setSelectedBusinessId(null)}
+          onShowAuth={onShowAuth}
+          onGoToNews={(newsTitle, newsId) => {
+            setSelectedBusinessId(null);
+            if (newsId) setOpenNewsId(newsId);
+            else if (newsTitle) setNewsSearchQuery(newsTitle);
+            setActiveTab('news');
+          }}
+        />
+      )}
 
       {/* Floating Chat Button - Always visible at bottom-right */}
       {!isChatOpen && (

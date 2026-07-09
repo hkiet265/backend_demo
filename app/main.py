@@ -5,7 +5,9 @@ Clean, professional entry point with proper configuration
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 import logging
+import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime
@@ -74,7 +76,10 @@ app.include_router(enrichment.router)
 app.include_router(ux_features.router)
 app.include_router(notifications.router)
 app.include_router(secure_csv_import.router)
- 
+
+os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+
 @app.get("/")
 async def root():
     """API root endpoint"""

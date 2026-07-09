@@ -174,7 +174,33 @@ class WebsiteScraperService:
             info['keywords'] = meta_keywords['content'].strip()
         
         return info
-    
+
+    def extract_logo(self, soup: BeautifulSoup, url: str) -> Optional[str]:
+        """
+        Trích xuất logo/favicon của website: ưu tiên og:image (thường là
+        logo/banner chính thức), sau đó <link rel="icon"|"shortcut icon"|
+        "apple-touch-icon">, cuối cùng thử /favicon.ico mặc định.
+        """
+        og_image = soup.find('meta', attrs={'property': 'og:image'})
+        if og_image and og_image.get('content'):
+            return urljoin(url, og_image['content'].strip())
+
+        for rel in ('icon', 'shortcut icon', 'apple-touch-icon'):
+            link_tag = soup.find('link', attrs={'rel': rel})
+            if link_tag and link_tag.get('href'):
+                return urljoin(url, link_tag['href'].strip())
+
+        parsed = urlparse(url)
+        fallback = f"{parsed.scheme}://{parsed.netloc}/favicon.ico"
+        try:
+            head = self.session.head(fallback, timeout=5, allow_redirects=True)
+            if head.status_code == 200:
+                return fallback
+        except Exception:
+            pass
+
+        return None
+
     def scrape_contact_page(self, base_url: str) -> Dict:
         """
         Tìm và scrape trang liên hệ
@@ -248,6 +274,7 @@ class WebsiteScraperService:
             'facebook': None,
             'zalo': None,
             'linkedin': None,
+            'logo_url': None,
             'error': None
         }
         
@@ -279,7 +306,10 @@ class WebsiteScraperService:
             # Trích xuất social links
             social = self.extract_social_links(soup)
             result.update(social)
-            
+
+            # Trích xuất logo/favicon
+            result['logo_url'] = self.extract_logo(soup, url)
+
             # Nếu chưa có email/phone, thử trang liên hệ
             if not result['emails'] or not result['phones']:
                 contact_info = self.scrape_contact_page(url)

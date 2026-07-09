@@ -61,7 +61,7 @@ async def enrich_business_from_website(
             
             # Lấy business
             cur.execute("""
-                SELECT id, website, email, so_dien_thoai, facebook, linkedin
+                SELECT id, website, email, so_dien_thoai, facebook, linkedin, logo_url
                 FROM businesses_demo
                 WHERE id = %s;
             """, (business_id,))
@@ -100,7 +100,11 @@ async def enrich_business_from_website(
             if scraped.get('linkedin') and not business['linkedin']:
                 updates.append("linkedin = %s")
                 params.append(scraped['linkedin'])
-            
+
+            if scraped.get('logo_url') and not business['logo_url']:
+                updates.append("logo_url = %s")
+                params.append(scraped['logo_url'])
+
             if updates:
                 params.append(business_id)
                 query = f"""
@@ -325,7 +329,7 @@ async def find_similar_news(
             
             # Lấy tin khác cùng category trong 7 ngày
             cur.execute("""
-                SELECT id, tieu_de, tom_tat, nha_dai, chuyen_muc, thoi_gian_dang, url
+                SELECT id, tieu_de, tom_tat, nha_dai, chuyen_muc, thoi_gian_dang, url, anh_dai_dien
                 FROM station_news
                 WHERE id != %s
                   AND chuyen_muc = %s
@@ -333,26 +337,33 @@ async def find_similar_news(
                 ORDER BY thoi_gian_dang DESC
                 LIMIT 100;
             """, (news_id, target_news['chuyen_muc']))
-            
+
             candidate_news = [dict(row) for row in cur.fetchall()]
             cur.close()
-            
-            # Find similar
+
+            # Find similar. This endpoint means "related reading" (same topic),
+            # not duplicate-article detection, so use a much looser threshold
+            # than the 0.7 default calibrated for spotting the same story
+            # re-reported by multiple outlets.
             clustering_service = get_clustering_service()
+            clustering_service.similarity_threshold = 0.25
+            clustering_service.time_window_hours = 24 * 7  # match the 7-day SQL pre-filter above
             similar_news = clustering_service.find_similar_news(
                 dict(target_news),
                 candidate_news
             )
-            
-            # Giới hạn kết quả
-            similar_news = similar_news[:limit]
-            
+            clustering_service.similarity_threshold = 0.7
+            clustering_service.time_window_hours = 48
+
+            # Flatten {news, similarity} into a plain news dict for the frontend
+            flattened = [{**item['news'], 'similarity': item['similarity']} for item in similar_news[:limit]]
+
             return {
                 "status": "success",
                 "target_news_id": news_id,
                 "target_title": target_news['tieu_de'],
-                "similar_news": similar_news,
-                "count": len(similar_news)
+                "similar_news": flattened,
+                "count": len(flattened)
             }
         
     except HTTPException:
