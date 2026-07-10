@@ -264,7 +264,7 @@ const FavoritesView = ({ currentUser }) => {
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px',
                 borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left', marginBottom: '10px',
-                background: activeTab === 'all' ? '#FEF2F2' : 'transparent',
+                background: activeTab === 'all' ? 'var(--bg-input)' : 'transparent',
                 color: activeTab === 'all' ? 'var(--color-primary)' : 'var(--text-main)', fontWeight: 700, fontSize: '14px'
               }}
             >
@@ -282,7 +282,7 @@ const FavoritesView = ({ currentUser }) => {
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px',
                   borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '13.5px', fontWeight: 600,
-                  background: activeTab === tab.key ? '#FEF2F2' : 'transparent',
+                  background: activeTab === tab.key ? 'var(--bg-input)' : 'transparent',
                   color: activeTab === tab.key ? 'var(--color-primary)' : 'var(--text-main)'
                 }}
               >
@@ -301,7 +301,7 @@ const FavoritesView = ({ currentUser }) => {
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px',
                       borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '13px', fontWeight: 600,
-                      background: categoryFilter === cat ? '#FEF2F2' : 'transparent',
+                      background: categoryFilter === cat ? 'var(--bg-input)' : 'transparent',
                       color: categoryFilter === cat ? 'var(--color-primary)' : 'var(--text-main)'
                     }}
                   >
@@ -333,20 +333,20 @@ const FavoritesView = ({ currentUser }) => {
               <button
                 onClick={() => setSortOrder(o => (o === 'newest' ? 'oldest' : 'newest'))}
                 title="Đổi thứ tự sắp xếp"
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0 14px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'white', fontWeight: 600, fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0 14px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'var(--bg-panel)', fontWeight: 600, fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}
               >
                 <ArrowUpDown size={15} /> {sortOrder === 'newest' ? 'Mới nhất' : 'Cũ nhất'}
               </button>
               <div style={{ display: 'flex', gap: '4px' }}>
                 <button
                   onClick={() => setViewMode('grid')}
-                  style={{ width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--border-neon)', borderRadius: '8px', cursor: 'pointer', background: viewMode === 'grid' ? 'var(--color-primary)' : 'white', color: viewMode === 'grid' ? 'white' : 'var(--text-dim)' }}
+                  style={{ width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--border-neon)', borderRadius: '8px', cursor: 'pointer', background: viewMode === 'grid' ? 'var(--color-primary)' : 'var(--bg-panel)', color: viewMode === 'grid' ? 'white' : 'var(--text-dim)' }}
                 >
                   <LayoutGrid size={16} />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  style={{ width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--border-neon)', borderRadius: '8px', cursor: 'pointer', background: viewMode === 'list' ? 'var(--color-primary)' : 'white', color: viewMode === 'list' ? 'white' : 'var(--text-dim)' }}
+                  style={{ width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--border-neon)', borderRadius: '8px', cursor: 'pointer', background: viewMode === 'list' ? 'var(--color-primary)' : 'var(--bg-panel)', color: viewMode === 'list' ? 'white' : 'var(--text-dim)' }}
                 >
                   <List size={16} />
                 </button>
@@ -375,8 +375,8 @@ const FavoritesView = ({ currentUser }) => {
                     {(activeTab === 'all' ? filteredNewsBookmarks.slice(0, 4) : paginatedNews).map((item) => {
                       const realIndex = filteredNewsBookmarks.findIndex(n => n.id === item.id);
                       return (
-                        <div key={item.id} style={{ background: 'white', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', overflow: 'hidden', cursor: 'pointer', display: viewMode === 'list' ? 'flex' : 'block' }} onClick={() => openNewsDetail(realIndex)}>
-                          <div style={{ width: viewMode === 'list' ? '160px' : '100%', height: viewMode === 'list' ? '110px' : '130px', flexShrink: 0, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div key={item.id} style={{ background: 'var(--bg-panel)', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', overflow: 'hidden', cursor: 'pointer', display: viewMode === 'list' ? 'flex' : 'block' }} onClick={() => openNewsDetail(realIndex)}>
+                          <div style={{ width: viewMode === 'list' ? '160px' : '100%', height: viewMode === 'list' ? '110px' : '130px', flexShrink: 0, background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {item.anh_dai_dien ? (
                               <img src={item.anh_dai_dien} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
@@ -400,7 +400,7 @@ const FavoritesView = ({ currentUser }) => {
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleRemoveNews(item.id); }}
                                 title="Xóa khỏi yêu thích"
-                                style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-primary)', flexShrink: 0 }}
+                                style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-primary)', flexShrink: 0 }}
                               >
                                 <Trash2 size={13} />
                               </button>
@@ -452,11 +452,11 @@ const FavoritesView = ({ currentUser }) => {
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'list' ? '1fr' : 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px' }}>
                     {(activeTab === 'all' ? filteredBusinessBookmarks.slice(0, 6) : paginatedBusinesses).map(item => (
-                      <div key={item.id} style={{ background: 'white', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '14px', position: 'relative', display: viewMode === 'list' ? 'flex' : 'block', alignItems: 'center', gap: '12px' }}>
+                      <div key={item.id} style={{ background: 'var(--bg-panel)', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '14px', position: 'relative', display: viewMode === 'list' ? 'flex' : 'block', alignItems: 'center', gap: '12px' }}>
                         <button
                           onClick={() => handleRemoveBusiness(item.id)}
                           title="Xóa khỏi yêu thích"
-                          style={{ position: viewMode === 'list' ? 'static' : 'absolute', top: '10px', right: '10px', marginLeft: viewMode === 'list' ? 'auto' : 0, width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-primary)', order: viewMode === 'list' ? 3 : 0 }}
+                          style={{ position: viewMode === 'list' ? 'static' : 'absolute', top: '10px', right: '10px', marginLeft: viewMode === 'list' ? 'auto' : 0, width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-primary)', order: viewMode === 'list' ? 3 : 0 }}
                         >
                           <Trash2 size={13} />
                         </button>
@@ -514,7 +514,7 @@ const FavoritesView = ({ currentUser }) => {
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                       onClick={() => handleRemoveNews(selectedNews.id)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--color-primary)' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'var(--bg-panel)', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: 'var(--color-primary)' }}
                     >
                       <Bookmark size={15} fill="currentColor" /> Đã lưu
                     </button>
@@ -527,7 +527,7 @@ const FavoritesView = ({ currentUser }) => {
                           showToast('Đã sao chép liên kết', 'success');
                         }
                       }}
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'var(--bg-panel)', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
                     >
                       <Share2 size={15} /> Chia sẻ
                     </button>
@@ -535,13 +535,13 @@ const FavoritesView = ({ currentUser }) => {
                 </div>
 
                 {selectedNews.tom_tat && (
-                  <div style={{ background: '#FEF2F2', borderLeft: '4px solid var(--color-primary)', borderRadius: '8px', padding: '14px 16px', marginBottom: '18px' }}>
+                  <div style={{ background: 'var(--bg-input)', borderLeft: '4px solid var(--color-primary)', borderRadius: '8px', padding: '14px 16px', marginBottom: '18px' }}>
                     <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 700, color: 'var(--color-primary)' }}>Tóm tắt</p>
                     <p style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.6, color: 'var(--text-main)' }}>{selectedNews.tom_tat}</p>
                   </div>
                 )}
 
-                <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '18px', background: '#F1F5F9', minHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '18px', background: 'var(--bg-input)', minHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {selectedNews.anh_dai_dien ? (
                     <img src={selectedNews.anh_dai_dien} alt="" style={{ width: '100%', maxHeight: '360px', objectFit: 'cover', display: 'block' }} />
                   ) : (
@@ -594,7 +594,7 @@ const FavoritesView = ({ currentUser }) => {
                     <h4 style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: 800 }}>Chủ đề liên quan</h4>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                       {selectedNews.tu_khoa.map(tag => (
-                        <span key={tag} style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px', background: '#F1F5F9', color: 'var(--text-main)' }}>{tag}</span>
+                        <span key={tag} style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px', background: 'var(--bg-input)', color: 'var(--text-dim)' }}>{tag}</span>
                       ))}
                     </div>
                   </div>
@@ -612,7 +612,7 @@ const FavoritesView = ({ currentUser }) => {
                           rel="noopener noreferrer"
                           style={{ display: 'flex', gap: '10px', textDecoration: 'none', color: 'inherit' }}
                         >
-                          <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {rn.anh_dai_dien ? (
                               <img src={rn.anh_dai_dien} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (

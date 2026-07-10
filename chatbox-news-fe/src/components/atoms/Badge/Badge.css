@@ -39,7 +39,7 @@
 
 .badge-region-Nam {
   background: rgba(239, 68, 68, 0.1);
-  color: #2A0177;
+  color: var(--color-secondary);
 }
 
 .badge-region-Trung {

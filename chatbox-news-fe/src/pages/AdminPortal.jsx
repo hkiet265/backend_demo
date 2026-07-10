@@ -5,6 +5,7 @@ import AdminUsersView from '../components/AdminUsersView';
 import LogfireView from '../components/LogfireView';
 import AdminNewsView from '../components/AdminNewsView';
 import AdminBusinessView from '../components/AdminBusinessView';
+import ChatbotAvatar from '../components/ChatbotAvatar';
 import { BarChart3, LogOut, Home, Users, Activity, Newspaper, Building2, Menu, X } from 'lucide-react';
 
 const AdminPortal = ({ currentUser, onLogout }) => {
@@ -55,7 +56,7 @@ const AdminPortal = ({ currentUser, onLogout }) => {
       <aside className={`admin-sidebar ${showSidebar ? 'show' : ''}`}>
         <div className="admin-sidebar-header">
           <div className="admin-logo">
-            <img src="/logochatbot.png" alt="Company Admin" />
+            <ChatbotAvatar size={45} className="admin-logo-avatar" />
           </div>
           <h2>Company Admin</h2>
           <p className="admin-subtitle">Control Panel</p>

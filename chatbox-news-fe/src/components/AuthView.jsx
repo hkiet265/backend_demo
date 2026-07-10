@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Mail, Lock, User, Phone } from 'lucide-react';
+import ChatbotAvatar from './ChatbotAvatar';
 
 const REMEMBER_KEY = 'remembered_credentials';
 
@@ -163,7 +164,7 @@ function AuthView({ onLoginSuccess, initialMode }) {
       <div className="auth-card" style={{ maxWidth: isRegister ? '680px' : '420px' }}>
         <div className="auth-header">
           <div className="auth-logo">
-            <img src="/logochatbot.png" alt="Company" className="auth-avatar" />
+            <ChatbotAvatar className="auth-avatar" />
           </div>
           <h2>{isLogin ? 'Đăng nhập' : isRegister ? 'Đăng ký' : 'Quên mật khẩu'}</h2>
           <p>

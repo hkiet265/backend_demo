@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import NavigationBar from './components/organisms/NavigationBar/NavigationBar';
@@ -12,6 +12,8 @@ import EditProfileView from './components/EditProfileView';
 import FavoritesView from './components/FavoritesView';
 import MyBusinessesView from './components/MyBusinessesView';
 import BusinessDetailView from './components/BusinessDetailView';
+import ChatbotAvatar from './components/ChatbotAvatar';
+import HyperspaceBackground from './components/HyperspaceBackground';
 import AdminPortal from './pages/AdminPortal';
 
 function App() {
@@ -19,7 +21,7 @@ function App() {
   const [authModalMode, setAuthModalMode] = useState('login');
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
- 
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
@@ -115,9 +117,46 @@ function App() {
   );
 }
 
+const SPLASH_SEEN_KEY = 'hyperspaceBackgroundSeen';
+// Past this many px of scroll, the navbar switches to its compact style.
+const HEADER_COMPACT_THRESHOLD = 80;
+
 function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
- 
+
+  const [showSplash, setShowSplash] = useState(() => !localStorage.getItem(SPLASH_SEEN_KEY));
+
+  const handleSplashFinish = () => {
+    localStorage.setItem(SPLASH_SEEN_KEY, '1');
+    setShowSplash(false);
+  };
+
   const [activeTab, setActiveTab] = useState('home');
+  // Shrinks the navbar to a compact bar with a shadow once the active
+  // tab's own scroll container (.main-content-area) passes the threshold.
+  const [isHeaderCompact, setIsHeaderCompact] = useState(false);
+  const workspaceRef = useRef(null);
+
+  // Every tab view renders its own `.main-content-area` as the real scroll
+  // container (the wrapper below it has overflow: hidden), so this has to
+  // re-query and re-attach whenever the active tab swaps that node out.
+  useEffect(() => {
+    const scrollEl = workspaceRef.current?.querySelector('.main-content-area');
+    if (!scrollEl) return;
+
+    let compact = false;
+    const handleScroll = () => {
+      const next = scrollEl.scrollTop > HEADER_COMPACT_THRESHOLD;
+      if (next === compact) return;
+      compact = next;
+      setIsHeaderCompact(next);
+    };
+
+    scrollEl.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      scrollEl.removeEventListener('scroll', handleScroll);
+      setIsHeaderCompact(false);
+    };
+  }, [activeTab]);
 
   const [isChatOpen, setIsChatOpen] = useState(false);
  
@@ -381,6 +420,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
 
   return (
     <div className="dashboard-master-container">
+      {showSplash && <HyperspaceBackground onFinish={handleSplashFinish} />}
       <NavigationBar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -390,9 +430,10 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
         onLogout={onLogout}
         onShowAuth={onShowAuth}
         onShowEditProfile={onShowEditProfile}
+        isCompact={isHeaderCompact}
       />
 
-      <div className="dynamic-workspace-layout">
+      <div className="dynamic-workspace-layout" ref={workspaceRef}>
         {activeTab === 'home' && (
           <HomeDashboardView
             currentUser={currentUser}
@@ -457,16 +498,10 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
       {selectedBusinessId && (
         <BusinessDetailView
           businessId={selectedBusinessId}
-          allNews={allNews}
           currentUser={currentUser}
           onClose={() => setSelectedBusinessId(null)}
           onShowAuth={onShowAuth}
-          onGoToNews={(newsTitle, newsId) => {
-            setSelectedBusinessId(null);
-            if (newsId) setOpenNewsId(newsId);
-            else if (newsTitle) setNewsSearchQuery(newsTitle);
-            setActiveTab('news');
-          }}
+          onDeleted={() => fetchAllBusinesses()}
         />
       )}
 
@@ -479,7 +514,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
         >
           <div className="floating-chat-content">
             <div className="floating-chat-avatar-wrapper">
-              <img src="/logochatbot.png" alt="Company" className="floating-chat-avatar" />
+              <ChatbotAvatar className="floating-chat-avatar" />
             </div>
             <div className="floating-chat-text">
               <span className="floating-chat-name">Chat với Company</span>
@@ -493,7 +528,7 @@ function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
           <div className="chat-popup-header">
             <div className="chat-popup-title">
               <div className="chat-popup-icon">
-                <img src="/logochatbot.png" alt="Company" className="chat-popup-avatar" />
+                <ChatbotAvatar className="chat-popup-avatar" />
               </div>
               <div>
                 <h3>Company trợ lý</h3>

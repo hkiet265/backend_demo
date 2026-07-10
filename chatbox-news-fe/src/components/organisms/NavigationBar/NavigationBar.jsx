@@ -1,6 +1,7 @@
 import { Home, Building2, Newspaper, LogOut, User, Settings, ChevronDown, Heart, Menu, X, Bookmark } from 'lucide-react';
 import { useState } from 'react';
 import UnifiedNotificationBell from '../../UnifiedNotificationBell';
+import ChatbotAvatar from '../../ChatbotAvatar';
 import './NavigationBar.css';
 
 /**
@@ -17,7 +18,7 @@ import './NavigationBar.css';
  * @param {Function} props.onShowAuth - Show auth modal
  * @param {Function} props.onShowEditProfile - Show edit profile
  */
-function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, currentUser, onLogout, onShowAuth, onShowEditProfile }) {
+function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, currentUser, onLogout, onShowAuth, onShowEditProfile, isCompact = false }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
@@ -27,10 +28,11 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
   };
 
   return (
-    <nav className="premium-navbar">
+    <nav className={`premium-navbar${isCompact ? ' is-compact' : ''}`}>
+      <div className="navbar-inner">
       <div className="nav-branding">
         <div className="nav-logo-glow">
-          <img src="/logochatbot.png" alt="Company" className="nav-logo-image" />
+          <ChatbotAvatar className="nav-logo-image" trackCursor={false} />
         </div>
         <div className="nav-brand-text">
           <h1>Company</h1>
@@ -126,12 +128,13 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
             </>
           ) : (
             <>
-              <button className="nav-login-btn" onClick={onShowAuth}>
+              <button className="nav-login-btn" onClick={() => onShowAuth('login')}>
                 <span>Đăng nhập</span>
               </button>
             </>
           )}
         </div>
+      </div>
       </div>
 
       {/* Mobile slide-in drawer */}
@@ -146,7 +149,7 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
             </div>
 
             <div className="mobile-drawer-profile">
-              <img src="/logochatbot.png" alt="Company" className="mobile-drawer-avatar" />
+              <ChatbotAvatar className="mobile-drawer-avatar" />
               {currentUser ? (
                 <div>
                   <p className="mobile-drawer-greeting">Chào {currentUser.full_name}!</p>

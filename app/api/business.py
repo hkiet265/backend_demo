@@ -390,7 +390,7 @@ async def get_business(business_id: int):
                    email, website, mo_ta, quy_mo, nganh_nghe, trang_thai,
                    do_tin_cay, facebook, zalo, linkedin, dia_chi, tags,
                    nhan_su, dang_tuyen, logo_url, ma_so_thue, ngay_thanh_lap,
-                   nguon_du_lieu, created_at, updated_at
+                   nguon_du_lieu, created_at, updated_at, created_by_user_id
             FROM businesses_demo
             WHERE id = %s;
         """, (business_id,))
@@ -429,7 +429,8 @@ async def get_business(business_id: int):
                 "founded_date": row[21].isoformat() if row[21] else None,
                 "source": row[22],
                 "created_at": row[23].isoformat() if row[23] else None,
-                "updated_at": row[24].isoformat() if row[24] else None
+                "updated_at": row[24].isoformat() if row[24] else None,
+                "created_by_user_id": row[25]
             }
         }
         

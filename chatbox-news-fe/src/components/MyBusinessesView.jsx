@@ -282,8 +282,8 @@ function MyBusinessesView({ currentUser, allNews = [] }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={{ background: 'white', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '9px', background: 'rgba(215,30,40,0.1)', color: '#3B0199', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ background: 'var(--bg-panel)', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '9px', background: 'rgba(215,30,40,0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Building2 size={16} />
             </div>
             <div>
@@ -331,13 +331,13 @@ function MyBusinessesView({ currentUser, allNews = [] }) {
           <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
             <button
               onClick={() => setViewMode('grid')}
-              style={{ width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--border-neon)', borderRadius: '8px', cursor: 'pointer', background: viewMode === 'grid' ? 'var(--color-primary)' : 'white', color: viewMode === 'grid' ? 'white' : 'var(--text-dim)' }}
+              style={{ width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--border-neon)', borderRadius: '8px', cursor: 'pointer', background: viewMode === 'grid' ? 'var(--color-primary)' : 'var(--bg-panel)', color: viewMode === 'grid' ? 'white' : 'var(--text-dim)' }}
             >
               <LayoutGrid size={16} />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              style={{ width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--border-neon)', borderRadius: '8px', cursor: 'pointer', background: viewMode === 'list' ? 'var(--color-primary)' : 'white', color: viewMode === 'list' ? 'white' : 'var(--text-dim)' }}
+              style={{ width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--border-neon)', borderRadius: '8px', cursor: 'pointer', background: viewMode === 'list' ? 'var(--color-primary)' : 'var(--bg-panel)', color: viewMode === 'list' ? 'white' : 'var(--text-dim)' }}
             >
               <List size={16} />
             </button>
@@ -391,7 +391,7 @@ function MyBusinessesView({ currentUser, allNews = [] }) {
                 <button
                   onClick={() => openEditForm(business)}
                   title="Sửa"
-                  style={{ width: '32px', height: '32px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-main)' }}
+                  style={{ width: '32px', height: '32px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'var(--bg-panel)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-main)' }}
                 >
                   <Edit size={14} />
                 </button>
@@ -490,7 +490,7 @@ function MyBusinessesView({ currentUser, allNews = [] }) {
             {formMode === 'edit' && (
               <div className="form-group" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px' }}>
                 <div style={{
-                  width: '64px', height: '64px', borderRadius: '12px', background: '#F8FAFC',
+                  width: '64px', height: '64px', borderRadius: '12px', background: 'var(--bg-input)',
                   border: '2px solid var(--border-neon)', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', overflow: 'hidden', flexShrink: 0
                 }}>

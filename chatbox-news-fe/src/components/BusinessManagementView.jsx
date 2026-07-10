@@ -2,6 +2,8 @@ import { Search, Sparkles, BarChart3, X, RefreshCw, ChevronLeft, ChevronRight, U
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Toast from './Toast';
+import ScrollReveal from './ScrollReveal';
+import CountUp from './CountUp';
 
 const PAGE_SIZE = 10;
 
@@ -60,9 +62,9 @@ function BusinessManagementView({
   isEnriching,
   handleSimulateRawInput,
   onRefresh,
-  currentUser
+  currentUser,
+  onOpenBusinessDetail
 }) {
-  const [selectedBusiness, setSelectedBusiness] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isEnrichingAll, setIsEnrichingAll] = useState(false);
   const [toast, setToast] = useState(null);
@@ -331,39 +333,6 @@ function BusinessManagementView({
     window.open(`/api/businesses/export/csv${q}`, '_blank');
   };
 
-  const handleDeleteBusiness = async (businessId) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      showToast('Vui lòng đăng nhập để xóa doanh nghiệp', 'error');
-      return;
-    }
-
-    if (!window.confirm('Bạn có chắc chắn muốn xóa doanh nghiệp này không?')) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/businesses/${businessId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Xóa thất bại');
-      }
-
-      showToast('✅ Xóa doanh nghiệp thành công', 'success');
-      closeModal();
-      setCurrentPage(1);
-      onRefresh();
-    } catch (err) {
-      showToast('❌ ' + err.message, 'error');
-    }
-  };
-
   const handleCreateFieldChange = (field, value) => {
     setCreateForm(prev => ({ ...prev, [field]: value }));
   };
@@ -435,22 +404,6 @@ function BusinessManagementView({
     }
   };
 
-  const openModal = (business) => {
-    setSelectedBusiness(business);
-    const scrollContainer = document.querySelector('.main-content-area');
-    if (scrollContainer) {
-      scrollContainer.style.overflow = 'hidden';
-    }
-  };
-
-  const closeModal = () => {
-    setSelectedBusiness(null);
-    const scrollContainer = document.querySelector('.main-content-area');
-    if (scrollContainer) {
-      scrollContainer.style.overflow = '';
-    }
-  };
-
   const formatRegionDisplay = (region) => {
     if (!region) return '';
     const r = region.toLowerCase();
@@ -469,20 +422,6 @@ function BusinessManagementView({
     if (r.includes('nam')) return 'region-Nam';
     if (r.includes('trung')) return 'region-Trung';
     return 'region-default';
-  };
-
-  const formatPhone = (phone) => {
-    if (!phone) return '';
-    
-    const cleaned = phone.toString().trim().replace(/[^\d+]/g, '');
-    return cleaned;
-  };
-
-  const formatWebsite = (site) => {
-    if (!site) return '';
-    const s = site.toString().trim();
-    if (/^https?:\/\//i.test(s)) return s;
-    return `https://${s}`;
   };
 
   return (
@@ -540,7 +479,7 @@ function BusinessManagementView({
               title="Báo cáo tổng quan"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                padding: isMobile ? '0' : '10px 20px', width: isMobile ? '42px' : 'auto', height: '42px', background: '#F8FAFC',
+                padding: isMobile ? '0' : '10px 20px', width: isMobile ? '42px' : 'auto', height: '42px', background: 'var(--bg-input)',
                 border: '2px solid var(--border-neon)', borderRadius: '10px',
                 color: 'var(--color-secondary)', fontSize: '14px', fontWeight: '600',
                 cursor: 'pointer', flexShrink: 0
@@ -557,7 +496,7 @@ function BusinessManagementView({
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                   padding: isMobile ? '0' : '10px 20px', width: isMobile ? '42px' : 'auto', height: '42px',
-                  background: 'linear-gradient(135deg, #3B0199, #2A0177)',
+                  background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))',
                   border: 'none', borderRadius: '10px', color: '#fff',
                   fontSize: '14px', fontWeight: '600', cursor: 'pointer',
                   boxShadow: '0 2px 8px rgba(215, 30, 40, 0.3)', flexShrink: 0
@@ -581,7 +520,7 @@ function BusinessManagementView({
                     padding: isMobile ? '0' : '10px 20px',
                     width: isMobile ? '42px' : 'auto',
                     height: '42px',
-                    background: '#F8FAFC',
+                    background: 'var(--bg-input)',
                     border: '2px solid var(--border-neon)',
                     borderRadius: '10px',
                     color: 'var(--color-secondary)',
@@ -592,13 +531,13 @@ function BusinessManagementView({
                     flexShrink: 0
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, #3B0199, #2A0177)';
+                    e.currentTarget.style.background = 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))';
                     e.currentTarget.style.color = '#fff';
                     e.currentTarget.style.transform = 'translateY(-2px)';
                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(185, 28, 28, 0.3)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#F8FAFC';
+                    e.currentTarget.style.background = 'var(--bg-input)';
                     e.currentTarget.style.color = 'var(--color-secondary)';
                     e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.style.boxShadow = 'none';
@@ -618,17 +557,17 @@ function BusinessManagementView({
           style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '20px' }}
         >
           {[
-            { icon: <Building2 size={20} />, color: '#3B0199', bg: 'rgba(215,30,40,0.1)', label: 'Tổng doanh nghiệp', value: stats.total },
+            { icon: <Building2 size={20} />, color: 'var(--color-primary)', bg: 'rgba(215,30,40,0.1)', label: 'Tổng doanh nghiệp', value: stats.total },
             { icon: <Users size={20} />, color: '#3B82F6', bg: 'rgba(59,130,246,0.1)', label: 'Doanh nghiệp mới (30 ngày)', value: stats.newCount },
             { icon: <Briefcase size={20} />, color: '#22C55E', bg: 'rgba(34,197,94,0.1)', label: 'Đang tuyển dụng', value: stats.hiringSum },
             { icon: <Newspaper size={20} />, color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)', label: 'Tin tức liên quan', value: stats.newsSum },
             { icon: <AlertTriangle size={20} />, color: '#CA8A04', bg: 'rgba(234,179,8,0.12)', label: 'Cảnh báo (độ tin cậy thấp)', value: stats.riskCount },
           ].map((card) => (
-            <div key={card.label} style={{ background: 'white', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '16px 18px' }}>
+            <div key={card.label} style={{ background: 'var(--bg-panel)', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '16px 18px' }}>
               <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: card.bg, color: card.color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
                 {card.icon}
               </div>
-              <div style={{ fontSize: '22px', fontWeight: 800 }}>{card.value}</div>
+              <div style={{ fontSize: '22px', fontWeight: 800 }}><CountUp value={card.value} /></div>
               <div style={{ fontSize: '12.5px', color: 'var(--text-dim)' }}>{card.label}</div>
             </div>
           ))}
@@ -642,7 +581,7 @@ function BusinessManagementView({
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%',
               padding: '10px', marginBottom: '14px', borderRadius: '10px',
               border: `2px solid ${showMobileSidebar ? 'var(--color-primary)' : 'var(--border-neon)'}`,
-              background: showMobileSidebar ? '#FEF2F2' : 'white', color: showMobileSidebar ? 'var(--color-primary)' : 'var(--text-main)',
+              background: showMobileSidebar ? 'var(--bg-input)' : 'var(--bg-panel)', color: showMobileSidebar ? 'var(--color-accent)' : 'var(--text-main)',
               fontSize: '13.5px', fontWeight: 700, cursor: 'pointer'
             }}
           >
@@ -654,14 +593,14 @@ function BusinessManagementView({
           {(!isMobile || showMobileSidebar) && (
           <aside style={{
             width: isMobile ? '100%' : '220px', flexShrink: 0, boxSizing: 'border-box',
-            ...(isMobile ? { background: 'white', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '16px' } : {})
+            ...(isMobile ? { background: 'var(--bg-panel)', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '16px' } : {})
           }}>
             <button
               onClick={() => { setActiveTab('all'); setIndustryFilter(null); setQuickFilter(null); }}
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: '8px', textAlign: 'left',
                 padding: '10px 14px', marginBottom: '16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                background: (!industryFilter && !quickFilter && activeTab === 'all') ? '#FEF2F2' : 'transparent',
+                background: (!industryFilter && !quickFilter && activeTab === 'all') ? 'var(--bg-input)' : 'transparent',
                 color: (!industryFilter && !quickFilter && activeTab === 'all') ? 'var(--color-primary)' : 'var(--text-main)',
                 fontWeight: 700, fontSize: '14px'
               }}
@@ -678,7 +617,7 @@ function BusinessManagementView({
                   style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '8px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                    background: industryFilter === industry ? '#FEF2F2' : 'transparent',
+                    background: industryFilter === industry ? 'var(--bg-input)' : 'transparent',
                     color: industryFilter === industry ? 'var(--color-primary)' : 'var(--text-main)',
                     fontSize: '13px', fontWeight: 600, textAlign: 'left'
                   }}
@@ -702,7 +641,7 @@ function BusinessManagementView({
                   style={{
                     display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px',
                     borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left',
-                    background: quickFilter === f.key ? '#FEF2F2' : 'transparent',
+                    background: quickFilter === f.key ? 'var(--bg-input)' : 'transparent',
                     color: quickFilter === f.key ? 'var(--color-primary)' : 'var(--text-main)',
                     fontSize: '13px', fontWeight: 600
                   }}
@@ -791,9 +730,8 @@ function BusinessManagementView({
             </div>
 
         {isLoading ? (
-          <div className="loading-state">
-            <div className="spinner" />
-            <p>Company đang tìm kiếm doanh nghiệp cho bạn...</p>
+          <div className="biz-card-grid">
+            {Array.from({ length: pageSize }).map((_, i) => <BusinessCardSkeleton key={i} />)}
           </div>
         ) : filteredSorted.length === 0 ? (
           <div className="empty-state">
@@ -802,8 +740,9 @@ function BusinessManagementView({
         ) : (
           <>
             <div className="biz-card-grid" style={viewMode === 'list' ? { gridTemplateColumns: '1fr' } : undefined}>
-              {pagedBusinesses.map((biz) => (
-                <div key={biz.id} className="biz-card" onClick={() => openModal(biz)}>
+              {pagedBusinesses.map((biz, idx) => (
+                <ScrollReveal key={biz.id} delay={(idx % 10) * 40}>
+                <div className="biz-card" onClick={() => onOpenBusinessDetail(biz.id)}>
                   <button
                     className={`bookmark-heart-btn ${bookmarkedBusinesses.has(biz.id) ? 'bookmarked' : ''}`}
                     onMouseDown={(e) => {
@@ -858,6 +797,7 @@ function BusinessManagementView({
                     </div>
                   </div>
                 </div>
+                </ScrollReveal>
               ))}
             </div>
 
@@ -943,152 +883,6 @@ function BusinessManagementView({
         </div>
       </div>
 
-      {selectedBusiness && createPortal(
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-content biz-modal-wide" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={closeModal}><X size={20} /></button>
- 
-            <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              {selectedBusiness.region && (
-                <span className={`biz-tag ${regionColor(selectedBusiness.region)}`}>{formatRegionDisplay(selectedBusiness.region)}</span>
-              )}
-              {selectedBusiness.industry && (
-                <span className="biz-tag biz-tag-scale">{selectedBusiness.industry}</span>
-              )}
-              {selectedBusiness.trust_score != null && (
-                <span className={`biz-tag ${selectedBusiness.trust_score >= TRUSTED_THRESHOLD ? 'biz-tag-trusted' : 'biz-tag-muted'}`}>
-                  ⭐ Độ tin cậy: {selectedBusiness.trust_score}%
-                </span>
-              )}
-              {selectedBusiness.status && selectedBusiness.status !== 'Hoat_dong' && (
-                <span className="biz-tag" style={{ background: 'rgba(237,137,54,0.2)', color: '#c05621' }}>
-                  ⚠️ {selectedBusiness.status}
-                </span>
-              )}
-            </div>
-
-            <h2 className="modal-title">{getBizIcon(selectedBusiness.name, selectedBusiness.description)} {selectedBusiness.name}</h2>
-
-            <div className="modal-body">
-              <div className="business-info-grid">
- 
-                {(selectedBusiness.address || selectedBusiness.location) && (
-                  <div className="business-info-item">
-                    <strong>📍 Địa chỉ:</strong>
-                    <span>{selectedBusiness.address || selectedBusiness.location}</span>
-                  </div>
-                )}
-                {selectedBusiness.location && selectedBusiness.address && (
-                  <div className="business-info-item">
-                    <strong>🏙️ Tỉnh/Thành:</strong>
-                    <span>{selectedBusiness.location}</span>
-                  </div>
-                )}
-                {selectedBusiness.phone && (
-                  <div className="business-info-item">
-                    <strong>📞 Điện thoại:</strong>
-                    <a href={`tel:${formatPhone(selectedBusiness.phone)}`} style={{ color: 'var(--color-primary)' }}>
-                      {selectedBusiness.phone}
-                    </a>
-                  </div>
-                )}
-                {selectedBusiness.email && (
-                  <div className="business-info-item">
-                    <strong>📧 Email:</strong>
-                    <a href={`mailto:${selectedBusiness.email}`} style={{ color: 'var(--color-primary)' }}>
-                      {selectedBusiness.email}
-                    </a>
-                  </div>
-                )}
-                {selectedBusiness.scale && (
-                  <div className="business-info-item">
-                    <strong>👥 Quy mô:</strong>
-                    <span>{selectedBusiness.scale}</span>
-                  </div>
-                )}
- 
-                {(selectedBusiness.facebook || selectedBusiness.zalo || selectedBusiness.linkedin) && (
-                  <div className="business-info-item" style={{ gridColumn: '1 / -1' }}>
-                    <strong>🔗 Mạng xã hội:</strong>
-                    <span style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                      {selectedBusiness.facebook && (
-                        <a href={selectedBusiness.facebook} target="_blank" rel="noreferrer"
-                           style={{ color: '#1877f2', fontWeight: 600 }}>Facebook</a>
-                      )}
-                      {selectedBusiness.zalo && (
-                        <a href={`https://zalo.me/${selectedBusiness.zalo}`} target="_blank" rel="noreferrer"
-                           style={{ color: '#0068ff', fontWeight: 600 }}>Zalo</a>
-                      )}
-                      {selectedBusiness.linkedin && (
-                        <a href={selectedBusiness.linkedin} target="_blank" rel="noreferrer"
-                           style={{ color: '#0a66c2', fontWeight: 600 }}>LinkedIn</a>
-                      )}
-                    </span>
-                  </div>
-                )}
-                {selectedBusiness.tags && (
-                  <div className="business-info-item" style={{ gridColumn: '1 / -1' }}>
-                    <strong>🏷️ Tags:</strong>
-                    <span style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {selectedBusiness.tags.split(',').map((t, i) => (
-                        <span key={i} className="biz-tag biz-tag-muted">{t.trim()}</span>
-                      ))}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Mobile bookmark button - rectangular with text */}
-              <button
-                className={`modal-bookmark-btn-mobile ${bookmarkedBusinesses.has(selectedBusiness.id) ? 'bookmarked' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleBookmark(selectedBusiness.id, e);
-                }}
-              >
-                <Heart size={18} fill={bookmarkedBusinesses.has(selectedBusiness.id) ? 'currentColor' : 'none'} />
-                <span>{bookmarkedBusinesses.has(selectedBusiness.id) ? 'Đã yêu thích' : 'Thêm vào yêu thích'}</span>
-              </button>
-
-              {selectedBusiness.description && (
-                <div className="modal-detail">
-                  <h4>📋 Mô tả doanh nghiệp</h4>
-                  <p>{selectedBusiness.description}</p>
-                </div>
-              )}
-
-              {/* Delete button for business owner */}
-              {currentUser && selectedBusiness.created_by_user_id === currentUser.id && (
-                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
-                  <button
-                    onClick={() => handleDeleteBusiness(selectedBusiness.id)}
-                    className="btn-cancel"
-                    style={{ 
-                      background: '#ef4444', 
-                      color: 'white',
-                      border: 'none',
-                      padding: '10px 20px',
-                      fontSize: '14px',
-                      fontWeight: '600'
-                    }}
-                  >
-                    🗑️ Xóa doanh nghiệp
-                  </button>
-                  <p style={{ 
-                    fontSize: '12px', 
-                    color: 'var(--text-dim)', 
-                    marginTop: '8px' 
-                  }}>
-                    Bạn là người tạo doanh nghiệp này nên có thể xóa
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
       {showCreateModal && createPortal(
         <div className="modal-overlay" onClick={() => { setShowCreateModal(false); setCreateLogoFile(null); }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -1104,7 +898,7 @@ function BusinessManagementView({
 
               <div className="form-group" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px' }}>
                 <div style={{
-                  width: '56px', height: '56px', borderRadius: '12px', background: '#F8FAFC',
+                  width: '56px', height: '56px', borderRadius: '12px', background: 'var(--bg-input)',
                   border: '2px solid var(--border-neon)', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', overflow: 'hidden', flexShrink: 0
                 }}>

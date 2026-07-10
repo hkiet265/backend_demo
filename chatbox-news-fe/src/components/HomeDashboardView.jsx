@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Newspaper, Building2, Search, ArrowRight, Heart,
-  CheckCircle2, ShieldCheck, Briefcase, Plus, X, RotateCcw, Bell,
-  Cpu, Landmark, Factory, Truck, GraduationCap, HeartPulse, Sparkles, SlidersHorizontal,
+  CheckCircle2, ShieldCheck, Briefcase,
+  Cpu, Landmark, Factory, Truck, GraduationCap, HeartPulse, Sparkles,
   ChevronLeft, ChevronRight
 } from 'lucide-react';
 import Toast from './Toast';
+import ScrollReveal from './ScrollReveal';
 
 function trustPill(score) {
   if (score >= 80) return { label: 'Cao', bg: '#DCFCE7', color: '#16A34A' };
@@ -54,11 +55,19 @@ function newsTagStyle(category) {
 }
 
 const CARD_STYLE = {
-  background: 'white', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)',
+  background: 'rgba(24, 24, 27, 0.55)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+  border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)',
   cursor: 'pointer', transition: 'all 0.15s ease', textAlign: 'left', position: 'relative',
 };
 
-const PINNED_TOPICS_KEY = 'home_pinned_topics';
+// Fixed (not random-per-render) sparkle positions for the hero banner, so
+// they don't jump around on every re-render.
+const HERO_PARTICLES = Array.from({ length: 22 }, (_, i) => ({
+  left: (i * 37 + 5) % 100,
+  top: (i * 53 + 11) % 100,
+  size: 2 + (i % 3),
+  delay: (i % 7) * 0.6,
+}));
 
 // Real trust_score is a completeness score (đủ thông tin cơ bản + website =
 // 60/100 today, since no business has address/social filled in yet — see
@@ -67,74 +76,51 @@ const PINNED_TOPICS_KEY = 'home_pinned_topics';
 // as businesses add address/social data their scores will rise past it.
 const VERIFIED_THRESHOLD = 60;
 
-function HomeDashboardView({ currentUser, allBusinesses, allNews, isFetchBusinessLoading, isFetchNewsLoading, onOpenChatWithPrompt, onGoToBusiness, onGoToNews, onOpenBusinessDetail }) {
+// Past this many px of scroll, the navbar switches to its compact style
+// and the hero subtitle/CTA hide.
+const HEADER_COMPACT_THRESHOLD = 80;
+
+function HomeDashboardView({ currentUser, allBusinesses, allNews, isFetchBusinessLoading, isFetchNewsLoading, onOpenChatWithPrompt, onGoToBusiness, onGoToNews, onOpenBusinessDetail, onHeaderCompactChange }) {
   const [localSearch, setLocalSearch] = useState('');
-  const [regionFilter, setRegionFilter] = useState('all');
+  const [isHeaderCompact, setIsHeaderCompact] = useState(false);
+  const contentAreaRef = useRef(null);
   const [industryFilter, setIndustryFilter] = useState(null);
-  const [scaleFilter, setScaleFilter] = useState(null);
-  const [trustVerified, setTrustVerified] = useState(false);
-  const [favoriteBusinessesOnly, setFavoriteBusinessesOnly] = useState(false);
-  const [favoriteNewsOnly, setFavoriteNewsOnly] = useState(false);
-  const [showAllCategories, setShowAllCategories] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState(new Set());
   const [bookmarkedNewsIds, setBookmarkedNewsIds] = useState(new Set());
-  const [pinnedTopics, setPinnedTopics] = useState(null);
-  const [showAddTopic, setShowAddTopic] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 900);
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [bannerIndex, setBannerIndex] = useState(0);
   const [selectedNewsIndex, setSelectedNewsIndex] = useState(null);
   const [relatedNews, setRelatedNews] = useState([]);
   const [showAllRelated, setShowAllRelated] = useState(false);
   const [toast, setToast] = useState(null);
   // overflow-x:auto only responds to real touch panning; testing by
-  // click-dragging with a mouse (e.g. a resized desktop browser window)
-  // doesn't scroll it at all, so we add manual drag-to-scroll on top.
-  const carouselRef = useRef(null);
-  const categoryScrollRef = useRef(null);
-  const trendingScrollRef = useRef(null);
-  const dragState = useRef({ isDown: false, startX: 0, startScrollLeft: 0, moved: false, el: null });
-
-  useEffect(() => {
-    const state = dragState.current;
-    const els = [carouselRef.current, categoryScrollRef.current, trendingScrollRef.current].filter(Boolean);
-    if (els.length === 0) return;
-
-    const onDown = (el) => (e) => {
-      state.isDown = true;
-      state.moved = false;
-      state.startX = e.pageX;
-      state.startScrollLeft = el.scrollLeft;
-      state.el = el;
-    };
-    const onMove = (e) => {
-      if (!state.isDown || !state.el) return;
-      const dx = e.pageX - state.startX;
-      if (Math.abs(dx) > 5) state.moved = true;
-      state.el.scrollLeft = state.startScrollLeft - dx;
-    };
-    const onUp = () => { state.isDown = false; };
-
-    const downHandlers = els.map(el => {
-      const handler = onDown(el);
-      el.addEventListener('mousedown', handler);
-      return { el, handler };
-    });
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-
-    return () => {
-      downHandlers.forEach(({ el, handler }) => el.removeEventListener('mousedown', handler));
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-  }, [isMobile]);
-
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 900);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // This view's own root div is the actual scroll container (overflow-y:
+  // auto), not window — so the scroll listener goes on it, not on window.
+  useEffect(() => {
+    const el = contentAreaRef.current;
+    if (!el) return;
+
+    let isCompact = false;
+    const handleScroll = () => {
+      const next = el.scrollTop > HEADER_COMPACT_THRESHOLD;
+      if (next === isCompact) return;
+      isCompact = next;
+      setIsHeaderCompact(next);
+      onHeaderCompactChange?.(next);
+    };
+
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      onHeaderCompactChange?.(false);
+    };
+  }, [onHeaderCompactChange]);
+
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -203,59 +189,17 @@ function HomeDashboardView({ currentUser, allBusinesses, allNews, isFetchBusines
     return [...map.entries()].sort((a, b) => b[1] - a[1]);
   }, [allBusinesses]);
 
-  const scaleOptions = useMemo(() => {
-    const options = [...new Set(allBusinesses.map(b => b.scale).filter(Boolean))];
-    // Sort by the first number in each label (e.g. "50-100 nhân viên" -> 50)
-    // so the dropdown reads smallest-to-largest instead of insertion order.
-    return options.sort((a, b) => {
-      const numA = parseInt(a.match(/\d+/)?.[0] || '0', 10);
-      const numB = parseInt(b.match(/\d+/)?.[0] || '0', 10);
-      return numA - numB;
-    });
-  }, [allBusinesses]);
-
-  // "Chủ đề quan tâm" — pinned industries, kept in localStorage only (no
-  // backend table for this yet); default to the 4 biggest industries.
-  useEffect(() => {
-    if (pinnedTopics !== null || industryCounts.length === 0) return;
-    try {
-      const saved = JSON.parse(localStorage.getItem(PINNED_TOPICS_KEY) || 'null');
-      setPinnedTopics(Array.isArray(saved) ? saved : industryCounts.slice(0, 4).map(([ind]) => ind));
-    } catch (e) {
-      setPinnedTopics(industryCounts.slice(0, 4).map(([ind]) => ind));
-    }
-  }, [industryCounts, pinnedTopics]);
-
-  const updatePinnedTopics = (next) => {
-    setPinnedTopics(next);
-    localStorage.setItem(PINNED_TOPICS_KEY, JSON.stringify(next));
-  };
-
-  const countFor = (industry) => industryCounts.find(([ind]) => ind === industry)?.[1] || 0;
-  const unpinnedIndustries = industryCounts.map(([ind]) => ind).filter(ind => !(pinnedTopics || []).includes(ind));
-
-  const hasActiveFilters = regionFilter !== 'all' || industryFilter || scaleFilter || trustVerified || favoriteBusinessesOnly || favoriteNewsOnly || localSearch.trim();
-
-  const clearAllFilters = () => {
-    setLocalSearch(''); setRegionFilter('all'); setIndustryFilter(null); setScaleFilter(null);
-    setTrustVerified(false); setFavoriteBusinessesOnly(false); setFavoriteNewsOnly(false);
-  };
-
   const filteredBusinesses = useMemo(() => {
     const q = normalizeText(localSearch);
     return allBusinesses.filter(b => {
-      if (regionFilter !== 'all' && !normalizeText(b.region).includes(normalizeText(regionFilter))) return false;
       if (industryFilter && (b.industry || 'Khác') !== industryFilter) return false;
-      if (scaleFilter && b.scale !== scaleFilter) return false;
-      if (trustVerified && !((b.trust_score ?? 0) >= VERIFIED_THRESHOLD)) return false;
-      if (favoriteBusinessesOnly && !bookmarkedIds.has(b.id)) return false;
       if (q) {
         const haystack = `${normalizeText(b.name)} ${normalizeText(b.industry)} ${normalizeText(b.location)} ${normalizeText(b.description)}`;
         if (!haystack.includes(q)) return false;
       }
       return true;
     });
-  }, [allBusinesses, regionFilter, industryFilter, scaleFilter, trustVerified, favoriteBusinessesOnly, bookmarkedIds, localSearch]);
+  }, [allBusinesses, industryFilter, localSearch]);
 
   const suggestedBusinesses = useMemo(
     () => [...filteredBusinesses].sort((a, b) => (b.trust_score ?? 0) - (a.trust_score ?? 0)).slice(0, 5),
@@ -263,14 +207,11 @@ function HomeDashboardView({ currentUser, allBusinesses, allNews, isFetchBusines
   );
 
   const topNews = useMemo(() => {
-    const pool = favoriteNewsOnly ? allNews.filter(n => bookmarkedNewsIds.has(n.id)) : allNews;
-    const featured = pool.filter(n => n.featured);
-    const rest = pool.filter(n => !n.featured);
+    const featured = allNews.filter(n => n.featured);
+    const rest = allNews.filter(n => !n.featured);
     return [...featured, ...rest].slice(0, 5);
-  }, [allNews, favoriteNewsOnly, bookmarkedNewsIds]);
-  const hiringSum = useMemo(() => allBusinesses.reduce((s, b) => s + (b.dang_tuyen || 0), 0), [allBusinesses]);
-
-  const visibleCategories = showAllCategories ? industryCounts : industryCounts.slice(0, 7);
+  }, [allNews]);
+  const visibleCategories = industryCounts;
 
   const selectedNewsDetail = selectedNewsIndex !== null ? topNews[selectedNewsIndex] : null;
 
@@ -297,303 +238,91 @@ function HomeDashboardView({ currentUser, allBusinesses, allNews, isFetchBusines
 
   return (
     <>
-    <div className="main-content-area fade-in-effect" style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '20px', alignItems: isMobile ? 'stretch' : 'flex-start' }}>
-      {isMobile && (
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={17} style={{ position: 'absolute', left: '13px', color: 'var(--text-dim)' }} />
-            <input
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') onGoToBusiness(localSearch); }}
-              placeholder="Tìm doanh nghiệp, tin tức, ngành nghề..."
-              style={{ width: '100%', padding: '11px 12px 11px 38px', borderRadius: '10px', border: '2px solid var(--border-neon)', fontSize: '13.5px', boxSizing: 'border-box' }}
+    <div ref={contentAreaRef} className="main-content-area fade-in-effect" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className={`home-hero${isHeaderCompact ? ' is-compact' : ''}`}>
+        <div className="home-hero-particles">
+          {HERO_PARTICLES.map((p, i) => (
+            <span
+              key={i}
+              className="home-hero-particle"
+              style={{ left: `${p.left}%`, top: `${p.top}%`, width: `${p.size}px`, height: `${p.size}px`, animationDelay: `${p.delay}s` }}
             />
-          </div>
-          <button
-            onClick={() => setShowMobileFilters(v => !v)}
-            style={{
-              width: '42px', flexShrink: 0, borderRadius: '10px', border: `2px solid ${showMobileFilters || hasActiveFilters ? 'var(--color-primary)' : 'var(--border-neon)'}`,
-              background: showMobileFilters || hasActiveFilters ? '#FEF2F2' : 'white', color: showMobileFilters || hasActiveFilters ? 'var(--color-primary)' : 'var(--text-main)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-            }}
-          >
-            <SlidersHorizontal size={17} />
-          </button>
+          ))}
         </div>
-      )}
-
-      {(!isMobile || showMobileFilters) && (
-      <aside style={{ ...(isMobile ? CARD_STYLE : {}), width: isMobile ? '100%' : '260px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '16px', boxSizing: 'border-box' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0 }}>Bộ lọc nhanh</h3>
-
-        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', ...(isMobile ? { paddingBottom: '14px', borderBottom: '1px solid var(--border-neon)' } : {}) }}>
-          <span style={{ fontSize: '13.5px', fontWeight: 600 }}>Doanh nghiệp uy tín</span>
-          <span
-            onClick={() => setTrustVerified(v => !v)}
-            style={{
-              width: '38px', height: '20px', borderRadius: '20px', position: 'relative', flexShrink: 0,
-              background: trustVerified ? 'var(--color-primary)' : '#E5E7EB', transition: 'background 0.2s ease'
-            }}
-          >
-            <span style={{
-              position: 'absolute', top: '2px', left: trustVerified ? '20px' : '2px', width: '16px', height: '16px',
-              borderRadius: '50%', background: 'white', transition: 'left 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
-            }} />
-          </span>
-        </label>
-
-        <div style={isMobile ? { paddingBottom: '14px', borderBottom: '1px solid var(--border-neon)' } : {}}>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 8px' }}>KHU VỰC / MIỀN</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            {['all', 'Bac', 'Trung', 'Nam'].map(r => (
-              <button
-                key={r}
-                onClick={() => setRegionFilter(r)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '8px',
-                  border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '13px', fontWeight: 600,
-                  background: regionFilter === r ? '#FEF2F2' : 'transparent',
-                  color: regionFilter === r ? 'var(--color-primary)' : 'var(--text-main)'
-                }}
-              >
-                {regionFilter === r && <CheckCircle2 size={14} />}
-                {r === 'all' ? 'Tất cả' : r === 'Bac' ? 'Miền Bắc' : r === 'Trung' ? 'Miền Trung' : 'Miền Nam'}
+        <div className="home-hero-content">
+          <h1 className="home-hero-title">Kết nối doanh nghiệp,<br />nắm bắt tin tức thị trường</h1>
+          <div className="home-hero-fade">
+            <p className="home-hero-subtitle">
+              Tra cứu doanh nghiệp uy tín, cập nhật tin tức &amp; cơ hội tuyển dụng mới nhất — tất cả trong một nền tảng.
+            </p>
+            <div className="home-hero-actions">
+              <button className="home-hero-cta" onClick={() => onGoToBusiness()}>
+                Khám phá ngay <ArrowRight size={16} />
               </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 8px' }}>NGÀNH NGHỀ</p>
-          <select
-            value={industryFilter || ''}
-            onChange={(e) => setIndustryFilter(e.target.value || null)}
-            style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '2px solid var(--border-neon)', fontSize: '13px', fontWeight: 600, background: 'white' }}
-          >
-            <option value="">Tất cả ngành nghề</option>
-            {industryCounts.map(([ind, count]) => (
-              <option key={ind} value={ind}>{ind} ({count})</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 8px' }}>QUY MÔ DOANH NGHIỆP</p>
-          <select
-            value={scaleFilter || ''}
-            onChange={(e) => setScaleFilter(e.target.value || null)}
-            style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '2px solid var(--border-neon)', fontSize: '13px', fontWeight: 600, background: 'white' }}
-          >
-            <option value="">Tất cả quy mô</option>
-            {scaleOptions.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-
-        <div>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 8px' }}>MỨC ĐỘ TIN CẬY</p>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-            <input type="checkbox" checked={trustVerified} onChange={(e) => setTrustVerified(e.target.checked)} style={{ accentColor: '#16A34A' }} />
-            Đã xác minh
-          </label>
-        </div>
-
-        <div>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 8px' }}>YÊU THÍCH</p>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', marginBottom: '6px' }}>
-            <input type="checkbox" checked={favoriteBusinessesOnly} onChange={(e) => setFavoriteBusinessesOnly(e.target.checked)} />
-            Doanh nghiệp được yêu thích
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-            <input type="checkbox" checked={favoriteNewsOnly} onChange={(e) => setFavoriteNewsOnly(e.target.checked)} />
-            Tin tức yêu thích
-          </label>
-        </div>
-
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-dim)', margin: 0 }}>CHỦ ĐỀ QUAN TÂM</p>
-            <button onClick={() => setShowAddTopic(v => !v)} title="Thêm chủ đề" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', display: 'flex' }}>
-              <Plus size={16} />
-            </button>
-          </div>
-          {showAddTopic && (
-            <select
-              autoFocus
-              value=""
-              onChange={(e) => { if (e.target.value) updatePinnedTopics([...(pinnedTopics || []), e.target.value]); setShowAddTopic(false); }}
-              style={{ width: '100%', padding: '7px 8px', borderRadius: '8px', border: '2px solid var(--border-neon)', fontSize: '12.5px', marginBottom: '8px' }}
-            >
-              <option value="">Chọn ngành để ghim...</option>
-              {unpinnedIndustries.map(ind => <option key={ind} value={ind}>{ind}</option>)}
-            </select>
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {(pinnedTopics || []).map(topic => (
-              <div
-                key={topic}
-                onClick={() => setIndustryFilter(industryFilter === topic ? null : topic)}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px',
-                  borderRadius: '8px', cursor: 'pointer',
-                  background: industryFilter === topic ? '#FEF2F2' : 'transparent',
-                  color: industryFilter === topic ? 'var(--color-primary)' : 'var(--text-main)'
-                }}
-              >
-                <span style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{topic}</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>{countFor(topic)}</span>
-                  <X size={13} onClick={(e) => { e.stopPropagation(); updatePinnedTopics((pinnedTopics || []).filter(t => t !== topic)); }} />
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <button
-          onClick={clearAllFilters}
-          disabled={!hasActiveFilters}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px',
-            borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'white',
-            color: hasActiveFilters ? 'var(--color-primary)' : 'var(--text-dim)', fontSize: '13px', fontWeight: 700,
-            cursor: hasActiveFilters ? 'pointer' : 'not-allowed'
-          }}
-        >
-          <RotateCcw size={14} /> Xóa tất cả bộ lọc
-        </button>
-      </aside>
-      )}
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {!isMobile && (
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-          <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={18} style={{ position: 'absolute', left: '14px', color: 'var(--text-dim)' }} />
-            <input
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-              placeholder="Tìm doanh nghiệp, tin tức, ngành nghề, địa điểm..."
-              style={{ width: '100%', padding: '12px 14px 12px 42px', borderRadius: '10px', border: '2px solid var(--border-neon)', fontSize: '14px', boxSizing: 'border-box' }}
-            />
-          </div>
-          <button
-            onClick={() => onGoToBusiness(localSearch)}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #3B0199, #2A0177)', color: 'white', fontWeight: 700, fontSize: '13.5px', cursor: 'pointer' }}
-          >
-            <Search size={16} /> Tìm kiếm
-          </button>
-        </div>
-        )}
-
-        {(() => {
-          const ctaCards = [
-            {
-              key: 'business', onClick: () => onGoToBusiness(), gradient: 'linear-gradient(135deg, #F97316, #DC2626)',
-              eyebrow: 'Khám phá', title: 'Doanh nghiệp nổi bật', desc: 'Kết nối với những doanh nghiệp uy tín trong mọi lĩnh vực',
-              cta: 'Khám phá ngay', ctaColor: '#DC2626'
-            },
-            {
-              key: 'news', onClick: () => onGoToNews(), gradient: 'linear-gradient(135deg, #3B82F6, #1D4ED8)',
-              eyebrow: 'Tin tức mới', title: `${allNews.length} bài viết`, desc: 'Cập nhật xu hướng thị trường & kinh tế',
-              cta: 'Xem tin tức', ctaColor: '#1D4ED8'
-            },
-            {
-              key: 'hiring', onClick: () => onGoToBusiness(), gradient: 'linear-gradient(135deg, #22C55E, #15803D)',
-              eyebrow: 'Tuyển dụng hấp dẫn', title: `${hiringSum} vị trí`, desc: 'đang chờ bạn ứng tuyển',
-              cta: 'Tìm việc ngay', ctaColor: '#15803D'
-            },
-          ];
-
-          if (!isMobile) {
-            return (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '20px' }}>
-                {ctaCards.map(c => (
-                  <button key={c.key} onClick={c.onClick} style={{ ...CARD_STYLE, border: 'none', padding: '22px', background: c.gradient, color: 'white' }}>
-                    <p style={{ margin: '0 0 4px', fontSize: '13px', fontWeight: 700, opacity: 0.9 }}>{c.eyebrow}</p>
-                    <h4 style={{ margin: '0 0 6px', fontSize: '19px', fontWeight: 800 }}>{c.title}</h4>
-                    <p style={{ margin: '0 0 16px', fontSize: '12.5px', opacity: 0.9 }}>{c.desc}</p>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'white', color: c.ctaColor, padding: '8px 14px', borderRadius: '8px', fontWeight: 700, fontSize: '13px' }}>
-                      {c.cta} <ArrowRight size={14} />
-                    </span>
-                  </button>
-                ))}
-              </div>
-            );
-          }
-
-          return (
-            <div style={{ marginBottom: '20px' }}>
-              <div
-                ref={carouselRef}
-                onScroll={(e) => {
-                  const idx = Math.round(e.target.scrollLeft / e.target.clientWidth);
-                  setBannerIndex(idx);
-                }}
-                style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', gap: '0', WebkitOverflowScrolling: 'touch', cursor: 'grab', userSelect: 'none' }}
-              >
-                {ctaCards.map(c => (
-                  <button
-                    key={c.key}
-                    onClick={() => { if (!dragState.current.moved) c.onClick(); }}
-                    style={{ ...CARD_STYLE, flex: '0 0 100%', scrollSnapAlign: 'center', border: 'none', padding: '22px', background: c.gradient, color: 'white', boxSizing: 'border-box' }}
-                  >
-                    <p style={{ margin: '0 0 4px', fontSize: '13px', fontWeight: 700, opacity: 0.9 }}>{c.eyebrow}</p>
-                    <h4 style={{ margin: '0 0 6px', fontSize: '19px', fontWeight: 800 }}>{c.title}</h4>
-                    <p style={{ margin: '0 0 16px', fontSize: '12.5px', opacity: 0.9 }}>{c.desc}</p>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'white', color: c.ctaColor, padding: '8px 14px', borderRadius: '8px', fontWeight: 700, fontSize: '13px' }}>
-                      {c.cta} <ArrowRight size={14} />
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '10px' }}>
-                {ctaCards.map((c, i) => (
-                  <span key={c.key} style={{ width: '6px', height: '6px', borderRadius: '50%', background: i === bannerIndex ? 'var(--color-primary)' : '#E5E7EB' }} />
-                ))}
+              <div className="home-hero-search">
+                <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', minWidth: 0 }}>
+                  <Search size={18} style={{ position: 'absolute', left: '14px', color: 'var(--text-dim)' }} />
+                  <input
+                    value={localSearch}
+                    onChange={(e) => setLocalSearch(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') onGoToBusiness(localSearch); }}
+                    placeholder="Tìm doanh nghiệp, tin tức, ngành nghề, địa điểm..."
+                    style={{ width: '100%', padding: '12px 14px 12px 42px', borderRadius: '10px', border: '2px solid var(--border-neon)', fontSize: '14px', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <button
+                  onClick={() => onGoToBusiness(localSearch)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '0 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))', color: 'white', fontWeight: 700, fontSize: '13.5px', cursor: 'pointer', flexShrink: 0 }}
+                >
+                  <Search size={16} /> Tìm kiếm
+                </button>
               </div>
             </div>
-          );
-        })()}
+          </div>
+        </div>
+      </div>
 
-        <div ref={categoryScrollRef} style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', cursor: isMobile ? 'grab' : 'default' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
           <button
             onClick={() => setIndustryFilter(null)}
             style={{
               display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px',
               border: `2px solid ${!industryFilter ? 'var(--color-primary)' : 'var(--border-neon)'}`,
-              background: !industryFilter ? '#FEF2F2' : 'white', color: !industryFilter ? 'var(--color-primary)' : 'var(--text-main)',
-              fontSize: '13px', fontWeight: 700, cursor: 'pointer'
+              background: !industryFilter ? 'var(--bg-input)' : 'var(--bg-panel)', color: !industryFilter ? 'var(--color-primary)' : 'var(--text-main)',
+              fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0
             }}
           >
             <Sparkles size={14} /> Tất cả
           </button>
-          {visibleCategories.map(([ind], idx) => {
-            const Icon = CATEGORY_ICONS[idx % CATEGORY_ICONS.length];
-            const active = industryFilter === ind;
-            return (
-              <button
-                key={ind}
-                onClick={() => setIndustryFilter(active ? null : ind)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px',
-                  border: `2px solid ${active ? 'var(--color-primary)' : 'var(--border-neon)'}`,
-                  background: active ? '#FEF2F2' : 'white', color: active ? 'var(--color-primary)' : 'var(--text-main)',
-                  fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap'
-                }}
-              >
-                <Icon size={14} /> {ind}
-              </button>
-            );
-          })}
-          {!showAllCategories && industryCounts.length > 7 && (
-            <button
-              onClick={() => setShowAllCategories(true)}
-              style={{ padding: '8px 14px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'white', color: 'var(--text-dim)', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
-            >
-              ... Xem thêm
-            </button>
-          )}
+
+          <div className="category-marquee" style={{ overflow: 'hidden', flex: 1, minWidth: 0 }}>
+            <div className="category-marquee-track" style={{ display: 'flex', gap: '8px', width: 'max-content' }}>
+              {[0, 1].map((copy) => (
+                <div key={copy} style={{ display: 'flex', gap: '8px', flexShrink: 0, paddingRight: '8px' }}>
+                  {visibleCategories.map(([ind], idx) => {
+                    const Icon = CATEGORY_ICONS[idx % CATEGORY_ICONS.length];
+                    const active = industryFilter === ind;
+                    return (
+                      <button
+                        key={ind}
+                        onClick={() => setIndustryFilter(active ? null : ind)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px',
+                          border: `2px solid ${active ? 'var(--color-primary)' : 'var(--border-neon)'}`,
+                          background: active ? 'var(--bg-input)' : 'var(--bg-panel)', color: active ? 'var(--color-primary)' : 'var(--text-main)',
+                          fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0
+                        }}
+                      >
+                        <Icon size={14} /> {ind}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -606,11 +335,19 @@ function HomeDashboardView({ currentUser, allBusinesses, allNews, isFetchBusines
           </button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '28px' }}>
-          {suggestedBusinesses.map((biz) => (
-            <div key={biz.id} onClick={() => onOpenBusinessDetail(biz.id)} style={{ ...CARD_STYLE, padding: '16px' }}>
+          {isFetchBusinessLoading && Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} style={{ ...CARD_STYLE, padding: '16px', pointerEvents: 'none', opacity: 0.7 }}>
+              <div className="skeleton-line" style={{ width: '40px', height: '40px', marginBottom: '10px' }} />
+              <div className="skeleton-line" style={{ width: '80%', height: '15px', marginBottom: '8px' }} />
+              <div className="skeleton-line" style={{ width: '50%', height: '12px' }} />
+            </div>
+          ))}
+          {!isFetchBusinessLoading && suggestedBusinesses.map((biz, idx) => (
+            <ScrollReveal key={biz.id} delay={(idx % 10) * 40}>
+            <div onClick={() => onOpenBusinessDetail(biz.id)} style={{ ...CARD_STYLE, padding: '16px' }}>
               <button
                 onClick={(e) => toggleBookmark(biz.id, e)}
-                style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', color: bookmarkedIds.has(biz.id) ? 'var(--color-primary)' : 'var(--text-dim)' }}
+                style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', color: bookmarkedIds.has(biz.id) ? '#EC4899' : 'var(--text-dim)' }}
               >
                 <Heart size={17} fill={bookmarkedIds.has(biz.id) ? 'currentColor' : 'none'} />
               </button>
@@ -635,6 +372,7 @@ function HomeDashboardView({ currentUser, allBusinesses, allNews, isFetchBusines
                 </span>
               )}
             </div>
+            </ScrollReveal>
           ))}
           {!isFetchBusinessLoading && suggestedBusinesses.length === 0 && (
             <p style={{ color: 'var(--text-dim)', fontSize: '13px' }}>Không có doanh nghiệp khớp bộ lọc hiện tại.</p>
@@ -651,11 +389,21 @@ function HomeDashboardView({ currentUser, allBusinesses, allNews, isFetchBusines
           </button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-          {topNews.map((news, idx) => {
+          {isFetchNewsLoading && Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} style={{ ...CARD_STYLE, display: 'flex', gap: '12px', padding: '10px', pointerEvents: 'none', opacity: 0.7 }}>
+              <div className="skeleton-line" style={{ width: '96px', height: '72px', flexShrink: 0 }} />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '4px' }}>
+                <div className="skeleton-line" style={{ width: '85%', height: '14px' }} />
+                <div className="skeleton-line" style={{ width: '40%', height: '12px' }} />
+              </div>
+            </div>
+          ))}
+          {!isFetchNewsLoading && topNews.map((news, idx) => {
             const tag = newsTagStyle(news.chuyen_muc);
             return (
-              <div key={news.id} onClick={() => { setShowAllRelated(false); setSelectedNewsIndex(idx); }} style={{ ...CARD_STYLE, display: 'flex', gap: '12px', padding: '10px', alignItems: 'flex-start' }}>
-                <div style={{ position: 'relative', width: '96px', height: '72px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ScrollReveal key={news.id} delay={(idx % 10) * 40}>
+              <div onClick={() => { setShowAllRelated(false); setSelectedNewsIndex(idx); }} style={{ ...CARD_STYLE, display: 'flex', gap: '12px', padding: '10px', alignItems: 'flex-start' }}>
+                <div style={{ position: 'relative', width: '96px', height: '72px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {news.anh_dai_dien ? (
                     <img src={news.anh_dai_dien} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
@@ -678,56 +426,16 @@ function HomeDashboardView({ currentUser, allBusinesses, allNews, isFetchBusines
                 <button
                   onClick={(e) => toggleNewsBookmark(news.id, e)}
                   title={bookmarkedNewsIds.has(news.id) ? 'Bỏ lưu' : 'Lưu tin'}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: bookmarkedNewsIds.has(news.id) ? 'var(--color-primary)' : 'var(--text-dim)', flexShrink: 0, padding: '2px' }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: bookmarkedNewsIds.has(news.id) ? '#EC4899' : 'var(--text-dim)', flexShrink: 0, padding: '2px' }}
                 >
                   <Heart size={17} fill={bookmarkedNewsIds.has(news.id) ? 'currentColor' : 'none'} />
                 </button>
               </div>
+              </ScrollReveal>
             );
           })}
         </div>
 
-        <button
-          onClick={() => onOpenChatWithPrompt('Hãy giúp em theo dõi các doanh nghiệp và tin tức trong lĩnh vực em quan tâm nhé')}
-          style={{ ...CARD_STYLE, width: '100%', boxSizing: 'border-box', border: 'none', background: 'linear-gradient(135deg, #FEE2E2, #FECACA)', padding: '16px', display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '28px' }}
-        >
-          <Bell size={22} color="var(--color-primary)" style={{ flexShrink: 0 }} />
-          <p style={{ margin: 0, fontWeight: 700, fontSize: '13px', color: 'var(--text-main)', flex: 1, textAlign: 'left' }}>Nhận thông tin theo dõi lĩnh vực bạn quan tâm</p>
-          <span style={{ fontSize: '12px', fontWeight: 700, color: 'white', background: 'var(--color-primary)', padding: '7px 12px', borderRadius: '8px', flexShrink: 0, whiteSpace: 'nowrap' }}>
-            Thiết lập ngay
-          </span>
-        </button>
-
-        <h3 style={{ fontSize: '16px', fontWeight: 800, margin: '0 0 2px' }}>Xu hướng theo danh mục</h3>
-        <p style={{ fontSize: '12.5px', color: 'var(--text-dim)', margin: '0 0 12px' }}>Khám phá các chủ đề, ngành nghề được quan tâm nhiều nhất</p>
-        <div
-          ref={trendingScrollRef}
-          style={isMobile
-            ? { display: 'flex', gap: '12px', overflowX: 'auto', cursor: 'grab', paddingBottom: '4px' }
-            : { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}
-        >
-          {industryCounts.slice(0, 6).map(([ind, count], idx) => {
-            const Icon = CATEGORY_ICONS[idx % CATEGORY_ICONS.length];
-            return (
-              <button
-                key={ind}
-                onClick={() => { if (!dragState.current.moved) setIndustryFilter(ind); }}
-                style={{
-                  ...CARD_STYLE, padding: '14px', display: 'flex', alignItems: 'center', gap: '10px',
-                  ...(isMobile ? { flex: '0 0 220px' } : {})
-                }}
-              >
-                <div style={{ width: '36px', height: '36px', borderRadius: '9px', background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icon size={18} color="var(--color-primary)" />
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ind}</p>
-                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-dim)' }}>{count} doanh nghiệp</p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
       </div>
     </div>
 
@@ -753,8 +461,8 @@ function HomeDashboardView({ currentUser, allBusinesses, allNews, isFetchBusines
                     onClick={(e) => toggleNewsBookmark(selectedNewsDetail.id, e)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px',
-                      border: '2px solid var(--border-neon)', background: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
-                      color: bookmarkedNewsIds.has(selectedNewsDetail.id) ? 'var(--color-primary)' : 'var(--text-main)'
+                      border: '2px solid var(--border-neon)', background: 'var(--bg-panel)', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                      color: bookmarkedNewsIds.has(selectedNewsDetail.id) ? '#EC4899' : 'var(--text-main)'
                     }}
                   >
                     <Heart size={15} fill={bookmarkedNewsIds.has(selectedNewsDetail.id) ? 'currentColor' : 'none'} />
@@ -769,7 +477,7 @@ function HomeDashboardView({ currentUser, allBusinesses, allNews, isFetchBusines
                         setToast({ message: 'Đã sao chép liên kết', type: 'success' });
                       }
                     }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'var(--bg-panel)', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
                   >
                     Chia sẻ
                   </button>
@@ -777,13 +485,13 @@ function HomeDashboardView({ currentUser, allBusinesses, allNews, isFetchBusines
               </div>
 
               {selectedNewsDetail.tom_tat && (
-                <div style={{ background: '#FEF2F2', borderLeft: '4px solid var(--color-primary)', borderRadius: '8px', padding: '14px 16px', marginBottom: '18px' }}>
+                <div style={{ background: 'var(--bg-input)', borderLeft: '4px solid var(--color-primary)', borderRadius: '8px', padding: '14px 16px', marginBottom: '18px' }}>
                   <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 700, color: 'var(--color-primary)' }}>Tóm tắt</p>
                   <p style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.6, color: 'var(--text-main)' }}>{selectedNewsDetail.tom_tat}</p>
                 </div>
               )}
 
-              <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '18px', background: '#F1F5F9', minHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '18px', background: 'var(--bg-input)', minHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {selectedNewsDetail.anh_dai_dien ? (
                   <img src={selectedNewsDetail.anh_dai_dien} alt="" style={{ width: '100%', maxHeight: '360px', objectFit: 'cover', display: 'block' }} />
                 ) : (
@@ -836,7 +544,7 @@ function HomeDashboardView({ currentUser, allBusinesses, allNews, isFetchBusines
                   <h4 style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: 800 }}>Chủ đề liên quan</h4>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                     {selectedNewsDetail.tu_khoa.map(tag => (
-                      <span key={tag} style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px', background: '#F1F5F9', color: 'var(--text-main)' }}>{tag}</span>
+                      <span key={tag} style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px', background: 'var(--bg-input)', color: 'var(--text-dim)' }}>{tag}</span>
                     ))}
                   </div>
                 </div>
@@ -854,7 +562,7 @@ function HomeDashboardView({ currentUser, allBusinesses, allNews, isFetchBusines
                         rel="noopener noreferrer"
                         style={{ display: 'flex', gap: '10px', textDecoration: 'none', color: 'inherit' }}
                       >
-                        <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {rn.anh_dai_dien ? (
                             <img src={rn.anh_dai_dien} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           ) : (

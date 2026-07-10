@@ -231,9 +231,9 @@ const UnifiedNotificationBell = ({ currentUser }) => {
         onClick={() => setShowModal(true)}
         title={`${unreadCount} thông báo mới`}
         style={{
-          position: 'relative', background: '#F8FAFC', border: '1px solid #E8EDF3', borderRadius: '50%',
+          position: 'relative', background: 'var(--bg-input)', border: '1px solid var(--border-neon)', borderRadius: '50%',
           width: '42px', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', transition: 'all 0.2s ease', color: '#3B0199',
+          cursor: 'pointer', transition: 'all 0.2s ease', color: 'var(--color-accent)',
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
         }}
       >
@@ -281,8 +281,8 @@ const UnifiedNotificationBell = ({ currentUser }) => {
                   style={{
                     flex: '1 1 140px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                     padding: '10px 12px',
-                    background: activeTab === tab.key ? 'linear-gradient(135deg, #3B0199, #2A0177)' : 'white',
-                    border: `2px solid ${activeTab === tab.key ? '#3B0199' : 'var(--border-neon)'}`,
+                    background: activeTab === tab.key ? 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))' : 'var(--bg-panel)',
+                    border: `2px solid ${activeTab === tab.key ? 'var(--color-primary)' : 'var(--border-neon)'}`,
                     borderRadius: '10px', color: activeTab === tab.key ? 'white' : 'var(--text-main)',
                     fontSize: '13.5px', fontWeight: '700', cursor: 'pointer'
                   }}
@@ -298,7 +298,7 @@ const UnifiedNotificationBell = ({ currentUser }) => {
                 onClick={markAllAsRead}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 16px',
-                  border: '2px solid var(--border-neon)', borderRadius: '10px', background: 'white',
+                  border: '2px solid var(--border-neon)', borderRadius: '10px', background: 'var(--bg-panel)',
                   color: 'var(--text-main)', fontSize: '13.5px', fontWeight: '600', cursor: 'pointer'
                 }}
               >
@@ -310,7 +310,7 @@ const UnifiedNotificationBell = ({ currentUser }) => {
                   onClick={() => setShowFilterMenu(v => !v)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 16px',
-                    border: '2px solid var(--border-neon)', borderRadius: '10px', background: 'white',
+                    border: '2px solid var(--border-neon)', borderRadius: '10px', background: 'var(--bg-panel)',
                     color: 'var(--text-main)', fontSize: '13.5px', fontWeight: '600', cursor: 'pointer'
                   }}
                 >
@@ -320,8 +320,8 @@ const UnifiedNotificationBell = ({ currentUser }) => {
                   <>
                     <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setShowFilterMenu(false)} />
                     <div style={{
-                      position: 'absolute', top: 'calc(100% + 6px)', left: 0, background: 'white',
-                      border: '2px solid var(--border-neon)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                      position: 'absolute', top: 'calc(100% + 6px)', left: 0, background: 'var(--bg-panel)',
+                      border: '2px solid var(--border-neon)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
                       zIndex: 20, minWidth: '160px', overflow: 'hidden'
                     }}>
                       {[null, 'high', 'medium', 'low'].map(level => (
@@ -330,7 +330,7 @@ const UnifiedNotificationBell = ({ currentUser }) => {
                           onClick={() => { setPriorityFilter(level); setShowFilterMenu(false); }}
                           style={{
                             display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px',
-                            background: priorityFilter === level ? '#FEF2F2' : 'white', border: 'none',
+                            background: priorityFilter === level ? 'var(--bg-input)' : 'var(--bg-panel)', border: 'none',
                             color: priorityFilter === level ? 'var(--color-primary)' : 'var(--text-main)',
                             fontSize: '13.5px', fontWeight: 600, cursor: 'pointer'
                           }}
@@ -371,7 +371,7 @@ const UnifiedNotificationBell = ({ currentUser }) => {
                       style={{
                         display: 'flex', gap: '14px', padding: '16px', marginBottom: '12px',
                         border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)',
-                        background: item.is_read === false || isBusinessAlert ? '#FFFFFF' : '#FAFBFC',
+                        background: item.is_read === false || isBusinessAlert ? 'var(--bg-panel)' : 'var(--bg-dark-core)',
                         position: 'relative'
                       }}
                     >
@@ -416,7 +416,7 @@ const UnifiedNotificationBell = ({ currentUser }) => {
                           style={{
                             width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                             border: '2px solid var(--border-neon)', borderRadius: '8px', cursor: 'pointer',
-                            background: savedIds.has(itemKey) ? '#FEF2F2' : 'white',
+                            background: savedIds.has(itemKey) ? 'var(--bg-input)' : 'var(--bg-panel)',
                             color: savedIds.has(itemKey) ? 'var(--color-primary)' : 'var(--text-dim)'
                           }}
                         >
@@ -429,7 +429,7 @@ const UnifiedNotificationBell = ({ currentUser }) => {
                             style={{
                               width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                               border: '2px solid rgba(239,68,68,0.3)', borderRadius: '8px', cursor: 'pointer',
-                              background: 'white', color: '#ef4444'
+                              background: 'var(--bg-panel)', color: '#ef4444'
                             }}
                           >
                             <Trash2 size={16} />
@@ -448,7 +448,7 @@ const UnifiedNotificationBell = ({ currentUser }) => {
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%',
                   marginTop: '8px', padding: '12px', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)',
-                  background: 'white', color: 'var(--color-primary)', fontSize: '14px', fontWeight: 700, cursor: 'pointer'
+                  background: 'var(--bg-panel)', color: 'var(--color-primary)', fontSize: '14px', fontWeight: 700, cursor: 'pointer'
                 }}
               >
                 <RefreshCw size={16} /> Làm mới

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Activity, Database, Users, TrendingUp, RefreshCw, AlertCircle, Clock, Zap, Server, Newspaper } from 'lucide-react';
 import Spinner from './atoms/Spinner';
+import CountUp from './CountUp';
 
 const CARD_STYLE = {
   background: 'white', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '18px 20px'
@@ -12,7 +13,7 @@ function StatCard({ icon, color, bg, value, label, badge }) {
       <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: bg, color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
         {icon}
       </div>
-      <div style={{ fontSize: '24px', fontWeight: 800 }}>{value}</div>
+      <div style={{ fontSize: '24px', fontWeight: 800 }}>{typeof value === 'number' ? <CountUp value={value} /> : value}</div>
       <div style={{ fontSize: '13px', color: 'var(--text-dim)', marginBottom: badge ? '6px' : 0 }}>{label}</div>
       {badge && <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#16A34A' }}>{badge}</span>}
     </div>
@@ -150,10 +151,10 @@ const AdminDashboardView = () => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-        <StatCard icon={<Database size={20} />} color="#2563EB" bg="rgba(37,99,235,0.1)" value={overview.total_news.toLocaleString()} label="Tổng tin tức" badge={`${overview.news_today} hôm nay`} />
-        <StatCard icon={<TrendingUp size={20} />} color="#16A34A" bg="rgba(22,163,74,0.1)" value={overview.total_businesses.toLocaleString()} label="Doanh nghiệp" />
+        <StatCard icon={<Database size={20} />} color="#2563EB" bg="rgba(37,99,235,0.1)" value={overview.total_news} label="Tổng tin tức" badge={`${overview.news_today} hôm nay`} />
+        <StatCard icon={<TrendingUp size={20} />} color="#16A34A" bg="rgba(22,163,74,0.1)" value={overview.total_businesses} label="Doanh nghiệp" />
         <StatCard icon={<Users size={20} />} color="#D97706" bg="rgba(217,119,6,0.1)" value={overview.total_users} label="Người dùng" badge={`+${overview.new_users_week} tuần này`} />
-        <StatCard icon={<Activity size={20} />} color="#3B0199" bg="rgba(215,30,40,0.1)" value={system.groq_enabled ? 'Groq' : 'Gemini'} label="LLM Engine" badge={`v${system.app_version}`} />
+        <StatCard icon={<Activity size={20} />} color="var(--color-primary)" bg="rgba(215,30,40,0.1)" value={system.groq_enabled ? 'Groq' : 'Gemini'} label="LLM Engine" badge={`v${system.app_version}`} />
       </div>
 
       {monitoring && (
@@ -170,7 +171,7 @@ const AdminDashboardView = () => {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-            <StatCard icon={<Zap size={20} />} color="#7C3AED" bg="rgba(124,58,237,0.1)" value={monitoring.api_metrics.total_requests_today.toLocaleString()} label="API Requests (hôm nay)" badge={`${monitoring.api_metrics.avg_response_time_ms}ms avg`} />
+            <StatCard icon={<Zap size={20} />} color="#7C3AED" bg="rgba(124,58,237,0.1)" value={monitoring.api_metrics.total_requests_today} label="API Requests (hôm nay)" badge={`${monitoring.api_metrics.avg_response_time_ms}ms avg`} />
             <StatCard icon={<Clock size={20} />} color="#EA580C" bg="rgba(234,88,12,0.1)" value={`${monitoring.api_metrics.avg_response_time_ms}ms`} label="Avg Response Time" badge="Ultra-fast" />
             <StatCard icon={<AlertCircle size={20} />} color="#DC2626" bg="rgba(220,38,38,0.1)" value={`${(monitoring.api_metrics.error_rate * 100).toFixed(1)}%`} label="Error Rate" badge="Healthy" />
             <StatCard icon={<Server size={20} />} color="#2563EB" bg="rgba(37,99,235,0.1)" value={monitoring.database.size} label="Database Size" badge="PostgreSQL" />

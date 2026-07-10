@@ -132,8 +132,8 @@ const AlertsBell = ({ currentUser }) => {
         title={`${unreadCount} cảnh báo`}
         style={{
           position: 'relative',
-          background: '#F8FAFC',
-          border: '1px solid #E8EDF3',
+          background: 'var(--bg-input)',
+          border: '1px solid var(--border-neon)',
           borderRadius: '50%',
           width: '42px',
           height: '42px',
@@ -142,7 +142,7 @@ const AlertsBell = ({ currentUser }) => {
           justifyContent: 'center',
           cursor: 'pointer',
           transition: 'all 0.2s ease',
-          color: '#3B0199',
+          color: 'var(--color-primary)',
           boxShadow: showPopover ? '0 4px 16px rgba(0, 0, 0, 0.12)' : '0 2px 8px rgba(0, 0, 0, 0.08)'
         }}
         onMouseEnter={(e) => {
@@ -153,7 +153,7 @@ const AlertsBell = ({ currentUser }) => {
         onMouseLeave={(e) => {
           e.currentTarget.style.boxShadow = showPopover ? '0 4px 16px rgba(0, 0, 0, 0.12)' : '0 2px 8px rgba(0, 0, 0, 0.08)';
           e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.background = '#F8FAFC';
+          e.currentTarget.style.background = 'var(--bg-input)';
         }}
       >
         <Bell size={20} />
@@ -201,7 +201,7 @@ const AlertsBell = ({ currentUser }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: '#F8FAFC'
+            background: 'var(--bg-input)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Bell size={20} style={{ color: 'var(--color-primary)' }} />
@@ -263,7 +263,7 @@ const AlertsBell = ({ currentUser }) => {
                     style={{
                       padding: '12px',
                       margin: '8px 0',
-                      background: '#F8FAFC',
+                      background: 'var(--bg-input)',
                       border: `2px solid ${getSeverityColor(alert.severity)}`,
                       borderLeft: `6px solid ${getSeverityColor(alert.severity)}`,
                       borderRadius: '8px',
@@ -348,7 +348,7 @@ const AlertsBell = ({ currentUser }) => {
             <div style={{
               padding: '12px 16px',
               borderTop: '2px solid var(--border-neon)',
-              background: '#F8FAFC',
+              background: 'var(--bg-input)',
               textAlign: 'center'
             }}>
               <button
