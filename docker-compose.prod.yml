@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: emtu_postgres_prod
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-postgres}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - emtu_network
+    restart: always
+
   redis:
     image: redis:7-alpine
     container_name: emtu_redis_prod
@@ -20,15 +38,18 @@ services:
       dockerfile: Dockerfile.prod
     container_name: emtu_backend_prod
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_USER=${DB_USER}
+      # Local Postgres container (this compose stack), not the shared Supabase DB.
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
       - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - DB_SSLMODE=${DB_SSLMODE}
+      - DB_NAME=${DB_NAME:-postgres}
+      - DB_SSLMODE=disable
       # Set REDIS_URL in .env to point at an external managed Redis instead,
       # if you don't want the bundled redis container.
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
@@ -85,3 +106,4 @@ networks:
 
 volumes:
   redis_data:
+  postgres_prod_data:
