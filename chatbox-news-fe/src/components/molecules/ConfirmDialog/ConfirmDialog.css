@@ -51,7 +51,7 @@
   position: absolute;
   top: 16px;
   right: 16px;
-  background: #F8FAFC;
+  background: var(--bg-input);
   border: 2px solid var(--border-neon);
   color: var(--text-main);
   width: 32px;
@@ -107,7 +107,7 @@
 }
 
 .confirm-btn-cancel {
-  background: #F8FAFC;
+  background: var(--bg-input);
   color: var(--text-main);
   border: 2px solid var(--border-neon);
 }

@@ -1,4 +1,23 @@
 services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: emtu_db
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=emtu_local_pg_2024
+      - PGDATA=/var/lib/postgresql/data
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - emtu_network
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     container_name: emtu_redis
@@ -20,18 +39,21 @@ services:
       dockerfile: Dockerfile
     container_name: emtu_backend
     depends_on:
+      db:
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      - DB_HOST=aws-1-ap-northeast-1.pooler.supabase.com
-      # Transaction-mode pooler (6543), not session-mode (5432, pool_size 15
-      # was exhausted — every DB call in this app opens/closes its own
-      # connection instead of sharing a pool, session mode can't absorb that).
-      - DB_PORT=6543
-      - DB_USER=postgres.bfiocjgmrhngahagpoas
-      - DB_PASSWORD=Hokhaikiet265@
+      # Local Postgres (pgvector) container — matches the DB dump exported
+      # for deployment. Was previously pointed at a Supabase pooler; that
+      # override is gone since the app now runs against the local `db`
+      # service defined above.
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=emtu_local_pg_2024
       - DB_NAME=postgres
-      - DB_SSLMODE=require
+      - DB_SSLMODE=disable
       - REDIS_URL=redis://redis:6379/0
       - GEMINI_API_KEY_1=${GEMINI_API_KEY_1}
       - GEMINI_API_KEY_2=${GEMINI_API_KEY_2}
@@ -102,3 +124,4 @@ networks:
 
 volumes:
   redis_data:
+  pg_data:

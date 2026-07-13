@@ -60,7 +60,7 @@ class ErrorBoundary extends Component {
             background: 'white',
             padding: '32px',
             borderRadius: '16px',
-            border: '2px solid #E8EDF3',
+            border: '2px solid var(--border-neon)',
             boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
           }}>
             <div style={{
@@ -90,7 +90,7 @@ class ErrorBoundary extends Component {
               <details style={{
                 marginBottom: '24px',
                 padding: '16px',
-                background: '#FEF2F2',
+                background: 'var(--bg-input)',
                 borderRadius: '8px',
                 textAlign: 'left',
                 fontSize: '12px',
@@ -121,7 +121,7 @@ class ErrorBoundary extends Component {
                 onClick={this.handleReset}
                 style={{
                   padding: '12px 24px',
-                  background: 'linear-gradient(135deg, #3B0199, #2A0177)',
+                  background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))',
                   color: 'white',
                   border: 'none',
                   borderRadius: '10px',
@@ -137,9 +137,9 @@ class ErrorBoundary extends Component {
                 onClick={() => window.location.href = '/'}
                 style={{
                   padding: '12px 24px',
-                  background: '#F8FAFC',
+                  background: 'var(--bg-input)',
                   color: '#111827',
-                  border: '2px solid #E8EDF3',
+                  border: '2px solid var(--border-neon)',
                   borderRadius: '10px',
                   fontWeight: 600,
                   fontSize: '14px',

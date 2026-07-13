@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="sphereBase" cx="35%" cy="28%" r="80%">
+      <stop offset="0%" stop-color="#C4B5FD" />
+      <stop offset="38%" stop-color="#9333EA" />
+      <stop offset="72%" stop-color="#7C1FA2" />
+      <stop offset="100%" stop-color="#EC4899" />
+    </radialGradient>
+    <linearGradient id="visorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E1B4B" />
+      <stop offset="100%" stop-color="#0F0A2E" />
+    </linearGradient>
+    <radialGradient id="sparkleGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#C4B5FD" />
+    </radialGradient>
+    <linearGradient id="highlight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.65" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <!-- sphere body -->
+  <circle cx="100" cy="100" r="94" fill="url(#sphereBase)" />
+
+  <!-- glossy top-left highlight -->
+  <ellipse cx="72" cy="62" rx="46" ry="34" fill="url(#highlight)" transform="rotate(-25 72 62)" />
+
+  <!-- dark visor band across the middle, like a face mask -->
+  <path d="M 8 88 Q 100 58 192 88 L 192 118 Q 100 148 8 118 Z" fill="url(#visorGrad)" />
+
+  <!-- main sparkle (four-pointed star) -->
+  <path
+    d="M100 78 C102 96 106 100 124 102 C106 104 102 108 100 126 C98 108 94 104 76 102 C94 100 98 96 100 78 Z"
+    fill="url(#sparkleGlow)"
+  />
+
+  <!-- secondary smaller sparkle, echoing the reference's depth cue -->
+  <path
+    d="M148 92 C149 99 151 101 158 102 C151 103 149 105 148 112 C147 105 145 103 138 102 C145 101 147 99 148 92 Z"
+    fill="#FFFFFF"
+    opacity="0.85"
+  />
+
+  <!-- subtle rim light at bottom -->
+  <path d="M20 132 Q100 158 180 132" stroke="#F5D0FE" stroke-width="3" fill="none" opacity="0.35" stroke-linecap="round" />
+</svg>

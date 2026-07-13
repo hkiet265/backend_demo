@@ -4,7 +4,7 @@ import Toast from './Toast';
 import ConfirmDialog from './molecules/ConfirmDialog/ConfirmDialog';
 import Spinner from './atoms/Spinner';
 
-const CARD_STYLE = { background: 'white', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '18px 20px' };
+const CARD_STYLE = { background: 'var(--bg-panel)', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '18px 20px', color: 'var(--text-main)' };
 
 const STATUS_META = {
   Hoat_dong: { label: 'Hoạt động', color: '#16A34A', bg: '#DCFCE7' },
@@ -44,11 +44,11 @@ function DonutChart({ data }) {
     cum += pct;
     return seg;
   });
-  const gradient = total ? `conic-gradient(${segs.map(s => `${s.color} ${s.start}% ${s.end}%`).join(', ')})` : 'conic-gradient(#F1F5F9 0% 100%)';
+  const gradient = total ? `conic-gradient(${segs.map(s => `${s.color} ${s.start}% ${s.end}%`).join(', ')})` : 'conic-gradient(var(--bg-input) 0% 100%)';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
       <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: gradient, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: '58px', height: '58px', borderRadius: '50%', background: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '58px', height: '58px', borderRadius: '50%', background: 'var(--bg-panel)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <span style={{ fontSize: '14px', fontWeight: 800 }}>{total}</span>
           <span style={{ fontSize: '9px', color: 'var(--text-dim)' }}>Tổng số</span>
         </div>
@@ -322,10 +322,10 @@ const AdminBusinessView = () => {
           <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-dim)' }}>Quản lý doanh nghiệp trong hệ thống</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <button onClick={fetchBusinesses} title="Làm mới" style={{ width: '38px', height: '38px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <button onClick={fetchBusinesses} title="Làm mới" style={{ width: '38px', height: '38px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <RotateCcw size={16} />
           </button>
-          <button onClick={exportCsv} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'white', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={exportCsv} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             <Download size={14} /> Xuất dữ liệu
           </button>
           <button onClick={() => { setCreateForm(EMPTY_CREATE_FORM); setShowCreateModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: 'none', background: 'var(--color-primary)', color: 'white', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
@@ -334,7 +334,7 @@ const AdminBusinessView = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: '20px', alignItems: 'flex-start' }}>
+      <div className="admin-two-col-layout">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '14px' }}>
             <StatCard icon={<Building2 size={18} />} color="#2563EB" bg="rgba(37,99,235,0.1)" value={counts.total} label="Tổng doanh nghiệp" sub="100% tổng số" />
@@ -349,7 +349,7 @@ const AdminBusinessView = () => {
               <Search size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm doanh nghiệp, mã số thuế, người liên hệ..." style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px 9px 32px', borderRadius: '10px', border: '2px solid var(--border-neon)', fontSize: '13px' }} />
             </div>
-            <button onClick={resetFilters} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'white', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={resetFilters} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
               <RotateCcw size={14} /> Đặt lại bộ lọc
             </button>
           </div>
@@ -382,18 +382,18 @@ const AdminBusinessView = () => {
 
           <div style={{ ...CARD_STYLE, padding: 0, overflow: 'hidden' }}>
             {selected.size > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', background: '#F8FAFC', borderBottom: '2px solid var(--border-neon)', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', background: 'var(--bg-input)', borderBottom: '2px solid var(--border-neon)', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '13px', fontWeight: 700 }}>Đã chọn {selected.size} doanh nghiệp</span>
-                <button onClick={() => setShowAssignRegion(true)} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-neon)', background: 'white', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>Gán vùng</button>
-                <button onClick={() => setShowAssignStatus(true)} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-neon)', background: 'white', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>Cập nhật trạng thái</button>
-                <button onClick={bulkVerify} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #16A34A', color: '#16A34A', background: 'white', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>Xác minh</button>
-                <button onClick={bulkDelete} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #DC2626', color: '#DC2626', background: 'white', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>Xóa</button>
+                <button onClick={() => setShowAssignRegion(true)} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-neon)', background: 'var(--bg-panel)', color: 'var(--text-main)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>Gán vùng</button>
+                <button onClick={() => setShowAssignStatus(true)} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-neon)', background: 'var(--bg-panel)', color: 'var(--text-main)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>Cập nhật trạng thái</button>
+                <button onClick={bulkVerify} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #16A34A', color: '#16A34A', background: 'var(--bg-panel)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>Xác minh</button>
+                <button onClick={bulkDelete} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #DC2626', color: '#DC2626', background: 'var(--bg-panel)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>Xóa</button>
                 <button onClick={() => setSelected(new Set())} style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '12.5px' }}>Bỏ chọn ✕</button>
               </div>
             )}
 
             {showAssignRegion && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: '#FFFBEB', borderBottom: '2px solid var(--border-neon)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'var(--bg-input)', borderBottom: '2px solid var(--border-neon)' }}>
                 <select value={assignRegionValue} onChange={e => setAssignRegionValue(e.target.value)} style={{ padding: '7px 10px', borderRadius: '8px', border: '2px solid var(--border-neon)', fontSize: '12.5px' }}>
                   <option value="Bắc">Bắc</option>
                   <option value="Trung">Trung</option>
@@ -404,7 +404,7 @@ const AdminBusinessView = () => {
               </div>
             )}
             {showAssignStatus && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: '#FFFBEB', borderBottom: '2px solid var(--border-neon)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'var(--bg-input)', borderBottom: '2px solid var(--border-neon)' }}>
                 <select value={assignStatusValue} onChange={e => setAssignStatusValue(e.target.value)} style={{ padding: '7px 10px', borderRadius: '8px', border: '2px solid var(--border-neon)', fontSize: '12.5px' }}>
                   {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                 </select>
@@ -416,7 +416,7 @@ const AdminBusinessView = () => {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', minWidth: '980px', borderCollapse: 'collapse', fontSize: '12.5px' }}>
                 <thead>
-                  <tr style={{ background: '#F8FAFC', textAlign: 'left' }}>
+                  <tr style={{ background: 'var(--bg-input)', textAlign: 'left' }}>
                     <th style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}><input type="checkbox" checked={pageBusinesses.length > 0 && selected.size === pageBusinesses.length} onChange={toggleSelectAll} /></th>
                     <th style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>ID</th>
                     <th style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>Doanh nghiệp</th>
@@ -442,7 +442,7 @@ const AdminBusinessView = () => {
                             {b.logo_url ? (
                               <img src={b.logo_url} alt="" style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0, border: '1px solid var(--border-neon)' }} />
                             ) : (
-                              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#F1F5F9', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={16} color="#CBD5E1" /></div>
+                              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--bg-input)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={16} color="var(--text-dim)" /></div>
                             )}
                             <div style={{ minWidth: 0 }}>
                               <div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>{b.name}</div>
@@ -487,9 +487,9 @@ const AdminBusinessView = () => {
                 </select>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} style={{ padding: '6px 12px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'white', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1 }}>‹</button>
+                <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} style={{ padding: '6px 12px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1 }}>‹</button>
                 <span style={{ fontSize: '12.5px', fontWeight: 700 }}>{page} / {totalPages}</span>
-                <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} style={{ padding: '6px 12px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'white', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.5 : 1 }}>›</button>
+                <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} style={{ padding: '6px 12px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.5 : 1 }}>›</button>
               </div>
               <div style={{ fontSize: '12.5px', color: 'var(--text-dim)' }}>
                 Hiển thị {filtered.length === 0 ? 0 : (page - 1) * pageSize + 1} đến {Math.min(page * pageSize, filtered.length)} của {filtered.length} kết quả
@@ -515,7 +515,7 @@ const AdminBusinessView = () => {
                       <span>{d.label}</span>
                       <strong>{d.count} ({((d.count / businesses.length) * 100).toFixed(0)}%)</strong>
                     </div>
-                    <div style={{ height: '6px', borderRadius: '3px', background: '#F1F5F9', overflow: 'hidden' }}>
+                    <div style={{ height: '6px', borderRadius: '3px', background: 'var(--bg-input)', overflow: 'hidden' }}>
                       <div style={{ width: `${(d.count / max) * 100}%`, height: '100%', background: '#DC2626', borderRadius: '3px' }} />
                     </div>
                   </div>

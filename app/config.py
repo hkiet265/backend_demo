@@ -81,6 +81,19 @@ class Settings(BaseSettings):
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20241022"
+    # OpenCode Zen (opencode.ai) — OpenAI-compatible gateway giving access
+    # to many models (GPT/Claude/Gemini/DeepSeek/...) through one API key.
+    # Model id is the bare id, no "opencode/" prefix (that prefix is only
+    # for the opencode CLI's own config file) — see https://opencode.ai/docs/zen/
+    OPENCODE_API_KEY: str = ""
+    # Default to a free-tier model (no payment method needed) — paid models
+    # (gpt-5.4-mini, claude-*, ...) 401 with CreditsError until billing is
+    # enabled on the opencode.ai workspace. nemotron-3-ultra-free chosen
+    # over big-pickle after benchmarking: ~4s vs ~14s per call on the same
+    # jobs-evidence-heavy prompt (big-pickle silently burns a big chunk of
+    # its token budget on invisible "reasoning" before answering).
+    OPENCODE_MODEL: str = "nemotron-3-ultra-free"
+    OPENCODE_BASE_URL: str = "https://opencode.ai/zen/v1"
 
     USE_AI_CHAT: bool = False
     AI_CHAT_DEFAULT: bool = False

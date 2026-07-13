@@ -96,13 +96,13 @@ async def get_crawler_stats():
         conn = psycopg2.connect(**settings.database_url)
         cur = conn.cursor()
 
-        cur.execute("SELECT COUNT(*) FROM station_news WHERE nha_dai IN ('VTV', 'VTC', 'VOV');")
+        cur.execute("SELECT COUNT(*) FROM station_news WHERE nha_dai IN ('VnExpress', 'Tuổi Trẻ');")
         total = cur.fetchone()[0]
 
         cur.execute("""
             SELECT nha_dai, COUNT(*) as count 
             FROM station_news 
-            WHERE nha_dai IN ('VTV', 'VTC', 'VOV')
+            WHERE nha_dai IN ('VnExpress', 'Tuổi Trẻ')
             GROUP BY nha_dai
             ORDER BY count DESC;
         """)
@@ -111,7 +111,7 @@ async def get_crawler_stats():
         cur.execute("""
             SELECT vung_mien, COUNT(*) as count 
             FROM station_news 
-            WHERE nha_dai IN ('VTV', 'VTC', 'VOV')
+            WHERE nha_dai IN ('VnExpress', 'Tuổi Trẻ')
             GROUP BY vung_mien
             ORDER BY count DESC;
         """)
@@ -120,7 +120,7 @@ async def get_crawler_stats():
         cur.execute("""
             SELECT tieu_de, nha_dai, created_at 
             FROM station_news 
-            WHERE nha_dai IN ('VTV', 'VTC', 'VOV')
+            WHERE nha_dai IN ('VnExpress', 'Tuổi Trẻ')
             ORDER BY created_at DESC 
             LIMIT 5;
         """)

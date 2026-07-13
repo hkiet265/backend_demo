@@ -1,6 +1,7 @@
-import { Home, Building2, Newspaper, LogOut, User, Settings, ChevronDown, Heart, Menu, X, Bookmark } from 'lucide-react';
+import { Home, Building2, Newspaper, LogOut, User, Settings, ChevronDown, Heart, Menu, X, Bookmark, Briefcase } from 'lucide-react';
 import { useState } from 'react';
 import UnifiedNotificationBell from '../../UnifiedNotificationBell';
+import ChatbotAvatar from '../../ChatbotAvatar';
 import './NavigationBar.css';
 
 /**
@@ -17,9 +18,10 @@ import './NavigationBar.css';
  * @param {Function} props.onShowAuth - Show auth modal
  * @param {Function} props.onShowEditProfile - Show edit profile
  */
-function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, currentUser, onLogout, onShowAuth, onShowEditProfile }) {
+function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, currentUser, onLogout, onShowAuth, onShowEditProfile, isCompact = false }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showJobsMenu, setShowJobsMenu] = useState(false);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -27,10 +29,11 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
   };
 
   return (
-    <nav className="premium-navbar">
+    <nav className={`premium-navbar${isCompact ? ' is-compact' : ''}`}>
+      <div className="navbar-inner">
       <div className="nav-branding">
         <div className="nav-logo-glow">
-          <img src="/logochatbot.png" alt="Company" className="nav-logo-image" />
+          <ChatbotAvatar className="nav-logo-image" trackCursor={false} />
         </div>
         <div className="nav-brand-text">
           <h1>Company</h1>
@@ -51,8 +54,43 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
           >
             <Building2 size={16} /> Doanh Nghiệp
           </button>
-          
-          <button 
+
+          {currentUser ? (
+            <div className="nav-user-dropdown">
+              <button
+                className={`nav-tab-item ${['jobs', 'employer-jobs'].includes(activeTab) ? 'active' : ''}`}
+                onClick={() => setShowJobsMenu(!showJobsMenu)}
+              >
+                <Briefcase size={16} /> Tuyển Dụng
+                <ChevronDown size={14} className={`dropdown-arrow ${showJobsMenu ? 'open' : ''}`} />
+              </button>
+
+              {showJobsMenu && (
+                <>
+                  <div className="dropdown-overlay" onClick={() => setShowJobsMenu(false)} />
+                  <div className="nav-user-menu">
+                    <button className="menu-item" onClick={() => { setActiveTab('jobs'); setShowJobsMenu(false); }}>
+                      <Briefcase size={16} />
+                      <span>Tin Tuyển Dụng</span>
+                    </button>
+                    <button className="menu-item" onClick={() => { setActiveTab('employer-jobs'); setShowJobsMenu(false); }}>
+                      <Briefcase size={16} />
+                      <span>Tin Đã Đăng</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <button
+              className={`nav-tab-item ${activeTab === 'jobs' ? 'active' : ''}`}
+              onClick={() => setActiveTab('jobs')}
+            >
+              <Briefcase size={16} /> Tuyển Dụng
+            </button>
+          )}
+
+          <button
             className={`nav-tab-item ${activeTab === 'news' ? 'active' : ''}`}
             onClick={() => setActiveTab('news')}
           >
@@ -60,29 +98,31 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
           </button>
 
           {currentUser && (
-            <>
-              <button 
-                className={`nav-tab-item ${activeTab === 'favorites' ? 'active' : ''}`}
-                onClick={() => setActiveTab('favorites')}
-              >
-                <Heart size={16} /> Yêu Thích
-              </button>
-              
-              <button 
-                className={`nav-tab-item ${activeTab === 'my-businesses' ? 'active' : ''}`}
-                onClick={() => setActiveTab('my-businesses')}
-              >
-                DN Của Tôi
-              </button>
-            </>
+            <button
+              className={`nav-tab-item ${activeTab === 'candidate-profile' ? 'active' : ''}`}
+              onClick={() => setActiveTab('candidate-profile')}
+            >
+              <User size={16} /> Hồ Sơ
+            </button>
           )}
         </div>
       </div>
 
       <div className="nav-right-section">
+        {/* Yêu thích, immediately left of the notification bell */}
+        {currentUser && (
+          <button
+            className={`nav-tab-item ${activeTab === 'favorites' ? 'active' : ''}`}
+            onClick={() => setActiveTab('favorites')}
+            title="Yêu thích"
+          >
+            <Heart size={18} />
+          </button>
+        )}
+
         {/* Notification Bell - visible on both desktop and mobile */}
         {currentUser && <UnifiedNotificationBell currentUser={currentUser} />}
-        
+
         {/* Hamburger button - mobile only */}
         <button 
           className="mobile-menu-btn"
@@ -126,12 +166,13 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
             </>
           ) : (
             <>
-              <button className="nav-login-btn" onClick={onShowAuth}>
+              <button className="nav-login-btn" onClick={() => onShowAuth('login')}>
                 <span>Đăng nhập</span>
               </button>
             </>
           )}
         </div>
+      </div>
       </div>
 
       {/* Mobile slide-in drawer */}
@@ -146,7 +187,7 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
             </div>
 
             <div className="mobile-drawer-profile">
-              <img src="/logochatbot.png" alt="Company" className="mobile-drawer-avatar" />
+              <ChatbotAvatar className="mobile-drawer-avatar" />
               {currentUser ? (
                 <div>
                   <p className="mobile-drawer-greeting">Chào {currentUser.full_name}!</p>
@@ -194,13 +235,17 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
 
             <p className="mobile-drawer-section-title">Truy cập nhanh</p>
             <div className="mobile-drawer-quick-grid">
+              <button className="mobile-drawer-quick-item" onClick={() => handleTabChange('business')}>
+                <Building2 size={18} />
+                <span>Doanh nghiệp</span>
+              </button>
               <button className="mobile-drawer-quick-item" onClick={() => handleTabChange('news')}>
                 <Newspaper size={18} />
                 <span>Tin tức</span>
               </button>
-              <button className="mobile-drawer-quick-item" onClick={() => handleTabChange('business')}>
-                <Building2 size={18} />
-                <span>Doanh nghiệp</span>
+              <button className="mobile-drawer-quick-item" onClick={() => handleTabChange('jobs')}>
+                <Briefcase size={18} />
+                <span>Tuyển dụng</span>
               </button>
               {currentUser && (
                 <>
@@ -208,9 +253,9 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
                     <Heart size={18} />
                     <span>Yêu thích</span>
                   </button>
-                  <button className="mobile-drawer-quick-item" onClick={() => handleTabChange('my-businesses')}>
+                  <button className="mobile-drawer-quick-item" onClick={() => handleTabChange('employer-jobs')}>
                     <Bookmark size={18} />
-                    <span>DN của tôi</span>
+                    <span>Tin đã đăng</span>
                   </button>
                 </>
               )}
@@ -225,9 +270,9 @@ function NavigationBar({ activeTab, setActiveTab, isChatOpen, setIsChatOpen, cur
           <Home size={20} />
           <span>Trang chủ</span>
         </button>
-        <button className={`bottom-tab-item ${activeTab === 'business' ? 'active' : ''}`} onClick={() => handleTabChange('business')}>
-          <Building2 size={20} />
-          <span>Doanh nghiệp</span>
+        <button className={`bottom-tab-item ${activeTab === 'jobs' ? 'active' : ''}`} onClick={() => handleTabChange('jobs')}>
+          <Briefcase size={20} />
+          <span>Tuyển dụng</span>
         </button>
         <button className={`bottom-tab-item ${activeTab === 'news' ? 'active' : ''}`} onClick={() => handleTabChange('news')}>
           <Newspaper size={20} />

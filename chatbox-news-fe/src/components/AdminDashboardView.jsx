@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Activity, Database, Users, TrendingUp, RefreshCw, AlertCircle, Clock, Zap, Server, Newspaper } from 'lucide-react';
 import Spinner from './atoms/Spinner';
+import CountUp from './CountUp';
 
 const CARD_STYLE = {
-  background: 'white', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '18px 20px'
+  background: 'var(--bg-panel)', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '18px 20px', color: 'var(--text-main)'
 };
 
 function StatCard({ icon, color, bg, value, label, badge }) {
@@ -12,7 +13,7 @@ function StatCard({ icon, color, bg, value, label, badge }) {
       <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: bg, color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
         {icon}
       </div>
-      <div style={{ fontSize: '24px', fontWeight: 800 }}>{value}</div>
+      <div style={{ fontSize: '24px', fontWeight: 800 }}>{typeof value === 'number' ? <CountUp value={value} /> : value}</div>
       <div style={{ fontSize: '13px', color: 'var(--text-dim)', marginBottom: badge ? '6px' : 0 }}>{label}</div>
       {badge && <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#16A34A' }}>{badge}</span>}
     </div>
@@ -34,7 +35,7 @@ function BarRow({ label, count, max, color }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12.5px' }}>
       <span style={{ width: '90px', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-dim)' }}>{label}</span>
-      <div style={{ flex: 1, height: '8px', borderRadius: '4px', background: '#F1F5F9', overflow: 'hidden' }}>
+      <div style={{ flex: 1, height: '8px', borderRadius: '4px', background: 'var(--bg-input)', overflow: 'hidden' }}>
         <div style={{ width: `${max ? (count / max) * 100 : 0}%`, height: '100%', background: color, borderRadius: '4px' }} />
       </div>
       <span style={{ width: '50px', textAlign: 'right', flexShrink: 0, fontWeight: 700 }}>{count.toLocaleString()}</span>
@@ -55,7 +56,7 @@ function DonutChart({ data }) {
   });
   const gradient = total
     ? `conic-gradient(${segments.map(s => `${s.color} ${s.start}% ${s.end}%`).join(', ')})`
-    : 'conic-gradient(#F1F5F9 0% 100%)';
+    : 'conic-gradient(var(--bg-input) 0% 100%)';
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
@@ -63,7 +64,7 @@ function DonutChart({ data }) {
         width: '140px', height: '140px', borderRadius: '50%', background: gradient,
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
       }}>
-        <div style={{ width: '84px', height: '84px', borderRadius: '50%', background: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '84px', height: '84px', borderRadius: '50%', background: 'var(--bg-panel)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <span style={{ fontSize: '16px', fontWeight: 800 }}>{total.toLocaleString()}</span>
           <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>requests</span>
         </div>
@@ -99,9 +100,11 @@ const AdminDashboardView = () => {
     try {
       setLoading(true);
 
+      const token = localStorage.getItem('token');
+      const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
       const [statsRes, monitoringRes] = await Promise.all([
-        fetch('/api/admin/stats'),
-        fetch('/api/admin/monitoring')
+        fetch('/api/admin/stats', { headers: authHeaders }),
+        fetch('/api/admin/monitoring', { headers: authHeaders })
       ]);
 
       const statsData = await statsRes.json();
@@ -144,16 +147,16 @@ const AdminDashboardView = () => {
           <h2 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800 }}>Dashboard</h2>
           <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-dim)' }}>Tổng quan hệ thống &amp; Monitoring</p>
         </div>
-        <button onClick={fetchStats} title="Làm mới" style={{ width: '42px', height: '42px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+        <button onClick={fetchStats} title="Làm mới" style={{ width: '42px', height: '42px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
           <RefreshCw size={18} className={loading ? 'spinning' : ''} />
         </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-        <StatCard icon={<Database size={20} />} color="#2563EB" bg="rgba(37,99,235,0.1)" value={overview.total_news.toLocaleString()} label="Tổng tin tức" badge={`${overview.news_today} hôm nay`} />
-        <StatCard icon={<TrendingUp size={20} />} color="#16A34A" bg="rgba(22,163,74,0.1)" value={overview.total_businesses.toLocaleString()} label="Doanh nghiệp" />
+        <StatCard icon={<Database size={20} />} color="#2563EB" bg="rgba(37,99,235,0.1)" value={overview.total_news} label="Tổng tin tức" badge={`${overview.news_today} hôm nay`} />
+        <StatCard icon={<TrendingUp size={20} />} color="#16A34A" bg="rgba(22,163,74,0.1)" value={overview.total_businesses} label="Doanh nghiệp" />
         <StatCard icon={<Users size={20} />} color="#D97706" bg="rgba(217,119,6,0.1)" value={overview.total_users} label="Người dùng" badge={`+${overview.new_users_week} tuần này`} />
-        <StatCard icon={<Activity size={20} />} color="#3B0199" bg="rgba(215,30,40,0.1)" value={system.groq_enabled ? 'Groq' : 'Gemini'} label="LLM Engine" badge={`v${system.app_version}`} />
+        <StatCard icon={<Activity size={20} />} color="var(--color-primary)" bg="rgba(215,30,40,0.1)" value={system.groq_enabled ? 'Groq' : 'Gemini'} label="LLM Engine" badge={`v${system.app_version}`} />
       </div>
 
       {monitoring && (
@@ -170,7 +173,7 @@ const AdminDashboardView = () => {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-            <StatCard icon={<Zap size={20} />} color="#7C3AED" bg="rgba(124,58,237,0.1)" value={monitoring.api_metrics.total_requests_today.toLocaleString()} label="API Requests (hôm nay)" badge={`${monitoring.api_metrics.avg_response_time_ms}ms avg`} />
+            <StatCard icon={<Zap size={20} />} color="#7C3AED" bg="rgba(124,58,237,0.1)" value={monitoring.api_metrics.total_requests_today} label="API Requests (hôm nay)" badge={`${monitoring.api_metrics.avg_response_time_ms}ms avg`} />
             <StatCard icon={<Clock size={20} />} color="#EA580C" bg="rgba(234,88,12,0.1)" value={`${monitoring.api_metrics.avg_response_time_ms}ms`} label="Avg Response Time" badge="Ultra-fast" />
             <StatCard icon={<AlertCircle size={20} />} color="#DC2626" bg="rgba(220,38,38,0.1)" value={`${(monitoring.api_metrics.error_rate * 100).toFixed(1)}%`} label="Error Rate" badge="Healthy" />
             <StatCard icon={<Server size={20} />} color="#2563EB" bg="rgba(37,99,235,0.1)" value={monitoring.database.size} label="Database Size" badge="PostgreSQL" />
@@ -213,7 +216,7 @@ const AdminDashboardView = () => {
                       <span style={{ color: 'var(--text-dim)' }}>{table.table_name}</span>
                       <strong>{table.size}</strong>
                     </div>
-                    <div style={{ height: '6px', borderRadius: '3px', background: '#F1F5F9', overflow: 'hidden' }}>
+                    <div style={{ height: '6px', borderRadius: '3px', background: 'var(--bg-input)', overflow: 'hidden' }}>
                       <div style={{ width: `${(table.bytes / maxBytes) * 100}%`, height: '100%', background: '#2563EB', borderRadius: '3px' }} />
                     </div>
                   </div>

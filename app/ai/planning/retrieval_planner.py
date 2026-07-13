@@ -15,10 +15,16 @@ from app.ai.understanding.schemas import QueryUnderstanding
 class RetrievalPlan(BaseModel):
     need_sql_exact: bool = False       # phone / exact company name lookup
     need_business_vector: bool = False  # semantic business search
+    need_job_vector: bool = False       # semantic job-listing search
     need_news_vector: bool = False      # semantic news search (RAG)
     need_conversation_context: bool = False  # reuse businesses/news from last turn
     top_k: int = 10
     threshold: float = 0.35
+    # operation="compare" with named companies (Entities.company_names) —
+    # generic semantic search over the whole question ("so sánh X và Y")
+    # isn't reliable for surfacing two SPECIFIC named companies, so this
+    # takes priority over need_business_vector when populated.
+    compare_names: list = []
 
 
 class RetrievalPlanner:
@@ -36,10 +42,19 @@ class RetrievalPlanner:
             return RetrievalPlan(need_sql_exact=True, top_k=understanding.constraints.limit)
 
         need_business = topic in ("business", "mixed") and operation in ("search", "recommend", "compare")
+        need_jobs = topic == "jobs" and operation in ("search", "recommend")
         need_news = topic in ("news", "mixed") and operation in ("search", "recommend", "compare")
+
+        if operation == "compare" and len(understanding.entities.company_names) >= 2:
+            return RetrievalPlan(
+                compare_names=understanding.entities.company_names,
+                need_news_vector=need_news,
+                top_k=understanding.constraints.limit,
+            )
 
         return RetrievalPlan(
             need_business_vector=need_business,
+            need_job_vector=need_jobs,
             need_news_vector=need_news,
             top_k=understanding.constraints.limit,
         )

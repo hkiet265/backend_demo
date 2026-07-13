@@ -307,6 +307,141 @@ Tóm tắt (tiếng Việt, {max_sentences} câu):"""
         
         return normalized
         
+    def translate_job_text_to_vietnamese(self, text: Optional[str]) -> Optional[str]:
+        """ITviec job postings from foreign-owned companies are often
+        written entirely in English, while others are in Vietnamese — left
+        as-is, the job list shows "Yêu cầu công việc"/"Phúc lợi" in
+        whichever language the original poster used, inconsistent from
+        card to card. Translates to Vietnamese if needed; a no-op (model
+        instructed to return the input unchanged) when it's already
+        Vietnamese, so this is safe to call unconditionally."""
+        if not text or not text.strip():
+            return text
+        from app.services.llm_provider import generate_with_fallback
+
+        system_prompt = (
+            "Bạn là công cụ dịch thuật cho tin tuyển dụng. Nếu đoạn văn bản người dùng đưa vào đã "
+            "hoàn toàn bằng tiếng Việt, trả lại NGUYÊN VĂN không đổi một chữ. Nếu có tiếng Anh (một "
+            "phần hoặc toàn bộ), dịch sang tiếng Việt tự nhiên, chuyên nghiệp. GIỮ NGUYÊN cấu trúc "
+            "dấu \";\" phân cách giữa các ý (mỗi đoạn giữa 2 dấu \";\" là 1 gạch đầu dòng, dịch từng ý, "
+            "không gộp hay tách thêm ý, không thêm/bớt số lượng dấu \";\"). Giữ nguyên tên riêng, tên "
+            "công nghệ, từ viết tắt chuyên ngành (VD: Java, AWS, Spring Boot, CV, KPI, OOP...). "
+            "CHỈ trả về đoạn văn bản kết quả, không thêm giải thích, tiêu đề hay chú thích."
+        )
+        try:
+            result = generate_with_fallback(system_prompt, text, temperature=0.2, max_tokens=700)
+            return result.strip() if result else text
+        except Exception as e:
+            logger.warning(f"translate_job_text_to_vietnamese failed: {e}")
+            return text
+
+    def translate_job_description_to_vietnamese(self, text: Optional[str]) -> Optional[str]:
+        """Same purpose as translate_job_text_to_vietnamese but for the full
+        multi-paragraph "Mô tả công việc" (job description) pulled from the
+        JobPosting JSON-LD — that field preserves line breaks between
+        sections (About Us / Job Description / Essential Duties / ...)
+        rather than being ";"-delimited bullets, so it needs its own prompt
+        and a larger token budget."""
+        if not text or not text.strip():
+            return text
+        from app.services.llm_provider import generate_with_fallback
+
+        system_prompt = (
+            "Bạn là công cụ dịch thuật cho tin tuyển dụng. Nếu đoạn mô tả công việc người dùng đưa "
+            "vào đã hoàn toàn bằng tiếng Việt, trả lại NGUYÊN VĂN không đổi một chữ. Nếu có tiếng Anh "
+            "(một phần hoặc toàn bộ), dịch sang tiếng Việt tự nhiên, chuyên nghiệp. GIỮ NGUYÊN cấu trúc "
+            "xuống dòng giữa các đoạn/mục (mỗi dòng dịch riêng, không gộp các đoạn lại với nhau). Giữ "
+            "nguyên tên riêng, tên công ty, tên công nghệ, từ viết tắt chuyên ngành (VD: Java, AWS, "
+            "Spring Boot, CV, KPI, OOP...). CHỈ trả về đoạn văn bản kết quả, không thêm giải thích, "
+            "tiêu đề hay chú thích."
+        )
+        # Defensive cap against a pathologically long posting — plenty for
+        # any real job description while keeping the LLM call bounded.
+        try:
+            result = generate_with_fallback(system_prompt, text[:6000], temperature=0.2, max_tokens=2000)
+            return result.strip() if result else text
+        except Exception as e:
+            logger.warning(f"translate_job_description_to_vietnamese failed: {e}")
+            return text
+
+    def classify_job_industry(self, company_name: str, job_title: str, skills: str = "") -> Optional[str]:
+        """Ngành nghề cho tin tuyển dụng KHÔNG khớp được với businesses_demo
+        (business_id NULL — công ty chưa từng được crawl vào bảng doanh
+        nghiệp). Dùng LLM thay vì keyword-matching vì tên công ty/tiêu đề
+        job hiếm khi chứa đúng từ khóa ngành (vd "Business Analyst" tại
+        "Oivan" không match keyword nào trong auto_classify_industry).
+        Bắt buộc chọn đúng 1 trong các ngành đã dùng thật ở businesses_demo
+        để tag hiển thị nhất quán, hoặc None nếu không đủ căn cứ."""
+        # Uses the multi-provider chain (app.services.llm_provider) instead
+        # of self.model directly — self.model is configured once at import
+        # time with a single fixed GEMINI_API_KEY, bypassing the key-rotation/
+        # fallback-chain logic every other AI feature in this app relies on.
+        from app.services.llm_provider import generate_with_fallback
+
+        system_prompt = (
+            "Bạn là công cụ phân loại ngành nghề cho tin tuyển dụng. Đây là danh sách "
+            "các ngành nghề hợp lệ (không được bịa ngành khác):\n"
+            f"{', '.join(JOB_INDUSTRY_CATEGORIES)}\n\n"
+            "Dựa vào tên công ty và tiêu đề vị trí tuyển dụng, chọn ĐÚNG 1 ngành phù hợp nhất "
+            "trong danh sách trên. Nếu không đủ căn cứ để chọn chắc chắn, trả lời \"Không rõ\". "
+            "CHỈ trả lời đúng tên ngành (nguyên văn từ danh sách) hoặc \"Không rõ\", không thêm gì khác."
+        )
+        user_prompt = (
+            f"Tên công ty: {company_name}\n"
+            f"Vị trí tuyển dụng: {job_title}\n"
+            f"Kỹ năng yêu cầu: {skills or '(không có)'}"
+        )
+        try:
+            answer = generate_with_fallback(system_prompt, user_prompt, temperature=0.1, max_tokens=30)
+            answer = (answer or "").strip()
+            return answer if answer in JOB_INDUSTRY_CATEGORIES else None
+        except Exception as e:
+            logger.warning(f"classify_job_industry failed for '{company_name}': {e}")
+            return None
+
+
+# Ngành nghề thật đã dùng ở businesses_demo.nganh_nghe (loại bỏ giá trị rỗng
+# "Chưa có") — giữ nguyên danh sách này để tag AI-phân-loại trông giống hệt
+# tag lấy từ businesses_demo, không tạo ra 2 kiểu nhãn khác nhau trên UI.
+JOB_INDUSTRY_CATEGORIES = [
+    "An Ninh Mạng", "Bán Lẻ và Bán Buôn", "Bất Động Sản và Xây Dựng",
+    "Chăm Sóc Sức Khỏe", "Chính Phủ", "Chứng khoán và Đầu tư",
+    "Công Nghiệp Tiện Ích", "Cung Ứng và Tuyển Dụng",
+    "Dịch vụ Blockchain & Web3", "Dịch Vụ Chuyên Nghiệp",
+    "Dịch Vụ Nghiên Cứu", "Dịch Vụ Tài Chính", "Dịch Vụ và Tư Vấn IT",
+    "Du Lịch và Dịch Vụ Lưu Trú", "Dược Phẩm", "Giáo Dục và Đào Tạo",
+    "Hàng Tiêu Dùng", "Mạng Lưới và Cơ Sở Hạ Tầng", "May mặc và Thời Trang",
+    "Môi Trường", "Mua Bán và Thương Mại", "Ngân Hàng", "Nông Nghiệp",
+    "Phần Cứng và Điện Toán", "Phần mềm và Dịch vụ Trí tuệ Nhân tạo",
+    "Phi Lợi Nhuận và Dịch Vụ Xã Hội", "Quản Lý Cơ Sở Vật Chất",
+    "Sáng Tạo và Thiết Kế", "Sản Phẩm Phần Mềm và Dịch Vụ Web",
+    "Sản Xuất và Kỹ Thuật", "Thể thao và Thể hình", "Thực Phẩm và Đồ Uống",
+    "Thuê Ngoài Phát Triển Phần Mềm", "Thương Mại Điện Tử", "Trò Chơi",
+    "Truyền Thông, Quảng Cáo và Giải Trí", "Vận Tải, Logistics và Kho Hàng",
+    "Vật Liệu và Khai Thác", "Viễn Thông", "Xuất Bản và In Ấn",
+]
+
+_VIETNAMESE_CHARS_PATTERN = re.compile(
+    "[ăâđêôơưĂÂĐÊÔƠƯ"
+    "áàảãạấầẩẫậắằẳẵặÁÀẢÃẠẤẦẨẪẬẮẰẲẴẶ"
+    "éèẻẽẹếềểễệÉÈẺẼẸẾỀỂỄỆ"
+    "íìỉĩịÍÌỈĨỊ"
+    "óòỏõọốồổỗộớờởỡợÓÒỎÕỌỐỒỔỖỘỚỜỞỠỢ"
+    "úùủũụứừửữựÚÙỦŨỤỨỪỬỮỰ"
+    "ýỳỷỹỵÝỲỶỸỴ]"
+)
+
+
+def looks_non_vietnamese(text: Optional[str]) -> bool:
+    """Cheap pre-filter so translate_job_text_to_vietnamese isn't called
+    (burning LLM quota) on text that's already Vietnamese — real Vietnamese
+    requirement/benefit paragraphs virtually always contain at least one
+    diacritic; its total absence is a reliable "this is English" signal."""
+    if not text or not text.strip():
+        return False
+    return not _VIETNAMESE_CHARS_PATTERN.search(text)
+
+
 _enrichment_service = None
 
 def get_enrichment_service() -> AIEnrichmentService:

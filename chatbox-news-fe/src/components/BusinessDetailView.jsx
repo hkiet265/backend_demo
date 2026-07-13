@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, Heart, MapPin, Phone, Globe, Mail, Users, Briefcase, Newspaper,
-  ShieldCheck, Building2, ArrowRight
+  X, Heart, MapPin, Phone, Globe, Mail, Users, Briefcase,
+  ShieldCheck, Building2, Trash2, ListChecks, Gift
 } from 'lucide-react';
 import Spinner from './atoms/Spinner';
+import CountUp from './CountUp';
 
-const CARD_STYLE = { background: 'white', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)' };
+const CARD_STYLE = { background: 'var(--bg-panel)', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)' };
 
 // Real trust_score tops out at 60 today (no business has address/social
 // filled in yet). Threshold matches the baseline used across the app so
@@ -23,22 +24,6 @@ function formatRegionDisplay(region) {
   return region;
 }
 
-function normalizeText(text) {
-  if (!text) return '';
-  return text.toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-}
-
-function timeAgo(dateStr) {
-  if (!dateStr) return '';
-  const diffMs = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'vừa xong';
-  if (mins < 60) return `${mins} phút trước`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} giờ trước`;
-  return `${Math.floor(hours / 24)} ngày trước`;
-}
-
 const STATUS_LABEL = { Hoat_dong: 'Đang hoạt động', Cho_xac_minh: 'Chờ xác minh', Tam_ngung: 'Tạm ngưng' };
 
 function DetailRow({ label, value }) {
@@ -51,24 +36,47 @@ function DetailRow({ label, value }) {
   );
 }
 
+// tags/notes from the ITviec crawl are full requirement/benefit sentences
+// joined by "; " — rendering them as small pill badges (like short keyword
+// tags) would look broken, so they get their own bulleted-list card.
+function BulletListCard({ title, icon, text }) {
+  const items = (text || '').split(';').map(t => t.trim()).filter(Boolean);
+  if (items.length === 0) return null;
+  return (
+    <div style={{ ...CARD_STYLE, padding: '18px 20px' }}>
+      <h3 style={{ margin: '0 0 10px', fontSize: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {icon} {title}
+      </h3>
+      <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {items.map((item, i) => (
+          <li key={i} style={{ fontSize: '13px', lineHeight: 1.5, color: 'var(--text-main)' }}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function StatCard({ icon, color, bg, value, label }) {
   return (
     <div style={{ ...CARD_STYLE, padding: '14px 16px', flex: 1, minWidth: '120px' }}>
       <div style={{ width: '34px', height: '34px', borderRadius: '9px', background: bg, color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
         {icon}
       </div>
-      <div style={{ fontSize: '19px', fontWeight: 800 }}>{value}</div>
+      <div style={{ fontSize: '19px', fontWeight: 800 }}>{typeof value === 'number' ? <CountUp value={value} /> : value}</div>
       <div style={{ fontSize: '11.5px', color: 'var(--text-dim)' }}>{label}</div>
     </div>
   );
 }
 
-function BusinessDetailView({ businessId, allNews, currentUser, onClose, onShowAuth, onGoToNews }) {
+function BusinessDetailView({ businessId, currentUser, onClose, onShowAuth, onDeleted, onOpenJob }) {
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 900);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [jobs, setJobs] = useState([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 900);
@@ -94,6 +102,13 @@ function BusinessDetailView({ businessId, allNews, currentUser, onClose, onShowA
       .then(data => setFavoriteCount(data?.favorite_count || 0))
       .catch(() => setFavoriteCount(0));
 
+    setJobsLoading(true);
+    fetch(`/api/jobs?business_id=${businessId}&page_size=50`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => setJobs(data?.data || []))
+      .catch(() => setJobs([]))
+      .finally(() => setJobsLoading(false));
+
     const token = localStorage.getItem('token');
     if (token) {
       fetch(`/api/bookmarks/businesses/check/${businessId}`, { headers: { Authorization: `Bearer ${token}` } })
@@ -105,13 +120,27 @@ function BusinessDetailView({ businessId, allNews, currentUser, onClose, onShowA
     }
   }, [businessId]);
 
-  const relatedNews = useMemo(() => {
-    if (!business?.name) return [];
-    const name = normalizeText(business.name);
-    return (allNews || [])
-      .filter(n => (normalizeText(n.tieu_de) + ' ' + normalizeText(n.tom_tat)).includes(name))
-      .slice(0, 5);
-  }, [business?.name, allNews]);
+  const handleDelete = async () => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa doanh nghiệp này không?')) return;
+    const token = localStorage.getItem('token');
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/businesses/${businessId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Xóa thất bại');
+      }
+      if (onDeleted) onDeleted(businessId);
+      onClose();
+    } catch (err) {
+      alert('❌ ' + err.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const toggleBookmark = async () => {
     const token = localStorage.getItem('token');
@@ -164,7 +193,6 @@ function BusinessDetailView({ businessId, allNews, currentUser, onClose, onShowA
   }
 
   const isVerified = (business.trust_score ?? 0) >= VERIFIED_THRESHOLD;
-  const tagList = (business.tags || '').split(',').map(t => t.trim()).filter(Boolean);
 
   return createPortal(
     <div className="modal-overlay" onClick={onClose}>
@@ -173,8 +201,7 @@ function BusinessDetailView({ businessId, allNews, currentUser, onClose, onShowA
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
       <div style={{ ...CARD_STYLE, overflow: 'hidden' }}>
-        <div style={{ height: isMobile ? '110px' : '150px', background: 'linear-gradient(135deg, #1E3A8A, #3B82F6, #60A5FA)' }} />
-        <div style={{ padding: isMobile ? '0 16px 16px' : '0 24px 20px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'flex-end', gap: '16px', marginTop: isMobile ? '-40px' : '-50px' }}>
+        <div style={{ padding: isMobile ? '16px' : '24px 24px 20px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: '16px' }}>
           <div style={{
             width: isMobile ? '80px' : '96px', height: isMobile ? '80px' : '96px', borderRadius: '16px', background: 'white',
             border: '4px solid white', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -199,16 +226,16 @@ function BusinessDetailView({ businessId, allNews, currentUser, onClose, onShowA
               </div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
                 {business.industry && <span style={{ fontSize: '11.5px', fontWeight: 600, padding: '3px 10px', borderRadius: '20px', background: '#DBEAFE', color: '#2563EB' }}>{business.industry}</span>}
-                {business.region && <span style={{ fontSize: '11.5px', fontWeight: 600, padding: '3px 10px', borderRadius: '20px', background: '#F1F5F9', color: 'var(--text-main)' }}>{formatRegionDisplay(business.region)}</span>}
+                {business.region && <span style={{ fontSize: '11.5px', fontWeight: 600, padding: '3px 10px', borderRadius: '20px', background: 'var(--bg-input)', color: 'var(--text-dim)' }}>{formatRegionDisplay(business.region)}</span>}
               </div>
             </div>
             <button
               onClick={toggleBookmark}
               title={isBookmarked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
               style={{
-                width: '42px', height: '42px', borderRadius: '50%', border: '2px solid var(--border-neon)', background: 'white',
+                width: '42px', height: '42px', borderRadius: '50%', border: '2px solid var(--border-neon)', background: 'var(--bg-panel)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
-                color: isBookmarked ? 'var(--color-primary)' : 'var(--text-dim)'
+                color: isBookmarked ? '#EC4899' : 'var(--text-dim)'
               }}
             >
               <Heart size={18} fill={isBookmarked ? 'currentColor' : 'none'} />
@@ -248,13 +275,48 @@ function BusinessDetailView({ businessId, allNews, currentUser, onClose, onShowA
 
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
         <StatCard icon={<Users size={17} />} color="#2563EB" bg="rgba(37,99,235,0.1)" value={business.nhan_su ?? '—'} label="Nhân sự" />
-        <StatCard icon={<Briefcase size={17} />} color="#16A34A" bg="rgba(22,163,74,0.1)" value={business.dang_tuyen ?? 0} label="Đang tuyển dụng" />
-        <StatCard icon={<Newspaper size={17} />} color="#7C3AED" bg="rgba(124,58,237,0.1)" value={relatedNews.length} label="Tin tức" />
+        <StatCard icon={<Briefcase size={17} />} color="#16A34A" bg="rgba(22,163,74,0.1)" value={jobs.length} label="Đang tuyển dụng" />
         <StatCard icon={<Heart size={17} />} color="#DC2626" bg="rgba(220,38,38,0.1)" value={favoriteCount} label="Lượt yêu thích" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1.4fr) minmax(0,1fr)', gap: '18px', alignItems: 'flex-start' }}>
-        <div style={{ ...CARD_STYLE, padding: '18px 20px' }}>
+      <div style={{ ...CARD_STYLE, padding: '18px 20px' }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Briefcase size={17} color="var(--color-primary)" /> Vị trí đang tuyển ({jobs.length})
+        </h3>
+        {jobsLoading ? (
+          <p style={{ fontSize: '13px', color: 'var(--text-dim)' }}>Đang tải...</p>
+        ) : jobs.length === 0 ? (
+          <p style={{ fontSize: '13px', color: 'var(--text-dim)' }}>Doanh nghiệp này hiện chưa có tin tuyển dụng nào.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {jobs.map(job => (
+              <button
+                key={job.id}
+                onClick={() => { onOpenJob ? onOpenJob(job) : onClose(); }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+                  padding: '12px 14px', borderRadius: '8px', border: '2px solid var(--border-neon)',
+                  background: 'var(--bg-input)', cursor: 'pointer', textAlign: 'left', width: '100%',
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <strong style={{ fontSize: '13.5px', color: 'var(--text-main)' }}>{job.title}</strong>
+                  {job.location && (
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <MapPin size={11} /> {job.location}
+                    </p>
+                  )}
+                </div>
+                <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--color-primary)', flexShrink: 0 }}>
+                  Xem chi tiết
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ ...CARD_STYLE, padding: '18px 20px' }}>
           <h3 style={{ margin: '0 0 8px', fontSize: '15px', fontWeight: 800 }}>Thông tin chi tiết</h3>
           <DetailRow label="Tên doanh nghiệp" value={business.name} />
           <DetailRow label="Số điện thoại" value={business.phone} />
@@ -278,54 +340,31 @@ function BusinessDetailView({ businessId, allNews, currentUser, onClose, onShowA
               <span style={{ color: 'var(--text-dim)' }}>Độ tin cậy</span>
               <strong>{business.trust_score ?? 0}%</strong>
             </div>
-            <div style={{ height: '8px', borderRadius: '4px', background: '#F1F5F9', overflow: 'hidden' }}>
+            <div style={{ height: '8px', borderRadius: '4px', background: 'var(--bg-input)', overflow: 'hidden' }}>
               <div style={{ width: `${business.trust_score ?? 0}%`, height: '100%', background: isVerified ? '#16A34A' : '#D97706', borderRadius: '4px' }} />
             </div>
           </div>
 
-          {tagList.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' }}>
-              {tagList.map(tag => (
-                <span key={tag} style={{ fontSize: '11.5px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px', background: '#F1F5F9', color: 'var(--text-main)' }}>{tag}</span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div style={{ ...CARD_STYLE, padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800 }}>Tin tức mới nhất</h3>
-            {relatedNews.length > 0 && (
-              <button onClick={() => onGoToNews(business.name)} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                Xem tất cả <ArrowRight size={12} />
-              </button>
-            )}
-          </div>
-          {relatedNews.length === 0 ? (
-            <p style={{ fontSize: '13px', color: 'var(--text-dim)' }}>Chưa có tin tức nào nhắc đến doanh nghiệp này.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {relatedNews.map(news => (
-                <div key={news.id} onClick={() => onGoToNews(news.tieu_de, news.id)} style={{ display: 'flex', gap: '10px', cursor: 'pointer' }}>
-                  <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {news.anh_dai_dien ? (
-                      <img src={news.anh_dai_dien} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <Newspaper size={18} style={{ color: 'var(--text-dim)', opacity: 0.4 }} />
-                    )}
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: '12.5px', fontWeight: 700, lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                      {news.tieu_de}
-                    </p>
-                    <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>{news.nha_dai} · {timeAgo(news.created_at)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
+
+      <BulletListCard title="Yêu cầu công việc" icon={<ListChecks size={17} color="var(--color-primary)" />} text={business.tags} />
+      <BulletListCard title="Phúc lợi" icon={<Gift size={17} color="var(--color-primary)" />} text={business.notes} />
+
+      {currentUser && business.created_by_user_id === currentUser.id && (
+        <div style={{ ...CARD_STYLE, padding: '16px 20px' }}>
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px',
+              border: 'none', background: '#DC2626', color: 'white', fontSize: '13px', fontWeight: 700,
+              cursor: isDeleting ? 'not-allowed' : 'pointer', opacity: isDeleting ? 0.6 : 1
+            }}
+          >
+            <Trash2 size={14} /> {isDeleting ? 'Đang xóa...' : 'Xóa doanh nghiệp'}
+          </button>
+        </div>
+      )}
         </div>
       </div>
     </div>,

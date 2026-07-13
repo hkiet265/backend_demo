@@ -2,9 +2,10 @@
 Admin API Routes
 Dashboard metrics and statistics for admins
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from app.middleware.rate_limiter import limiter, GENERAL_RATE_LIMIT
 from app.api.auth import hash_password
+from app.dependencies import get_current_admin
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from app.config import settings
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 @router.get("/stats")
 @limiter.limit(GENERAL_RATE_LIMIT)
-async def get_admin_stats(request: Request):
+async def get_admin_stats(request: Request, admin: dict = Depends(get_current_admin)):
     """
     Get admin dashboard statistics
     
@@ -123,7 +124,7 @@ async def get_admin_stats(request: Request):
 
 @router.get("/monitoring")
 @limiter.limit(GENERAL_RATE_LIMIT)
-async def get_monitoring_stats(request: Request, hours: int = 24):
+async def get_monitoring_stats(request: Request, hours: int = 24, admin: dict = Depends(get_current_admin)):
     """
     Get monitoring and performance statistics from Logfire (real-time)
     
@@ -224,7 +225,7 @@ async def get_monitoring_stats(request: Request, hours: int = 24):
 
 @router.get("/users")
 @limiter.limit(GENERAL_RATE_LIMIT)
-async def get_users(request: Request):
+async def get_users(request: Request, admin: dict = Depends(get_current_admin)):
     """
     Get all registered users
     
@@ -278,7 +279,7 @@ async def admin_health():
 
 @router.post("/users")
 @limiter.limit(GENERAL_RATE_LIMIT)
-async def create_user(request: Request):
+async def create_user(request: Request, admin: dict = Depends(get_current_admin)):
     """
     Admin creates a new user account.
     A random temporary password is generated and returned once (not stored in plaintext)
@@ -332,7 +333,7 @@ async def create_user(request: Request):
 
 @router.put("/users/{user_id}")
 @limiter.limit(GENERAL_RATE_LIMIT)
-async def update_user(user_id: int, request: Request):
+async def update_user(user_id: int, request: Request, admin: dict = Depends(get_current_admin)):
     """
     Update user information
     
@@ -380,7 +381,7 @@ async def update_user(user_id: int, request: Request):
 
 @router.put("/users/{user_id}/status")
 @limiter.limit(GENERAL_RATE_LIMIT)
-async def update_user_status(user_id: int, request: Request):
+async def update_user_status(user_id: int, request: Request, admin: dict = Depends(get_current_admin)):
     """
     Change a user's account status (active / pending / locked)
     """
@@ -429,7 +430,7 @@ async def update_user_status(user_id: int, request: Request):
 
 @router.delete("/users/{user_id}")
 @limiter.limit(GENERAL_RATE_LIMIT)
-async def delete_user(user_id: int, request: Request):
+async def delete_user(user_id: int, request: Request, admin: dict = Depends(get_current_admin)):
     """
     Delete a user
     

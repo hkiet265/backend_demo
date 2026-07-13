@@ -34,28 +34,35 @@ class KnowledgeFusion:
     def fuse(
         self,
         businesses: List[Dict] = None,
+        jobs: List[Dict] = None,
         news: List[Dict] = None,
         top_k_business: int = 10,
+        top_k_jobs: int = 10,
         top_k_news: int = 5,
         source_methods: List[str] = None,
     ) -> Evidence:
         businesses = businesses or []
+        jobs = jobs or []
         news = news or []
 
         deduped_businesses = _dedupe_by_id(businesses)
         deduped_businesses.sort(key=lambda b: b.get('similarity', 0), reverse=True)
+
+        deduped_jobs = _dedupe_by_id(jobs)
+        deduped_jobs.sort(key=lambda j: j.get('similarity', 0), reverse=True)
 
         deduped_news = _dedupe_by_id(news)
         deduped_news.sort(key=lambda n: n.get('similarity', 0), reverse=True)
 
         evidence = Evidence(
             businesses=deduped_businesses[:top_k_business],
+            jobs=deduped_jobs[:top_k_jobs],
             news=deduped_news[:top_k_news],
             source_methods=source_methods or [],
         )
         logger.info(
-            f"KnowledgeFusion: {len(evidence.businesses)} businesses, "
-            f"{len(evidence.news)} news (from {len(businesses)}/{len(news)} raw)"
+            f"KnowledgeFusion: {len(evidence.businesses)} businesses, {len(evidence.jobs)} jobs, "
+            f"{len(evidence.news)} news (from {len(businesses)}/{len(jobs)}/{len(news)} raw)"
         )
         return evidence
 

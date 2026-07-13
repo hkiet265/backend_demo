@@ -1,10 +1,12 @@
+import ChatbotAvatar from '../../ChatbotAvatar';
+
 const LoadingSpinner = ({ fullScreen = false, message = 'Đang tải...' }) => {
   if (fullScreen) {
     return (
       <div className="loading-fullscreen">
         <div className="loading-content">
           <div className="loading-logo">
-            <img src="/logochatbot.png" alt="Company" className="loading-avatar" />
+            <ChatbotAvatar className="loading-avatar" />
             <div className="loading-rings">
               <div className="loading-ring"></div>
               <div className="loading-ring"></div>

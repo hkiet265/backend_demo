@@ -42,7 +42,15 @@ class SentimentService:
         """
         try:
             quick_result = self._quick_sentiment_detection(message)
-            
+
+            # NEGATIVE (unlike FRUSTRATED, which needs an explicit swear/
+            # complaint word) can fire off a single ambiguous keyword — that
+            # only means anything in the context of a prior bad turn. On the
+            # very first message there's nothing to be sorry about yet, so
+            # don't let adjust_tone() open with an apology out of nowhere.
+            if quick_result['sentiment'] == Sentiment.NEGATIVE and not history:
+                quick_result = {**quick_result, 'confidence': 0.0}
+
             if quick_result['confidence'] >= 0.85:
                 return quick_result
 
@@ -68,10 +76,16 @@ class SentimentService:
             'lỗi hoài', 'loi hoai', 'sai hoài', 'sai hoai'
         ]
 
+        # Deliberately excludes bare negation particles ("không", "chẳng",
+        # "chả") — they're grammatically neutral in Vietnamese and show up
+        # in totally ordinary requests ("không cần gấp", "cho tôi xem không
+        # phải tin cũ"), which was misfiring NEGATIVE sentiment (and an
+        # unwarranted apology from adjust_tone) on completely normal first
+        # messages. Only count actual negative-sentiment phrases.
         negative_keywords = [
-            'không', 'khong', 'chẳng', 'chang', 'chả', 'cha',
             'tệ', 'te', 'kém', 'kem', 'xấu', 'xau', 'thất vọng', 'that vong',
-            'buồn', 'buon', 'thất bại', 'that bai', 'sai', 'lỗi', 'loi',
+            'buồn', 'buon', 'thất bại', 'that bai', 'sai rồi', 'sai roi',
+            'lỗi', 'loi',
             'không thấy', 'khong thay', 'không tìm', 'khong tim',
             'không ra', 'khong ra', 'không có', 'khong co'
         ]

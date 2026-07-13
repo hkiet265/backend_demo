@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock } from 'lucide-react';
+import ChatbotAvatar from './ChatbotAvatar';
 
 function ResetPasswordView() {
   const [searchParams] = useSearchParams();
@@ -55,7 +56,7 @@ function ResetPasswordView() {
       <div className="auth-card">
         <div className="auth-header">
           <div className="auth-logo">
-            <img src="/logochatbot.png" alt="Company" className="auth-avatar" />
+            <ChatbotAvatar className="auth-avatar" />
           </div>
           <h2>Đặt lại mật khẩu</h2>
           <p>Nhập mật khẩu mới cho tài khoản Company của bạn</p>

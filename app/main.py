@@ -15,7 +15,7 @@ from slowapi.errors import RateLimitExceeded
 import logfire
 
 from app.config import settings
-from app.api import chat, business, news, auth, crawler, admin, bookmarks, enrichment, ux_features, notifications, secure_csv_import
+from app.api import chat, business, news, auth, crawler, admin, bookmarks, enrichment, ux_features, notifications, secure_csv_import, jobs, candidates, messages
 from app.middleware import limiter, rate_limit_exceeded_handler
 from app.database import init_db_pool, close_db_pool
  
@@ -76,6 +76,9 @@ app.include_router(enrichment.router)
 app.include_router(ux_features.router)
 app.include_router(notifications.router)
 app.include_router(secure_csv_import.router)
+app.include_router(jobs.router)
+app.include_router(candidates.router)
+app.include_router(messages.router)
 
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")

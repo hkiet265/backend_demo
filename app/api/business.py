@@ -100,7 +100,8 @@ async def get_all_businesses(
     province: Optional[str] = None,
     status: Optional[str] = None,
     scale: Optional[str] = None,
-    source: Optional[str] = None
+    source: Optional[str] = None,
+    only_with_jobs: Optional[bool] = None,
 ):
     """
     Get all businesses with pagination and filters
@@ -146,6 +147,18 @@ async def get_all_businesses(
             conditions.append("nguon_du_lieu ILIKE %s")
             params.append(f"%{source}%")
 
+        if only_with_jobs:
+            # Most of the crawled business directory (~997 rows) was never
+            # matched to a real job posting (business_id join) — only ~18
+            # actually have one. Featuring random directory entries on the
+            # homepage led straight to an empty "Vị trí đang tuyển (0)"
+            # page, which reads as fake data. This restricts to businesses
+            # that back at least one real, approved job listing.
+            conditions.append(
+                "id IN (SELECT DISTINCT business_id FROM job_listings "
+                "WHERE business_id IS NOT NULL AND trang_thai = 'Da_duyet')"
+            )
+
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         
         
@@ -156,6 +169,15 @@ async def get_all_businesses(
         offset = (page - 1) * page_size
         params.extend([page_size, offset])
         
+        # "Nổi bật" (only_with_jobs) is ranked by real favorite count
+        # (user_bookmarks_businesses) so it reflects actual user interest,
+        # not just recency. Ties fall back to id DESC.
+        order_clause = (
+            "ORDER BY (SELECT COUNT(*) FROM user_bookmarks_businesses ub "
+            "WHERE ub.business_id = businesses_demo.id) DESC, id DESC"
+            if only_with_jobs else "ORDER BY id DESC"
+        )
+
         query = f"""
             SELECT id, ten_doanh_nghiep, so_dien_thoai, vung_mien, tinh_thanh,
                    email, website, mo_ta, quy_mo, nganh_nghe, trang_thai,
@@ -163,7 +185,7 @@ async def get_all_businesses(
                    nhan_su, dang_tuyen, created_at, logo_url, nguon_du_lieu, ma_so_thue, updated_at
             FROM businesses_demo
             {where_clause}
-            ORDER BY id DESC
+            {order_clause}
             LIMIT %s OFFSET %s;
         """
 
@@ -390,7 +412,7 @@ async def get_business(business_id: int):
                    email, website, mo_ta, quy_mo, nganh_nghe, trang_thai,
                    do_tin_cay, facebook, zalo, linkedin, dia_chi, tags,
                    nhan_su, dang_tuyen, logo_url, ma_so_thue, ngay_thanh_lap,
-                   nguon_du_lieu, created_at, updated_at
+                   nguon_du_lieu, created_at, updated_at, created_by_user_id, ghi_chu
             FROM businesses_demo
             WHERE id = %s;
         """, (business_id,))
@@ -429,7 +451,9 @@ async def get_business(business_id: int):
                 "founded_date": row[21].isoformat() if row[21] else None,
                 "source": row[22],
                 "created_at": row[23].isoformat() if row[23] else None,
-                "updated_at": row[24].isoformat() if row[24] else None
+                "updated_at": row[24].isoformat() if row[24] else None,
+                "created_by_user_id": row[25],
+                "notes": row[26]
             }
         }
         

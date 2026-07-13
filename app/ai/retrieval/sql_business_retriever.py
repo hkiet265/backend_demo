@@ -18,7 +18,8 @@ FAMOUS_COMPANIES = ['fpt', 'viettel', 'vng', 'vingroup', 'grab', 'shopee', 'laza
 
 _BUSINESS_COLUMNS = """
     id, ten_doanh_nghiep, so_dien_thoai, tinh_thanh,
-    vung_mien, nganh_nghe, website, email, dia_chi, mo_ta, quy_mo
+    vung_mien, nganh_nghe, website, email, dia_chi, mo_ta, quy_mo,
+    do_tin_cay, nhan_su, dang_tuyen, tags, ghi_chu
 """
 
 
@@ -35,6 +36,13 @@ def _row_to_business(row: Dict) -> Dict:
         'address': row.get('dia_chi', ''),
         'description': row.get('mo_ta', ''),
         'scale': row.get('quy_mo', ''),
+        # Added so compare/evaluate questions have real substance to work
+        # with instead of just name/industry/location/phone/website.
+        'trust_score': row.get('do_tin_cay'),
+        'staff_count': row.get('nhan_su'),
+        'open_positions': row.get('dang_tuyen'),
+        'skills_required': row.get('tags'),
+        'benefits': row.get('ghi_chu'),
     }
 
 

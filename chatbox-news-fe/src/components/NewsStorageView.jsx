@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Spinner from './atoms/Spinner';
 import Toast from './Toast';
+import ScrollReveal from './ScrollReveal';
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
@@ -16,6 +17,19 @@ function timeAgo(dateStr) {
 }
 
 const HERO_SIZE = 4;
+
+function NewsCardSkeleton() {
+  return (
+    <div className="database-news-card skeleton-card" style={{ padding: 0 }}>
+      <div className="skeleton-line" style={{ width: '100%', height: '160px', borderRadius: 0 }} />
+      <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div className="skeleton-line" style={{ width: '40%', height: '18px' }} />
+        <div className="skeleton-line" style={{ width: '90%', height: '16px' }} />
+        <div className="skeleton-line" style={{ width: '60%', height: '13px' }} />
+      </div>
+    </div>
+  );
+}
 
 function trustPill(score) {
   if (score >= 80) return { label: 'Cao', bg: '#DCFCE7', color: '#16A34A' };
@@ -382,7 +396,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
         </div>
 
         <div className="news-filters">
-          <div className="search-box" style={{ flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+          <div className="search-box" style={{ flexWrap: isMobile ? 'wrap' : 'nowrap', position: 'relative', zIndex: 30 }}>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: isMobile ? '1 1 100%' : 1, minWidth: 0 }}>
               <Search size={18} className="search-icon" />
               <input
@@ -404,7 +418,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                 onClick={() => setShowSourceMenu(v => !v)}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '0 16px', height: '48px', width: isMobile ? '100%' : 'auto',
-                  borderRadius: 'var(--radius-md)', border: '2px solid var(--border-neon)', background: 'white',
+                  borderRadius: 'var(--radius-md)', border: '2px solid var(--border-neon)', background: 'var(--bg-panel)', color: 'var(--text-main)',
                   fontWeight: 600, fontSize: '13.5px', cursor: 'pointer', whiteSpace: 'nowrap', boxSizing: 'border-box'
                 }}
               >
@@ -414,8 +428,8 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                 <>
                   <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setShowSourceMenu(false)} />
                   <div style={{
-                    position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'white',
-                    border: '2px solid var(--border-neon)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                    position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'var(--bg-panel)',
+                    border: '2px solid var(--border-neon)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                     zIndex: 20, minWidth: '180px', maxHeight: '260px', overflowY: 'auto'
                   }}>
                     <p style={{ margin: 0, padding: '8px 14px', fontSize: '11px', fontWeight: 700, color: 'var(--text-dim)' }}>NGUỒN TIN</p>
@@ -425,7 +439,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                         onClick={() => { setSourceFilter(src); setShowSourceMenu(false); }}
                         style={{
                           display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px',
-                          background: sourceFilter === src ? '#FEF2F2' : 'white', border: 'none',
+                          background: sourceFilter === src ? 'var(--bg-input)' : 'var(--bg-panel)', border: 'none',
                           color: sourceFilter === src ? 'var(--color-primary)' : 'var(--text-main)',
                           fontSize: '13.5px', fontWeight: 600, cursor: 'pointer'
                         }}
@@ -443,7 +457,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
               title={`Làm mới kho (${allNews.length})`}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '0 16px', height: '48px', flex: isMobile ? 1 : 'initial',
-                borderRadius: 'var(--radius-md)', border: '2px solid var(--border-neon)', background: 'white',
+                borderRadius: 'var(--radius-md)', border: '2px solid var(--border-neon)', background: 'var(--bg-panel)', color: 'var(--text-main)',
                 fontWeight: 600, fontSize: '13.5px', cursor: 'pointer', whiteSpace: 'nowrap', boxSizing: 'border-box'
               }}
             >
@@ -477,7 +491,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: '16px', marginBottom: '28px' }}>
               <div
                 onClick={() => openModal(featured)}
-                style={{ position: 'relative', borderRadius: 'var(--radius-lg)', overflow: 'hidden', cursor: 'pointer', minHeight: '320px', display: 'flex', alignItems: 'flex-end', background: '#F1F5F9' }}
+                style={{ position: 'relative', borderRadius: 'var(--radius-lg)', overflow: 'hidden', cursor: 'pointer', minHeight: '320px', display: 'flex', alignItems: 'flex-end', background: 'var(--bg-input)' }}
               >
                 {featured.anh_dai_dien ? (
                   <img src={featured.anh_dai_dien} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -526,7 +540,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                     onClick={() => openModal(news)}
                     style={{ display: 'flex', gap: '10px', cursor: 'pointer', flex: 1 }}
                   >
-                    <div style={{ position: 'relative', width: '96px', height: '72px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ position: 'relative', width: '96px', height: '72px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {news.anh_dai_dien ? (
                         <img src={news.anh_dai_dien} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
@@ -550,9 +564,8 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
         })()}
 
         {isFetchNewsLoading ? (
-          <div className="loading-state">
-            <Spinner />
-            <p className="loading-state-text">Company đang lùng sục tin tức khắp nơi cho bạn...</p>
+          <div className="news-grid">
+            {Array.from({ length: itemsPerPage }).map((_, i) => <NewsCardSkeleton key={i} />)}
           </div>
         ) : filteredNews.length === 0 ? (
           <div className="empty-state">
@@ -565,13 +578,14 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
         ) : (
           <>
             <div className="news-grid">
-              {currentNews.map((news) => {
+              {currentNews.map((news, idx) => {
                 const isRecent = news.created_at && (Date.now() - new Date(news.created_at).getTime()) < 24 * 60 * 60 * 1000;
                 return (
-                  <div key={news.id} className="database-news-card" style={{ padding: 0 }}
+                  <ScrollReveal key={news.id} delay={(idx % 10) * 40} style={{ height: '100%' }}>
+                  <div className="database-news-card" style={{ padding: 0, height: '100%', boxSizing: 'border-box' }}
                     onClick={() => openModal(news)}
                   >
-                    <div style={{ position: 'relative', height: '160px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ position: 'relative', height: '160px', background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {news.anh_dai_dien ? (
                         <img src={news.anh_dai_dien} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                       ) : (
@@ -607,6 +621,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                       </div>
                     </div>
                   </div>
+                  </ScrollReveal>
                 );
               })}
             </div>
@@ -713,37 +728,24 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                       onClick={(e) => handleBookmark(selectedNews.id, e)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px',
-                        border: '2px solid var(--border-neon)', background: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                        border: '2px solid var(--border-neon)', background: 'var(--bg-panel)', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
                         color: bookmarkedNews.has(selectedNews.id) ? 'var(--color-primary)' : 'var(--text-main)'
                       }}
                     >
                       <Heart size={15} fill={bookmarkedNews.has(selectedNews.id) ? 'currentColor' : 'none'} />
                       {bookmarkedNews.has(selectedNews.id) ? 'Đã lưu' : 'Lưu'}
                     </button>
-                    <button
-                      onClick={() => {
-                        if (navigator.share) {
-                          navigator.share({ title: selectedNews.tieu_de, url: selectedNews.url }).catch(() => {});
-                        } else {
-                          navigator.clipboard.writeText(selectedNews.url || window.location.href);
-                          showToast('Đã sao chép liên kết', 'success');
-                        }
-                      }}
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
-                    >
-                      Chia sẻ
-                    </button>
                   </div>
                 </div>
 
                 {selectedNews.tom_tat && (
-                  <div style={{ background: '#FEF2F2', borderLeft: '4px solid var(--color-primary)', borderRadius: '8px', padding: '14px 16px', marginBottom: '18px' }}>
+                  <div style={{ background: 'var(--bg-input)', borderLeft: '4px solid var(--color-primary)', borderRadius: '8px', padding: '14px 16px', marginBottom: '18px' }}>
                     <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 700, color: 'var(--color-primary)' }}>Tóm tắt</p>
                     <p style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.6, color: 'var(--text-main)' }}>{selectedNews.tom_tat}</p>
                   </div>
                 )}
 
-                <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '18px', background: '#F1F5F9', minHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '18px', background: 'var(--bg-input)', minHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {selectedNews.anh_dai_dien ? (
                     <img src={selectedNews.anh_dai_dien} alt="" style={{ width: '100%', maxHeight: '360px', objectFit: 'cover', display: 'block' }} />
                   ) : (
@@ -796,7 +798,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                     <h4 style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: 800 }}>Chủ đề liên quan</h4>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                       {selectedNews.tu_khoa.map(tag => (
-                        <span key={tag} style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px', background: '#F1F5F9', color: 'var(--text-main)' }}>{tag}</span>
+                        <span key={tag} style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px', background: 'var(--bg-input)', color: 'var(--text-dim)' }}>{tag}</span>
                       ))}
                     </div>
                   </div>
@@ -814,7 +816,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                           rel="noopener noreferrer"
                           style={{ display: 'flex', gap: '10px', textDecoration: 'none', color: 'inherit' }}
                         >
-                          <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {rn.anh_dai_dien ? (
                               <img src={rn.anh_dai_dien} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
