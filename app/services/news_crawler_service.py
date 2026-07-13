@@ -27,36 +27,27 @@ class NewsCrawlerService:
 
     MAX_ENTRIES_PER_RSS = 50
 
+    # Career/job-market focused feeds — the app pivoted from general news
+    # to recruitment + job-market news, so sources here are chosen for
+    # hiring/workplace/career relevance rather than general current affairs.
     RSS_SOURCES = {
-        "VTV": [
-            "https://vtv.vn/rss/trong-nuoc.rss",
-            "https://vtv.vn/rss/the-gioi.rss",
-            "https://vtv.vn/rss/kinh-te.rss",
-            "https://vtv.vn/rss/the-thao.rss",
+        "VnExpress": [
+            "https://vnexpress.net/rss/viec-lam.rss",
+            "https://vnexpress.net/rss/kinh-doanh.rss",
         ],
-        "VTC": [
-            "https://vtc.vn/rss/thoi-su.rss",
-            "https://vtc.vn/rss/kinh-te.rss",
-            "https://vtc.vn/rss/the-thao.rss",
+        "Tuổi Trẻ": [
+            "https://tuoitre.vn/rss/viec-lam.rss",
+            "https://tuoitre.vn/rss/kinh-doanh.rss",
+            "https://tuoitre.vn/rss/giao-duc.rss",
         ],
-        "VOV": [
-            "https://vov.vn/rss/tin-moi.rss",
-            "https://vov.vn/rss/kinh-te.rss",
-            "https://vov.vn/rss/xa-hoi.rss",
-        ]
     }
 
     CATEGORY_MAP = {
-        "trong-nuoc": "Thời sự",
-        "thoi-su": "Thời sự",
-        "the-gioi": "Quốc tế",
+        "viec-lam": "Việc làm",
+        "kinh-doanh": "Kinh doanh",
+        "giao-duc": "Giáo dục",
         "kinh-te": "Kinh tế",
-        "the-thao": "Thể thao",
-        "xa-hoi": "Xã hội",
-        "van-hoa": "Văn hóa",
-        "giai-tri": "Giải trí",
         "cong-nghe": "Công nghệ",
-        "suc-khoe": "Sức khỏe"
     }
 
     REGION_MAP = {
@@ -144,7 +135,7 @@ class NewsCrawlerService:
         for key, value in self.CATEGORY_MAP.items():
             if key in rss_category.lower():
                 return value
-        return "Thời sự"
+        return "Việc làm"
     
     def clean_text(self, text: str) -> str:
         """Làm sạch text, loại bỏ HTML tags"""
@@ -468,9 +459,31 @@ class NewsCrawlerService:
             summary["total_inserted"] = result["inserted"]
             summary["total_skipped"] = result["skipped"]
             summary["errors"].extend(result["errors"])
-        
+
+            if result["inserted"] > 0:
+                self._backfill_new_embeddings(result["inserted"])
+
         logger.info(f"✅ Crawl completed - Found: {summary['total_found']}, Inserted: {summary['total_inserted']}, Skipped: {summary['total_skipped']}")
         return summary
+
+    def _backfill_new_embeddings(self, inserted_count: int) -> None:
+        """
+        Without this, freshly crawled articles sit with embedding_vector
+        NULL until someone remembers to run scripts/backfill_news_embeddings.py
+        by hand — and the chatbot's news search filters out any row with a
+        NULL embedding, so it truthfully (but wrongly) tells users a whole
+        category "doesn't exist" right after a crawl brought in exactly
+        that category. Best-effort: an embedding-API hiccup here must never
+        fail the crawl itself.
+        """
+        try:
+            from app.ai.retrieval.news_vector_retriever import get_news_vector_retriever
+            stats = get_news_vector_retriever().vector_service.generate_missing_embeddings(
+                batch_size=inserted_count
+            )
+            logger.info(f"📎 Embedding backfill after crawl: {stats}")
+        except Exception as e:
+            logger.warning(f"Embedding backfill after crawl skipped: {e}")
  
 _crawler_service = None
 

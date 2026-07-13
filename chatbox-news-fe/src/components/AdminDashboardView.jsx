@@ -4,7 +4,7 @@ import Spinner from './atoms/Spinner';
 import CountUp from './CountUp';
 
 const CARD_STYLE = {
-  background: 'white', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '18px 20px'
+  background: 'var(--bg-panel)', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '18px 20px', color: 'var(--text-main)'
 };
 
 function StatCard({ icon, color, bg, value, label, badge }) {
@@ -35,7 +35,7 @@ function BarRow({ label, count, max, color }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12.5px' }}>
       <span style={{ width: '90px', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-dim)' }}>{label}</span>
-      <div style={{ flex: 1, height: '8px', borderRadius: '4px', background: '#F1F5F9', overflow: 'hidden' }}>
+      <div style={{ flex: 1, height: '8px', borderRadius: '4px', background: 'var(--bg-input)', overflow: 'hidden' }}>
         <div style={{ width: `${max ? (count / max) * 100 : 0}%`, height: '100%', background: color, borderRadius: '4px' }} />
       </div>
       <span style={{ width: '50px', textAlign: 'right', flexShrink: 0, fontWeight: 700 }}>{count.toLocaleString()}</span>
@@ -56,7 +56,7 @@ function DonutChart({ data }) {
   });
   const gradient = total
     ? `conic-gradient(${segments.map(s => `${s.color} ${s.start}% ${s.end}%`).join(', ')})`
-    : 'conic-gradient(#F1F5F9 0% 100%)';
+    : 'conic-gradient(var(--bg-input) 0% 100%)';
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
@@ -64,7 +64,7 @@ function DonutChart({ data }) {
         width: '140px', height: '140px', borderRadius: '50%', background: gradient,
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
       }}>
-        <div style={{ width: '84px', height: '84px', borderRadius: '50%', background: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '84px', height: '84px', borderRadius: '50%', background: 'var(--bg-panel)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <span style={{ fontSize: '16px', fontWeight: 800 }}>{total.toLocaleString()}</span>
           <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>requests</span>
         </div>
@@ -100,9 +100,11 @@ const AdminDashboardView = () => {
     try {
       setLoading(true);
 
+      const token = localStorage.getItem('token');
+      const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
       const [statsRes, monitoringRes] = await Promise.all([
-        fetch('/api/admin/stats'),
-        fetch('/api/admin/monitoring')
+        fetch('/api/admin/stats', { headers: authHeaders }),
+        fetch('/api/admin/monitoring', { headers: authHeaders })
       ]);
 
       const statsData = await statsRes.json();
@@ -145,7 +147,7 @@ const AdminDashboardView = () => {
           <h2 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 800 }}>Dashboard</h2>
           <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-dim)' }}>Tổng quan hệ thống &amp; Monitoring</p>
         </div>
-        <button onClick={fetchStats} title="Làm mới" style={{ width: '42px', height: '42px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+        <button onClick={fetchStats} title="Làm mới" style={{ width: '42px', height: '42px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
           <RefreshCw size={18} className={loading ? 'spinning' : ''} />
         </button>
       </div>
@@ -214,7 +216,7 @@ const AdminDashboardView = () => {
                       <span style={{ color: 'var(--text-dim)' }}>{table.table_name}</span>
                       <strong>{table.size}</strong>
                     </div>
-                    <div style={{ height: '6px', borderRadius: '3px', background: '#F1F5F9', overflow: 'hidden' }}>
+                    <div style={{ height: '6px', borderRadius: '3px', background: 'var(--bg-input)', overflow: 'hidden' }}>
                       <div style={{ width: `${(table.bytes / maxBytes) * 100}%`, height: '100%', background: '#2563EB', borderRadius: '3px' }} />
                     </div>
                   </div>

@@ -396,7 +396,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
         </div>
 
         <div className="news-filters">
-          <div className="search-box" style={{ flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+          <div className="search-box" style={{ flexWrap: isMobile ? 'wrap' : 'nowrap', position: 'relative', zIndex: 30 }}>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: isMobile ? '1 1 100%' : 1, minWidth: 0 }}>
               <Search size={18} className="search-icon" />
               <input
@@ -418,7 +418,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                 onClick={() => setShowSourceMenu(v => !v)}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '0 16px', height: '48px', width: isMobile ? '100%' : 'auto',
-                  borderRadius: 'var(--radius-md)', border: '2px solid var(--border-neon)', background: 'var(--bg-panel)',
+                  borderRadius: 'var(--radius-md)', border: '2px solid var(--border-neon)', background: 'var(--bg-panel)', color: 'var(--text-main)',
                   fontWeight: 600, fontSize: '13.5px', cursor: 'pointer', whiteSpace: 'nowrap', boxSizing: 'border-box'
                 }}
               >
@@ -457,7 +457,7 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
               title={`Làm mới kho (${allNews.length})`}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '0 16px', height: '48px', flex: isMobile ? 1 : 'initial',
-                borderRadius: 'var(--radius-md)', border: '2px solid var(--border-neon)', background: 'var(--bg-panel)',
+                borderRadius: 'var(--radius-md)', border: '2px solid var(--border-neon)', background: 'var(--bg-panel)', color: 'var(--text-main)',
                 fontWeight: 600, fontSize: '13.5px', cursor: 'pointer', whiteSpace: 'nowrap', boxSizing: 'border-box'
               }}
             >
@@ -581,8 +581,8 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
               {currentNews.map((news, idx) => {
                 const isRecent = news.created_at && (Date.now() - new Date(news.created_at).getTime()) < 24 * 60 * 60 * 1000;
                 return (
-                  <ScrollReveal key={news.id} delay={(idx % 10) * 40}>
-                  <div className="database-news-card" style={{ padding: 0 }}
+                  <ScrollReveal key={news.id} delay={(idx % 10) * 40} style={{ height: '100%' }}>
+                  <div className="database-news-card" style={{ padding: 0, height: '100%', boxSizing: 'border-box' }}
                     onClick={() => openModal(news)}
                   >
                     <div style={{ position: 'relative', height: '160px', background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -734,19 +734,6 @@ function NewsStorageView({ allNews, isFetchNewsLoading, fetchAllNews, newsSearch
                     >
                       <Heart size={15} fill={bookmarkedNews.has(selectedNews.id) ? 'currentColor' : 'none'} />
                       {bookmarkedNews.has(selectedNews.id) ? 'Đã lưu' : 'Lưu'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (navigator.share) {
-                          navigator.share({ title: selectedNews.tieu_de, url: selectedNews.url }).catch(() => {});
-                        } else {
-                          navigator.clipboard.writeText(selectedNews.url || window.location.href);
-                          showToast('Đã sao chép liên kết', 'success');
-                        }
-                      }}
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'var(--bg-panel)', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
-                    >
-                      Chia sẻ
                     </button>
                   </div>
                 </div>

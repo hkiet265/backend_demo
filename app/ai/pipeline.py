@@ -16,7 +16,10 @@ from typing import Dict, List, Optional
 
 from app.ai.understanding import get_query_parser
 from app.ai.planning import get_retrieval_planner
-from app.ai.retrieval import get_sql_business_retriever, get_business_vector_retriever, get_news_vector_retriever
+from app.ai.retrieval import (
+    get_sql_business_retriever, get_business_vector_retriever, get_news_vector_retriever,
+    get_job_vector_retriever,
+)
 from app.ai.fusion import get_knowledge_fusion, Evidence
 from app.ai.generation import get_response_generator
 from app.ai.learning import get_preference_store
@@ -39,8 +42,27 @@ _OPERATION_TO_COMPLEXITY = {
 }
 
 FOLLOWUP_SUGGESTIONS_BUSINESS = ['💼 Thông tin chi tiết', '📞 Số điện thoại', '🔍 Tìm công ty khác']
+FOLLOWUP_SUGGESTIONS_JOBS = ['📝 Ứng tuyển ngay', '🔍 Tìm việc khác', '🏢 Xem công ty']
 FOLLOWUP_SUGGESTIONS_MIXED = ['📰 Tin tức khác', '🏢 Công ty liên quan', '🔍 Tìm kiếm chi tiết']
 FOLLOWUP_SUGGESTIONS_DEFAULT = ['🏢 Tìm công ty IT', '📰 Tin tức công nghệ', '❓ Hướng dẫn']
+
+# Matches asks like "thêm doanh nghiệp của tôi", "đăng ký công ty", "upload
+# doanh nghiệp lên hệ thống" — anything about getting a business onto the
+# platform. Deliberately narrow (verb + business/company noun) so it doesn't
+# fire on unrelated "doanh nghiệp" mentions like "tìm doanh nghiệp IT".
+ADD_BUSINESS_INTENT_RE = re.compile(
+    r"(thêm|đăng|đăng ký|tạo|tải lên|up\s*load)\s+"
+    r"(doanh nghiệp|công ty|cty)\b"
+    r"|(add|register|upload)\s+(my\s+)?(business|company)\b",
+    re.IGNORECASE,
+)
+
+# search_method values that mark a turn as being about the add-business
+# flow, so the NEXT message — even something short like "mã số thuế có bắt
+# buộc không" that doesn't itself mention "thêm doanh nghiệp" — is still
+# recognized as a follow-up on the same topic instead of falling through to
+# the retrieval pipeline, which has zero knowledge of this feature.
+ADD_BUSINESS_METHODS = {'add_business_guide', 'add_business_followup'}
 
 
 class LayeredChatPipeline:
@@ -72,6 +94,10 @@ class LayeredChatPipeline:
     def news_vector_retriever(self):
         return get_news_vector_retriever()
 
+    @property
+    def job_vector_retriever(self):
+        return get_job_vector_retriever()
+
     def process_message(
         self,
         message: str,
@@ -84,13 +110,33 @@ class LayeredChatPipeline:
 
         try:
             if not history and session_id:
-                history = self.conv_service.get_conversation_history(session_id)
+                history = self.conv_service.get_effective_history(session_id)
 
-            if action_button_id and session_id:
+            # _handle_button_action actually matches on the MESSAGE TEXT
+            # ("chi tiết"/"số điện thoại"/"địa chỉ"), not action_button_id —
+            # so it's just as valid a fast-path for the frontend's
+            # followup_suggestions chips, which resend their label as a
+            # plain user message with no action_button_id at all (e.g.
+            # clicking "💼 Thông tin chi tiết" sends the text "Thông tin chi
+            # tiết"). Previously that only worked when a real action_button
+            # was clicked, so quick-suggestion chips fell through to the LLM
+            # query parser, which sometimes misclassified a short generic
+            # phrase like that as smalltalk instead of a follow-up.
+            if history:
                 button_result = self._handle_button_action(action_button_id, message, history)
                 if button_result:
                     button_result['response_time_ms'] = self._elapsed_ms(start_time)
                     return button_result
+
+            is_add_business_followup = (
+                not ADD_BUSINESS_INTENT_RE.search(message)
+                and bool(history)
+                and self._get_last_context(history).get('search_method') in ADD_BUSINESS_METHODS
+            )
+            if ADD_BUSINESS_INTENT_RE.search(message) or is_add_business_followup:
+                result = self._handle_add_business_intent(message, history, is_followup=is_add_business_followup)
+                result['response_time_ms'] = self._elapsed_ms(start_time)
+                return result
 
             sentiment_result = None
             try:
@@ -117,7 +163,7 @@ class LayeredChatPipeline:
             logger.info(f"📊 Understanding: topic={understanding.topic} op={understanding.operation} (complexity~{complexity})")
 
             if understanding.topic == "conversation":
-                result = self._handle_conversational(understanding, message)
+                result = self._handle_conversational(understanding, message, history)
             elif understanding.is_followup:
                 result = self._handle_followup(understanding, message, history)
             else:
@@ -161,9 +207,23 @@ class LayeredChatPipeline:
         if plan.need_sql_exact:
             return self._handle_exact_lookup(understanding)
 
-        businesses, news, source_methods = [], [], []
+        businesses, jobs, news, source_methods = [], [], [], []
 
-        if plan.need_business_vector:
+        if plan.compare_names:
+            # Named-lookup, one query per company, instead of embedding the
+            # whole question as one vector — that approach could easily miss
+            # one or both of the specifically-named companies (see
+            # retrieval_planner.py). Dedup by id in case the same business
+            # matches two different name fragments.
+            seen_ids = set()
+            for name in plan.compare_names:
+                for biz in self.sql_business_retriever.lookup_by_name(name, exact_hint=True, limit=1):
+                    if biz['id'] not in seen_ids:
+                        seen_ids.add(biz['id'])
+                        businesses.append(biz)
+            source_methods.append('business_compare_named_lookup')
+
+        elif plan.need_business_vector:
             filters = {}
             if understanding.entities.region:
                 filters['region'] = understanding.entities.region
@@ -193,6 +253,25 @@ class LayeredChatPipeline:
                 if businesses:
                     source_methods.append('business_sql_filter_fallback')
 
+        if plan.need_job_vector:
+            job_filters = {}
+            if understanding.entities.location:
+                job_filters['location'] = understanding.entities.location
+            # Same reasoning as business_vector above: no hard industry
+            # filter, semantic ranking on the raw query (skill/role wording)
+            # already surfaces the right jobs.
+            jobs = self.job_vector_retriever.search(
+                understanding.raw_query, top_k=plan.top_k, threshold=plan.threshold, filters=job_filters,
+            )
+            source_methods.append('job_vector')
+
+            # Same "no topical content to embed" fallback as business/news —
+            # e.g. "có việc làm mới không" carries no skill/role wording.
+            if not jobs:
+                jobs = self.job_vector_retriever.list_recent(limit=plan.top_k, filters=job_filters)
+                if jobs:
+                    source_methods.append('job_recent_fallback')
+
         if plan.need_news_vector:
             news = self.news_vector_retriever.search(
                 understanding.raw_query, top_k=min(plan.top_k, 5), threshold=0.3,
@@ -209,7 +288,7 @@ class LayeredChatPipeline:
                     source_methods.append('news_recent_fallback')
 
         evidence = self.knowledge_fusion.fuse(
-            businesses=businesses, news=news, source_methods=source_methods,
+            businesses=businesses, jobs=jobs, news=news, source_methods=source_methods,
         )
 
         learning_hints, learning_context = {}, None
@@ -224,13 +303,19 @@ class LayeredChatPipeline:
 
         answer = self.response_generator.generate(understanding, evidence, learning_context, learning_hints)
 
-        followups = FOLLOWUP_SUGGESTIONS_MIXED if (evidence.has_business and evidence.has_news) else (
-            FOLLOWUP_SUGGESTIONS_BUSINESS if evidence.has_business else FOLLOWUP_SUGGESTIONS_DEFAULT
-        )
+        if evidence.has_business and evidence.has_news:
+            followups = FOLLOWUP_SUGGESTIONS_MIXED
+        elif evidence.has_jobs:
+            followups = FOLLOWUP_SUGGESTIONS_JOBS
+        elif evidence.has_business:
+            followups = FOLLOWUP_SUGGESTIONS_BUSINESS
+        else:
+            followups = FOLLOWUP_SUGGESTIONS_DEFAULT
 
         return {
             'answer': answer,
             'suggested_businesses': evidence.businesses,
+            'suggested_jobs': evidence.jobs,
             'documents': evidence.news,
             'search_method': "+".join(source_methods) or "no_retrieval",
             'rag_used': bool(source_methods),
@@ -252,8 +337,8 @@ class LayeredChatPipeline:
             searched = entities.company_name or entities.phone or ""
             return {
                 'answer': (
-                    f"🔍 Em không tìm thấy công ty phù hợp với **\"{searched}\"** trong cơ sở dữ liệu.\n\n"
-                    f"Vui lòng kiểm tra lại tên/số điện thoại, hoặc thử: *\"Gợi ý công ty xây dựng\"* "
+                    f"🔍 Em không tìm thấy công ty phù hợp với \"{searched}\" trong cơ sở dữ liệu.\n\n"
+                    f"Vui lòng kiểm tra lại tên/số điện thoại, hoặc thử: \"Gợi ý công ty xây dựng\" "
                     f"để em tìm các công ty tương tự."
                 ),
                 'suggested_businesses': [],
@@ -283,17 +368,17 @@ class LayeredChatPipeline:
 
     def _format_business_details(self, company: Dict) -> str:
         lines = [
-            f"📋 **{company['name']}**\n",
-            f"📞 **Điện thoại**: {company.get('phone', 'Chưa có')}",
-            f"📍 **Địa chỉ**: {company.get('address') or company.get('location', 'Chưa có')} - {company.get('region', '')}",
-            f"🏭 **Ngành nghề**: {company.get('industry', 'Chưa có')}",
-            f"🌐 **Website**: {company.get('website', 'Chưa có')}",
-            f"📧 **Email**: {company.get('email', 'Chưa có')}",
+            f"📋 {company['name']}\n",
+            f"📞 Điện thoại: {company.get('phone', 'Chưa có')}",
+            f"📍 Địa chỉ: {company.get('address') or company.get('location', 'Chưa có')} - {company.get('region', '')}",
+            f"🏭 Ngành nghề: {company.get('industry', 'Chưa có')}",
+            f"🌐 Website: {company.get('website', 'Chưa có')}",
+            f"📧 Email: {company.get('email', 'Chưa có')}",
         ]
         if company.get('scale'):
-            lines.append(f"👥 **Quy mô**: {company['scale']}")
+            lines.append(f"👥 Quy mô: {company['scale']}")
         if company.get('description'):
-            lines.append(f"📝 **Mô tả**: {company['description']}")
+            lines.append(f"📝 Mô tả: {company['description']}")
         lines.append("\nBạn cần thêm thông tin gì không? 😊")
         return "\n".join(lines)
 
@@ -302,12 +387,33 @@ class LayeredChatPipeline:
     def _handle_followup(self, understanding, message: str, history: Optional[List[Dict]]) -> Dict:
         last_context = self._get_last_context(history or [])
         businesses = last_context.get('suggested_businesses', [])
+        jobs = last_context.get('suggested_jobs', [])
 
-        if not businesses:
+        if not businesses and not jobs:
             return {
-                'answer': 'Em chưa gợi ý công ty nào trước đó. Bạn muốn tìm công ty gì nhỉ? 🔍',
-                'suggested_businesses': [], 'documents': [],
+                'answer': 'Em chưa gợi ý công ty hay việc làm nào trước đó. Bạn muốn tìm gì nhỉ? 🔍',
+                'suggested_businesses': [], 'suggested_jobs': [], 'documents': [],
                 'search_method': 'followup_no_context', 'rag_used': False,
+            }
+
+        # Previous turn was a job search (no businesses suggested) — reuse
+        # that as evidence instead of always assuming the prior turn was
+        # about businesses. A plain LLM answer here (no per-field fast path
+        # like the business lookup below) still correctly handles
+        # corrections like "tôi đâu có kêu khu vực phía bắc" because the
+        # actual job evidence — with real locations — is right there for
+        # it to check itself against, instead of silently falling through
+        # to an empty, unrelated business search.
+        if not businesses and jobs:
+            evidence = Evidence(jobs=jobs[:10], source_methods=['conversation_context'])
+            answer = self.response_generator.generate(understanding, evidence)
+            return {
+                'answer': answer,
+                'suggested_jobs': jobs[:5],
+                'documents': [],
+                'search_method': 'followup_reasoning_jobs',
+                'rag_used': True,
+                'followup_suggestions': FOLLOWUP_SUGGESTIONS_JOBS,
             }
 
         if understanding.operation == "followup_lookup":
@@ -335,11 +441,11 @@ class LayeredChatPipeline:
         company = businesses[0]
 
         if any(kw in message_lower for kw in ['số', 'phone', 'điện thoại']):
-            answer = f"📞 Số điện thoại **{company['name']}**: {company.get('phone', 'Chưa có')}"
+            answer = f"📞 Số điện thoại {company['name']}: {company.get('phone', 'Chưa có')}"
         elif any(kw in message_lower for kw in ['địa chỉ', 'address', 'ở đâu', ' ở ', 'o dau']):
-            answer = f"📍 **{company['name']}** ở {company.get('region', '')} - {company.get('location', '')}"
+            answer = f"📍 {company['name']} ở {company.get('region', '')} - {company.get('location', '')}"
         elif any(kw in message_lower for kw in ['ngành', 'industry', 'làm', 'hoạt động']):
-            answer = f"🏭 **{company['name']}** hoạt động trong lĩnh vực: {company.get('industry', 'N/A')}"
+            answer = f"🏭 {company['name']} hoạt động trong lĩnh vực: {company.get('industry', 'N/A')}"
         else:
             evidence = Evidence(businesses=[company], source_methods=['conversation_context'])
             answer = self.response_generator.generate(understanding, evidence)
@@ -369,19 +475,46 @@ class LayeredChatPipeline:
             }
         if any(kw in message_lower for kw in ['số', 'phone', 'điện thoại', 'dien thoai', 'sđt']):
             return {
-                'answer': f"📞 Số điện thoại **{company['name']}**: {company.get('phone', 'Chưa có')}",
+                'answer': f"📞 Số điện thoại {company['name']}: {company.get('phone', 'Chưa có')}",
                 'suggested_businesses': [company], 'documents': [],
                 'search_method': 'button_action_phone', 'rag_used': False, 'response_time_ms': 50,
             }
         if any(kw in message_lower for kw in ['địa chỉ', 'dia chi', 'address', 'ở đâu', 'o dau']):
             return {
-                'answer': f"📍 **{company['name']}** ở {company.get('region', '')} - {company.get('location', 'Chưa có')}",
+                'answer': f"📍 {company['name']} ở {company.get('region', '')} - {company.get('location', 'Chưa có')}",
                 'suggested_businesses': [company], 'documents': [],
                 'search_method': 'button_action_address', 'rag_used': False, 'response_time_ms': 50,
             }
         return None
 
-    def _handle_conversational(self, understanding, message: str) -> Dict:
+    def _handle_add_business_intent(self, message: str, history: Optional[List[Dict]] = None, is_followup: bool = False) -> Dict:
+        # First ask still gets the fixed 3-step preamble (fast, no LLM wait,
+        # and consistent wording) — but goes through the LLM afterwards too
+        # so a compound first message ("làm sao thêm doanh nghiệp, có cần
+        # giấy phép kinh doanh không") gets its second half answered instead
+        # of silently ignored. Pure follow-ups skip the preamble entirely so
+        # they don't repeat "bấm nút..." every single turn.
+        answer = self.response_generator.generate_add_business_help(message, history)
+        if not is_followup:
+            preamble = (
+                "Để thêm doanh nghiệp của bạn lên hệ thống, em hướng dẫn nhanh nhé:\n"
+                "1. Bấm nút \"Thêm doanh nghiệp ngay\" bên dưới (cần đăng nhập trước).\n"
+                "2. Điền tên doanh nghiệp — đây là thông tin bắt buộc duy nhất, các mục khác "
+                "(ngành nghề, địa chỉ, website, SĐT...) có thể bổ sung sau.\n"
+                "3. Bấm Lưu là xong, doanh nghiệp sẽ xuất hiện ngay trong danh sách!"
+            )
+            answer = f"{preamble}\n\n{answer}"
+
+        return {
+            'answer': answer,
+            'suggested_businesses': [], 'documents': [],
+            'search_method': 'add_business_followup', 'rag_used': True,
+            'action_buttons': [
+                {'id': 'open_add_business', 'label': 'Thêm doanh nghiệp ngay', 'emoji': '➕'},
+            ],
+        }
+
+    def _handle_conversational(self, understanding, message: str, history: Optional[List[Dict]] = None) -> Dict:
         message_lower = message.lower()
         word_count = len(message.split())
 
@@ -396,11 +529,11 @@ class LayeredChatPipeline:
         is_pure_thanks = word_count <= 5 and re.search(r'cảm ơn|thank', message_lower)
 
         if is_pure_greeting:
-            answer = 'Chào anh/chị! 👋 Em là Company đây, hôm nay cần tìm doanh nghiệp hay tin tức gì để em lục giúp không? 😄'
+            answer = 'Chào bạn! 👋 Em là Company đây, hôm nay cần tìm doanh nghiệp hay tin tức gì để em lục giúp không? 😄'
         elif is_pure_thanks:
-            answer = 'Có gì đâu ạ, em rất vui vì giúp được anh/chị! Cần gì cứ hỏi em tiếp nha 😊'
+            answer = 'Có gì đâu ạ, em rất vui vì giúp được bạn! Cần gì cứ hỏi em tiếp nha 😊'
         else:
-            answer = self.response_generator.generate_smalltalk(understanding.raw_query)
+            answer = self.response_generator.generate_smalltalk(understanding.raw_query, history)
 
         return {
             'answer': answer, 'suggested_businesses': [], 'documents': [],

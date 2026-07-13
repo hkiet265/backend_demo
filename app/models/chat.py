@@ -48,11 +48,23 @@ class BusinessItem(BaseModel):
     description: Optional[str] = None
 
 
+class JobItem(BaseModel):
+    """Single job-listing item (job_vector_retriever.py result shape)"""
+    id: int
+    title: str
+    company_name: Optional[str] = None
+    location: Optional[str] = None
+    url: Optional[str] = None
+    industry: Optional[str] = None
+    similarity: Optional[float] = None
+
+
 class ChatResponse(BaseModel):
     """Chat response with RAG information and conversation memory"""
     answer: str = Field(..., description="AI-generated answer")
     suggested_news: List[NewsItem] = Field(default_factory=list)
     suggested_businesses: List[BusinessItem] = Field(default_factory=list)
+    suggested_jobs: List[JobItem] = Field(default_factory=list)
     followup_suggestions: List[str] = Field(default_factory=list, description="Follow-up question suggestions")
     action_buttons: List[ActionButton] = Field(default_factory=list)
     

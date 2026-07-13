@@ -43,7 +43,11 @@ function ChatbotAvatar({ size, className, style, trackCursor = true }) {
         borderRadius: '50%', overflow: 'hidden', flexShrink: 0, ...style,
       }}
     >
-      <svg viewBox="0 0 200 200" width="100%" height="100%" style={{ display: 'block' }}>
+      {/* viewBox has 15px of margin on every side (vs. the drawing's native
+          0 0 200 200) so the antenna ball — which sits near the square's
+          corner at (51,21) r17 — stays inside the circular clip mask above
+          instead of getting sliced off by it. */}
+      <svg viewBox="-15 -15 230 230" width="100%" height="100%" style={{ display: 'block' }}>
         <defs>
           <linearGradient id="cbHead" x1="20%" y1="0%" x2="80%" y2="100%">
             <stop offset="0%" stop-color="#B7CBBD" />

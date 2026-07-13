@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Flame, Zap, Clock, AlertCircle, Database, ShieldCheck, RefreshCw, Search, Download, Server, Bot, Cpu } from 'lucide-react';
 import Spinner from './atoms/Spinner';
 
-const CARD_STYLE = { background: 'white', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '18px 20px' };
+const CARD_STYLE = { background: 'var(--bg-panel)', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '18px 20px', color: 'var(--text-main)' };
 
 function StatCard({ icon, color, bg, value, label, badge }) {
   return (
@@ -37,11 +37,11 @@ function DonutChart({ data, centerLabel }) {
     cum += pct;
     return seg;
   });
-  const gradient = total ? `conic-gradient(${segs.map(s => `${s.color} ${s.start}% ${s.end}%`).join(', ')})` : 'conic-gradient(#F1F5F9 0% 100%)';
+  const gradient = total ? `conic-gradient(${segs.map(s => `${s.color} ${s.start}% ${s.end}%`).join(', ')})` : 'conic-gradient(var(--bg-input) 0% 100%)';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
       <div style={{ width: '140px', height: '140px', borderRadius: '50%', background: gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <div style={{ width: '84px', height: '84px', borderRadius: '50%', background: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '84px', height: '84px', borderRadius: '50%', background: 'var(--bg-panel)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <span style={{ fontSize: '16px', fontWeight: 800 }}>{total.toLocaleString()}</span>
           <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>{centerLabel}</span>
         </div>
@@ -91,7 +91,10 @@ const LogfireView = () => {
   const fetchMonitoring = async (h = hours) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/admin/monitoring?hours=${h}`);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/admin/monitoring?hours=${h}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       const data = await response.json();
       if (data.status === 'success') setMonitoring(data.data);
     } catch (error) {
@@ -172,10 +175,10 @@ const LogfireView = () => {
           <select value={hours} onChange={e => setHours(Number(e.target.value))} style={{ padding: '9px 12px', borderRadius: '10px', border: '2px solid var(--border-neon)', fontSize: '13px' }}>
             {WINDOW_OPTIONS.map(o => <option key={o.hours} value={o.hours}>{o.label}</option>)}
           </select>
-          <button onClick={() => fetchMonitoring(hours)} title="Làm mới" style={{ width: '42px', height: '42px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <button onClick={() => fetchMonitoring(hours)} title="Làm mới" style={{ width: '42px', height: '42px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <RefreshCw size={18} className={loading ? 'spinning' : ''} />
           </button>
-          <button onClick={exportData} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'white', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={exportData} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             <Download size={14} /> Export
           </button>
         </div>
@@ -225,7 +228,7 @@ const LogfireView = () => {
                 <span style={{ color: 'var(--text-dim)' }}>{table.table_name}</span>
                 <strong>{table.size} · {((table.bytesReal / totalDbBytes) * 100).toFixed(0)}%</strong>
               </div>
-              <div style={{ height: '6px', borderRadius: '3px', background: '#F1F5F9', overflow: 'hidden' }}>
+              <div style={{ height: '6px', borderRadius: '3px', background: 'var(--bg-input)', overflow: 'hidden' }}>
                 <div style={{ width: `${(table.bytesReal / totalDbBytes) * 100}%`, height: '100%', background: '#7C3AED', borderRadius: '3px' }} />
               </div>
             </div>
@@ -258,7 +261,7 @@ const LogfireView = () => {
         </ChartCard>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.4fr) minmax(0,1fr)', gap: '14px' }}>
+      <div className="admin-endpoint-log-layout">
         <div style={{ ...CARD_STYLE, padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '2px solid var(--border-neon)' }}>
             <h3 style={{ margin: 0, fontSize: '14.5px', fontWeight: 800 }}>Endpoint Performance Details</h3>
@@ -266,7 +269,7 @@ const LogfireView = () => {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', minWidth: '520px', borderCollapse: 'collapse', fontSize: '12.5px' }}>
               <thead>
-                <tr style={{ background: '#F8FAFC', textAlign: 'left' }}>
+                <tr style={{ background: 'var(--bg-input)', textAlign: 'left' }}>
                   <th style={{ padding: '10px 16px', whiteSpace: 'nowrap' }}>Endpoint</th>
                   <th style={{ padding: '10px 16px', whiteSpace: 'nowrap' }}>Method</th>
                   <th style={{ padding: '10px 16px', whiteSpace: 'nowrap' }}>Requests</th>
@@ -297,9 +300,9 @@ const LogfireView = () => {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderTop: '2px solid var(--border-neon)' }}>
               <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Showing {(page - 1) * ROWS_PER_PAGE + 1} to {Math.min(page * ROWS_PER_PAGE, filteredEndpoints.length)} of {filteredEndpoints.length} endpoints</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid var(--border-neon)', background: 'white', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1 }}>‹</button>
+                <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1 }}>‹</button>
                 <span style={{ fontSize: '12px', fontWeight: 700 }}>{page}/{totalPages}</span>
-                <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid var(--border-neon)', background: 'white', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.5 : 1 }}>›</button>
+                <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.5 : 1 }}>›</button>
               </div>
             </div>
           )}

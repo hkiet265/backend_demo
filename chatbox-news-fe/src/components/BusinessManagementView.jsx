@@ -1,9 +1,8 @@
-import { Search, Sparkles, BarChart3, X, RefreshCw, ChevronLeft, ChevronRight, Upload, Heart, Plus, Users, Briefcase, Newspaper, LayoutGrid, List, AlertTriangle, Star, Building2, SlidersHorizontal } from 'lucide-react';
+import { Search, Sparkles, X, RefreshCw, ChevronLeft, ChevronRight, Upload, Heart, Plus, Users, Briefcase, Newspaper, LayoutGrid, List, Building2, SlidersHorizontal } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Toast from './Toast';
 import ScrollReveal from './ScrollReveal';
-import CountUp from './CountUp';
 
 const PAGE_SIZE = 10;
 
@@ -63,7 +62,9 @@ function BusinessManagementView({
   handleSimulateRawInput,
   onRefresh,
   currentUser,
-  onOpenBusinessDetail
+  onOpenBusinessDetail,
+  autoOpenCreate,
+  onAutoOpenHandled
 }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [isEnrichingAll, setIsEnrichingAll] = useState(false);
@@ -79,7 +80,16 @@ function BusinessManagementView({
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
   const [createLogoFile, setCreateLogoFile] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
+
+  // Lets a chatbot action button ("Thêm doanh nghiệp ngay") jump straight
+  // into this tab with the create modal already open, instead of just
+  // landing on the list and leaving the user to find the button themselves.
+  useEffect(() => {
+    if (autoOpenCreate) {
+      setShowCreateModal(true);
+      onAutoOpenHandled?.();
+    }
+  }, [autoOpenCreate, onAutoOpenHandled]);
 
   // Detect mobile
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -213,37 +223,53 @@ function BusinessManagementView({
       .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Remove diacritics
   };
  
+  // Normalize each business's searchable fields once per allBusinesses
+  // change, not on every keystroke — search itself then only does cheap
+  // substring checks against these precomputed strings.
+  const normalizedBusinesses = useMemo(() => {
+    return (allBusinesses || []).map(biz => ({
+      biz,
+      name: normalizeText(biz.name),
+      region: normalizeText(biz.region),
+      location: normalizeText(biz.location),
+      description: normalizeText(biz.description),
+      scale: normalizeText(biz.scale),
+      industry: normalizeText(biz.industry),
+    }));
+  }, [allBusinesses]);
+
   const businesses = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     const normalizedQ = normalizeText(q);
-    
-    return allBusinesses.filter(biz => {
-      
-      const matchRegion = regionFilter === 'all' || 
-        normalizeText(biz.region).includes(normalizeText(regionFilter));
+    const normalizedRegionFilter = normalizeText(regionFilter);
+
+    return normalizedBusinesses.filter(({ biz, name, region, location, description, scale, industry }) => {
+      const matchRegion = regionFilter === 'all' || region.includes(normalizedRegionFilter);
 
       const matchSearch = !q ||
-        normalizeText(biz.name).includes(normalizedQ) ||
-        normalizeText(biz.region).includes(normalizedQ) ||
-        normalizeText(biz.location).includes(normalizedQ) ||
-        normalizeText(biz.description).includes(normalizedQ) ||
-        normalizeText(biz.scale).includes(normalizedQ) ||
-        normalizeText(biz.industry).includes(normalizedQ);
-      
+        name.includes(normalizedQ) ||
+        region.includes(normalizedQ) ||
+        location.includes(normalizedQ) ||
+        description.includes(normalizedQ) ||
+        scale.includes(normalizedQ) ||
+        industry.includes(normalizedQ);
+
       return matchRegion && matchSearch;
-    });
-  }, [searchQuery, regionFilter, allBusinesses]);
+    }).map(({ biz }) => biz);
+  }, [searchQuery, regionFilter, normalizedBusinesses]);
 
   // Real (not fabricated) count of news whose title/summary mentions the
   // business name — powers the "Tin tức liên quan" figure per card & stat.
+  // Each news item's haystack is normalized once (outer loop), not once per
+  // business — the original recomputed it business_count times per item.
   const relatedNewsCountMap = useMemo(() => {
+    const newsHaystacks = (allNews || []).map(news => normalizeText(news.tieu_de) + ' ' + normalizeText(news.tom_tat));
     const map = new Map();
     (allBusinesses || []).forEach((biz) => {
       const name = normalizeText(biz.name);
       if (!name) { map.set(biz.id, 0); return; }
       let count = 0;
-      for (const news of (allNews || [])) {
-        const haystack = normalizeText(news.tieu_de) + ' ' + normalizeText(news.tom_tat);
+      for (const haystack of newsHaystacks) {
         if (haystack.includes(name)) count++;
       }
       map.set(biz.id, count);
@@ -259,17 +285,6 @@ function BusinessManagementView({
     });
     return [...map.entries()].sort((a, b) => b[1] - a[1]);
   }, [allBusinesses]);
-
-  const stats = useMemo(() => {
-    const total = allBusinesses.length;
-    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-    const nowTs = Date.now();
-    const newCount = allBusinesses.filter(b => b.created_at && (nowTs - new Date(b.created_at).getTime()) <= THIRTY_DAYS_MS).length;
-    const hiringSum = allBusinesses.reduce((sum, b) => sum + (b.dang_tuyen || 0), 0);
-    const newsSum = allBusinesses.reduce((sum, b) => sum + (relatedNewsCountMap.get(b.id) || 0), 0);
-    const riskCount = allBusinesses.filter(b => (b.trust_score ?? 100) < 50).length;
-    return { total, newCount, hiringSum, newsSum, riskCount };
-  }, [allBusinesses, relatedNewsCountMap]);
 
   const bookmarkedCount = bookmarkedBusinesses.size;
 
@@ -427,7 +442,7 @@ function BusinessManagementView({
   return (
     <>
       <div className="main-content-area fade-in-effect">
-        <div style={{ 
+        <div style={{
           marginBottom: '20px',
           paddingBottom: '16px',
           borderBottom: '2px solid var(--border-neon)',
@@ -472,21 +487,6 @@ function BusinessManagementView({
               }}
             >
               <RefreshCw size={18} />
-            </button>
-
-            <button
-              onClick={() => setShowReportModal(true)}
-              title="Báo cáo tổng quan"
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                padding: isMobile ? '0' : '10px 20px', width: isMobile ? '42px' : 'auto', height: '42px', background: 'var(--bg-input)',
-                border: '2px solid var(--border-neon)', borderRadius: '10px',
-                color: 'var(--color-secondary)', fontSize: '14px', fontWeight: '600',
-                cursor: 'pointer', flexShrink: 0
-              }}
-            >
-              <BarChart3 size={18} />
-              {!isMobile && <span>Báo cáo tổng quan</span>}
             </button>
 
             {currentUser && (
@@ -551,29 +551,6 @@ function BusinessManagementView({
           </div>
         </div>
 
-        {/* Real (computed from allBusinesses/allNews) overview stats — no % vs last month since there's no history to compute it from. Hidden on mobile to keep the page compact. */}
-        {!isMobile && (
-        <div
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '20px' }}
-        >
-          {[
-            { icon: <Building2 size={20} />, color: 'var(--color-primary)', bg: 'rgba(215,30,40,0.1)', label: 'Tổng doanh nghiệp', value: stats.total },
-            { icon: <Users size={20} />, color: '#3B82F6', bg: 'rgba(59,130,246,0.1)', label: 'Doanh nghiệp mới (30 ngày)', value: stats.newCount },
-            { icon: <Briefcase size={20} />, color: '#22C55E', bg: 'rgba(34,197,94,0.1)', label: 'Đang tuyển dụng', value: stats.hiringSum },
-            { icon: <Newspaper size={20} />, color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)', label: 'Tin tức liên quan', value: stats.newsSum },
-            { icon: <AlertTriangle size={20} />, color: '#CA8A04', bg: 'rgba(234,179,8,0.12)', label: 'Cảnh báo (độ tin cậy thấp)', value: stats.riskCount },
-          ].map((card) => (
-            <div key={card.label} style={{ background: 'var(--bg-panel)', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '16px 18px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: card.bg, color: card.color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
-                {card.icon}
-              </div>
-              <div style={{ fontSize: '22px', fontWeight: 800 }}><CountUp value={card.value} /></div>
-              <div style={{ fontSize: '12.5px', color: 'var(--text-dim)' }}>{card.label}</div>
-            </div>
-          ))}
-        </div>
-        )}
-
         {isMobile && (
           <button
             onClick={() => setShowMobileSidebar(v => !v)}
@@ -615,7 +592,7 @@ function BusinessManagementView({
                   key={industry}
                   onClick={() => setIndustryFilter(industryFilter === industry ? null : industry)}
                   style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    display: 'flex', alignItems: 'center',
                     padding: '8px 10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
                     background: industryFilter === industry ? 'var(--bg-input)' : 'transparent',
                     color: industryFilter === industry ? 'var(--color-primary)' : 'var(--text-main)',
@@ -623,33 +600,10 @@ function BusinessManagementView({
                   }}
                 >
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{industry}</span>
-                  <span style={{ color: 'var(--text-dim)', fontWeight: 500 }}>{count}</span>
                 </button>
               ))}
             </div>
 
-            <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-dim)', letterSpacing: '0.5px', margin: '0 0 8px 4px' }}>BỘ LỌC NHANH</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {[
-                { key: 'notable', icon: <Star size={15} />, label: 'Doanh nghiệp nổi bật' },
-                { key: 'hiring', icon: <Briefcase size={15} />, label: 'Tuyển dụng nhiều' },
-                { key: 'risk', icon: <AlertTriangle size={15} />, label: 'Rủi ro cao' },
-              ].map((f) => (
-                <button
-                  key={f.key}
-                  onClick={() => setQuickFilter(quickFilter === f.key ? null : f.key)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px',
-                    borderRadius: '8px', border: 'none', cursor: 'pointer', textAlign: 'left',
-                    background: quickFilter === f.key ? 'var(--bg-input)' : 'transparent',
-                    color: quickFilter === f.key ? 'var(--color-primary)' : 'var(--text-main)',
-                    fontSize: '13px', fontWeight: 600
-                  }}
-                >
-                  {f.icon} {f.label}
-                </button>
-              ))}
-            </div>
           </aside>
           )}
 
@@ -687,19 +641,7 @@ function BusinessManagementView({
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                <div className="category-filters" style={{ margin: 0 }}>
-                  {['all', 'Bac', 'Trung', 'Nam'].map(r => (
-                    <button
-                      key={r}
-                      className={`category-filter-btn ${regionFilter === r ? 'active' : ''}`}
-                      onClick={() => setRegionFilter(r)}
-                    >
-                      {r === 'all' ? 'Tất cả' : r === 'Bac' ? ' Miền Bắc' : r === 'Trung' ? ' Miền Trung' : 'Miền Nam'}
-                    </button>
-                  ))}
-                </div>
-
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                   <button
                     onClick={() => setViewMode('grid')}
@@ -1002,29 +944,6 @@ function BusinessManagementView({
                 </button>
               </div>
             </form>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {showReportModal && createPortal(
-        <div className="modal-overlay" onClick={() => setShowReportModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowReportModal(false)}><X size={20} /></button>
-            <h2 className="modal-title">Báo cáo tổng quan doanh nghiệp</h2>
-            <div className="business-info-grid">
-              <div className="business-info-item"><strong>🏢 Tổng doanh nghiệp:</strong><span>{stats.total}</span></div>
-              <div className="business-info-item"><strong>🆕 Doanh nghiệp mới (30 ngày):</strong><span>{stats.newCount}</span></div>
-              <div className="business-info-item"><strong>💼 Tổng vị trí đang tuyển:</strong><span>{stats.hiringSum}</span></div>
-              <div className="business-info-item"><strong>📰 Tổng tin tức liên quan:</strong><span>{stats.newsSum}</span></div>
-              <div className="business-info-item"><strong>⚠️ Doanh nghiệp cảnh báo (độ tin cậy &lt; 50):</strong><span>{stats.riskCount}</span></div>
-            </div>
-            <div className="modal-detail">
-              <h4>📊 Top ngành nghề theo số lượng</h4>
-              <p>
-                {industryCounts.slice(0, 5).map(([industry, count]) => `${industry} (${count})`).join(' · ') || 'Chưa có dữ liệu'}
-              </p>
-            </div>
           </div>
         </div>,
         document.body

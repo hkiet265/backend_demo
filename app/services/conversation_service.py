@@ -10,6 +10,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import json
 
+from app.services.cache_service import get_cache_service
+
 logger = logging.getLogger(__name__)
 
 
@@ -198,6 +200,94 @@ class ConversationService:
             logger.error(f"❌ Failed to get user conversations: {e}")
             return []
     
+    # Once a session has more than this many turns, everything older than
+    # the last SUMMARIZE_KEEP_RECENT gets collapsed into a single summary
+    # message instead of being dropped outright — so the AI still has the
+    # gist of a long conversation without the full transcript blowing up
+    # every prompt.
+    SUMMARIZE_THRESHOLD = 20
+    SUMMARIZE_KEEP_RECENT = 10
+
+    SUMMARY_SYSTEM_PROMPT = (
+        "Bạn đang tóm tắt phần đầu của một cuộc hội thoại cũ giữa người dùng và Company — chatbot tư vấn "
+        "doanh nghiệp & tin tức trên một website Việt Nam — để AI có thể tiếp tục trả lời phần sau mà vẫn hiểu "
+        "đúng ngữ cảnh, dù không còn thấy nguyên văn các tin nhắn cũ này nữa.\n"
+        "Hãy tóm tắt toàn bộ nội dung, và bối cảnh cốt lõi nhất của cuộc hội thoại này một cách ngắn gọn và đầy đủ "
+        "(tối đa 5-6 câu): người dùng đã hỏi/quan tâm tới điều gì, Company đã gợi ý/trả lời những gì đáng nhớ "
+        "(tên công ty, tiêu đề tin tức, chủ đề cụ thể), và bất kỳ thông tin nào cần giữ lại để trả lời tiếp cho "
+        "mạch lạc. Chỉ tóm tắt, không bịa thêm chi tiết không có trong hội thoại."
+    )
+
+    def _summarize_messages(self, messages: List[Dict]) -> str:
+        """LLM summary of an older chunk of a conversation. Any failure here
+        should degrade to "no summary" rather than break the chat request."""
+        if not messages:
+            return ""
+        try:
+            from app.services.llm_provider import generate_with_fallback
+
+            transcript = "\n".join(
+                f"{'Người dùng' if m['role'] == 'user' else 'Company'}: {m['content']}"
+                for m in messages
+            )
+            summary = generate_with_fallback(
+                system_prompt=self.SUMMARY_SYSTEM_PROMPT,
+                user_prompt=transcript,
+                temperature=0.3,
+                max_tokens=300,
+            )
+            return (summary or "").strip()
+        except Exception as e:
+            logger.warning(f"Conversation summarization skipped: {e}")
+            return ""
+
+    def get_effective_history(
+        self,
+        session_id: str,
+        user_id: Optional[int] = None,
+    ) -> List[Dict]:
+        """History for the AI to actually reason over: under the threshold,
+        this is just the plain message list (same as get_conversation_history).
+        Past the threshold, older turns are collapsed into one cached summary
+        message so a long-running conversation doesn't lose its context just
+        because the raw message window can't hold it all — the summary is
+        cached and only regenerated once enough new messages accumulate
+        past the last summarized point, not on every single turn."""
+        all_messages = self.get_conversation_history(session_id, user_id, max_messages=500)
+
+        if len(all_messages) <= self.SUMMARIZE_THRESHOLD:
+            return all_messages
+
+        recent = all_messages[-self.SUMMARIZE_KEEP_RECENT:]
+        older = all_messages[:-self.SUMMARIZE_KEEP_RECENT]
+
+        cache = get_cache_service()
+        cache_key = f"chat_summary:{session_id}"
+        cached = cache.get(cache_key)
+
+        if cached and cached.get('older_count') == len(older):
+            summary_text = cached['summary']
+        else:
+            summary_text = self._summarize_messages(older)
+            if summary_text:
+                cache.set(cache_key, {'older_count': len(older), 'summary': summary_text}, ttl_seconds=3600)
+
+        if not summary_text:
+            # Summarization failed — better to fall back to the plain
+            # (recency-only) window than to silently return nothing.
+            return recent
+
+        summary_message = {
+            'id': None,
+            'role': 'system',
+            'content': f"[Tóm tắt {len(older)} tin nhắn trước đó]: {summary_text}",
+            'context': {},
+            'timestamp': None,
+            'complexity': None,
+            'response_time_ms': None,
+        }
+        return [summary_message] + recent
+
     def get_last_context(
         self,
         session_id: str,

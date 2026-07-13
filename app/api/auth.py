@@ -2,12 +2,14 @@
 Auth API Routes
 User authentication endpoints with rate limiting
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel, EmailStr
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import hashlib
+import hmac
 import jwt
+import os
 import secrets
 from datetime import datetime, timedelta
 import logging
@@ -15,6 +17,7 @@ from app.config import settings
 from app.middleware.rate_limiter import limiter, AUTH_RATE_LIMIT
 from app.database import get_db_connection
 from app.services.email_service import send_password_reset_email
+from app.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -37,12 +40,35 @@ class AuthResponse(BaseModel):
     user: dict
 
 
+# Was plain unsalted hashlib.sha256(password) — vulnerable to rainbow-table
+# attacks since every user with the same password gets the identical hash,
+# and no per-user secret (salt) makes precomputed-hash lookups feasible.
+# New passwords (register/reset) get a self-describing salted PBKDF2 hash;
+# hash_password() below never produces the old bare-hex format again.
+# verify_password() still accepts the legacy format so existing accounts'
+# passwords keep working without a forced reset — it just never MINTS
+# more of that format going forward.
+_PBKDF2_ITERATIONS = 260_000
+
+
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt), _PBKDF2_ITERATIONS)
+    return f"pbkdf2_sha256${_PBKDF2_ITERATIONS}${salt}${digest.hex()}"
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return hashlib.sha256(plain_password.encode()).hexdigest() == hashed_password
+    if hashed_password.startswith("pbkdf2_sha256$"):
+        try:
+            _, iterations, salt, expected_hex = hashed_password.split("$")
+            digest = hashlib.pbkdf2_hmac(
+                "sha256", plain_password.encode(), bytes.fromhex(salt), int(iterations)
+            )
+            return hmac.compare_digest(digest.hex(), expected_hex)
+        except (ValueError, IndexError):
+            return False
+    # Legacy unsalted SHA-256 hash (accounts created/reset before this change).
+    return hmac.compare_digest(hashlib.sha256(plain_password.encode()).hexdigest(), hashed_password)
 
 
 def generate_jwt_token(user: dict) -> str:
@@ -342,6 +368,61 @@ async def update_profile(request: UpdateProfileRequest):
     except Exception as e:
         logger.error(f"Update profile failed: {e}")
         raise HTTPException(status_code=500, detail=f"Cập nhật thất bại: {str(e)}")
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str
+
+
+@router.delete("/me")
+async def delete_my_account(request: DeleteAccountRequest, current_user: dict = Depends(get_current_user)):
+    """
+    GDPR "right to be forgotten" — a user deletes their own account and
+    all data tied to it. Requires re-entering the password so a hijacked
+    session token alone can't wipe an account. Cascades via FK constraints
+    already in place (candidate_profiles, job_applications, saved_jobs,
+    job_messages, bookmarks — all ON DELETE CASCADE from app_users;
+    job_listings.created_by_user_id is ON DELETE SET NULL so a posted job
+    other people applied to isn't deleted out from under them).
+    """
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT password_hash, role FROM app_users WHERE id = %s", (current_user["id"],))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Tài khoản không tồn tại")
+            password_hash, role = row
+
+            if not verify_password(request.password, password_hash):
+                raise HTTPException(status_code=401, detail="Mật khẩu không đúng")
+            if role == "admin":
+                raise HTTPException(status_code=403, detail="Tài khoản admin không thể tự xóa qua endpoint này")
+
+            # Remove the CV file from disk before the DB row (and its
+            # cv_file_path) disappears via cascade — otherwise it's an
+            # orphaned file nobody can ever clean up again.
+            cur.execute("SELECT cv_file_path FROM candidate_profiles WHERE user_id = %s", (current_user["id"],))
+            profile = cur.fetchone()
+            cv_path = profile[0] if profile else None
+
+            cur.execute("DELETE FROM app_users WHERE id = %s", (current_user["id"],))
+            conn.commit()
+            cur.close()
+
+        if cv_path and os.path.isfile(cv_path):
+            try:
+                os.remove(cv_path)
+            except OSError as e:
+                logger.warning(f"Could not remove CV file on account deletion: {e}")
+
+        logger.info(f"User {current_user['id']} ({current_user['email']}) deleted their own account")
+        return {"status": "success", "message": "Đã xóa tài khoản và toàn bộ dữ liệu liên quan"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete own account error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/health")

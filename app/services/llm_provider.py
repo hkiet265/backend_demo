@@ -78,6 +78,19 @@ class GroqProvider(LLMProvider):
             return None
 
 
+def _strip_defaults_for_gemini(schema: Type) -> Type:
+    """Clone a Pydantic model dropping every field default, so google-
+    generativeai's response_schema translator (which errors on any field
+    carrying a "default" key) accepts it. Optional[...] with no default is
+    still a required-but-nullable key — exactly what the translator expects."""
+    from pydantic import BaseModel, create_model
+
+    if not (isinstance(schema, type) and issubclass(schema, BaseModel)):
+        return schema
+    fields = {name: (f.annotation, ...) for name, f in schema.model_fields.items()}
+    return create_model(f"{schema.__name__}ForGemini", **fields)
+
+
 class GeminiProvider(LLMProvider):
     name = "gemini"
 
@@ -127,6 +140,14 @@ class GeminiProvider(LLMProvider):
             from app.services.api_key_manager import get_api_key_manager
 
             key_manager = get_api_key_manager()
+            # Callers give every field a default (= None) so opencode/other
+            # providers can omit keys freely without failing our own
+            # post-hoc validation — but Gemini's schema translator rejects
+            # any field carrying a "default" key ("Unknown field for Schema:
+            # default"). Build a default-free clone just for the request;
+            # the actual response text is parsed/validated by the caller's
+            # original (lenient) schema, not this one.
+            gemini_schema = _strip_defaults_for_gemini(schema)
 
             for attempt in range(2):
                 key_manager.configure_genai()
@@ -136,7 +157,7 @@ class GeminiProvider(LLMProvider):
                         prompt,
                         generation_config=genai.GenerationConfig(
                             response_mime_type="application/json",
-                            response_schema=schema,
+                            response_schema=gemini_schema,
                             temperature=temperature,
                         ),
                     )
@@ -257,6 +278,45 @@ class DeepSeekProvider(LLMProvider):
         )
 
 
+class OpenCodeZenProvider(LLMProvider):
+    """OpenCode Zen (opencode.ai) — OpenAI-compatible gateway to many
+    underlying models (GPT/Claude/Gemini/DeepSeek/...) through a single API
+    key, via plain HTTP (no SDK). Configure OPENCODE_API_KEY / OPENCODE_MODEL
+    in .env — model id is the bare id (e.g. "gpt-5.4-mini"), NOT the
+    "opencode/gpt-5.4-mini" form used in the opencode CLI's own config file.
+    See https://opencode.ai/docs/zen/"""
+
+    name = "opencode"
+
+    def __init__(self):
+        from app.config import settings
+        self.api_key = settings.OPENCODE_API_KEY
+        self.model = settings.OPENCODE_MODEL
+        self.base_url = settings.OPENCODE_BASE_URL
+
+    def generate(self, system_prompt, user_prompt, temperature=0.7, max_tokens=1024):
+        if not self.api_key:
+            return None
+        return _openai_compatible_chat(
+            self.base_url, self.api_key, self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=temperature, max_tokens=max_tokens, provider_label="OpenCodeZenProvider",
+        )
+
+    def generate_structured(self, prompt, schema, temperature=0.1):
+        if not self.api_key:
+            return None
+        return _openai_compatible_chat(
+            self.base_url, self.api_key, self.model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temperature, response_format={"type": "json_object"},
+            provider_label="OpenCodeZenProvider",
+        )
+
+
 class ClaudeProvider(LLMProvider):
     """Anthropic Messages API, via plain HTTP (no `anthropic` SDK needed)."""
 
@@ -302,6 +362,7 @@ _PROVIDER_REGISTRY = {
     "openai": OpenAIProvider,
     "deepseek": DeepSeekProvider,
     "claude": ClaudeProvider,
+    "opencode": OpenCodeZenProvider,
 }
 
 _chain_cache: Optional[List[LLMProvider]] = None

@@ -44,20 +44,26 @@ class GroqService:
         
         logger.info(f"🚀 GroqService initialized: {len(self.clients)} keys, model={model}")
     
+    def _is_available(self, index: int) -> bool:
+        if index in self.failed_keys:
+            return False
+        cooldown_until = self.key_cooldown.get(index)
+        return cooldown_until is None or datetime.now() >= cooldown_until
+
     def _get_current_client(self) -> Optional[Groq]:
-        """Get current Groq client, skip if in cooldown"""
-        if self.current_key_index in self.key_cooldown:
-            cooldown_until = self.key_cooldown[self.current_key_index]
-            if datetime.now() < cooldown_until:
-                logger.warning(f"⏰ Groq key #{self.current_key_index+1} in cooldown, rotating...")
-                self._rotate_key()
-                return self._get_current_client()
-        
-        if self.current_key_index in self.failed_keys:
-            logger.warning(f"❌ Groq key #{self.current_key_index+1} marked as failed, rotating...")
+        """Get current Groq client, rotating past cooldown/failed keys.
+        Bounded to one full sweep of the key list — every key exhausted is
+        a real, common state (a burst of calls easily blows through a free-
+        tier quota) and must return None so callers can fall back to the
+        next provider, not loop/recurse forever re-checking the same
+        all-unavailable keys."""
+        if not self._is_available(self.current_key_index):
+            logger.warning(f"⏰ Groq key #{self.current_key_index+1} unavailable, rotating...")
             self._rotate_key()
-            return self._get_current_client()
-        
+            if not self._is_available(self.current_key_index):
+                logger.error("❌ No available Groq client (all keys in cooldown or failed)")
+                return None
+
         return self.clients.get(self.current_key_index)
     
     def _rotate_key(self):

@@ -38,12 +38,63 @@ SPECIFIC_COMPANY_PATTERNS = [
     r'\b(fpt|viettel|vng|vingroup|grab|shopee|lazada|tiki|samsung|lg)\b',
 ]
 
+# Guards SPECIFIC_COMPANY_PATTERNS above — a bare famous-company keyword
+# match (e.g. "fpt") must not short-circuit straight to lookup_exact when
+# the message is actually comparing two companies.
+COMPARE_KEYWORDS = ['so sánh', 'so voi', 'so với', ' vs ', ' hay ', 'hơn hay', 'tốt hơn', 'nên chọn']
+
+# "Give me more detail on [the thing you just suggested]" is unambiguous
+# whenever the previous turn actually suggested something — but the LLM's
+# is_followup classification is NOT reliably deterministic at temperature
+# 0.1 (confirmed: identical real conversation state classified is_followup
+# True in one call, False in another), which silently drops the prior
+# job/business context and re-searches from scratch (often finding nothing,
+# since a bare company/title fragment is weak on its own). Handling this one
+# common, unambiguous pattern as a deterministic heuristic — bypassing the
+# LLM's judgment entirely — removes that flakiness for the case that matters
+# most (a user asking to see the details of a result just shown to them).
+DETAIL_REQUEST_KEYWORDS = [
+    'chi tiết', 'thông tin thêm', 'biết thêm', 'cho tôi biết', 'nói rõ hơn', 'rõ hơn về',
+]
+
 # Degraded-mode only (see parse()'s last-resort fallback) — used ONLY when
 # the LLM call itself fails (quota exhausted, network down), never as a
 # primary classifier. Deliberately small/coarse: just enough to not
 # misroute an obvious news question into a business search.
 DEGRADED_MODE_NEWS_KEYWORDS = ['tin tức', 'tin tuc', 'news', 'bài viết', 'bai viet']
-DEGRADED_MODE_GREETING_KEYWORDS = ['xin chào', 'hello', 'chào bạn']
+# Greeting AND self-intro/site-usage phrasing both route to conversation —
+# same bucket SCOPE_RULES groups them into for the smalltalk system prompt.
+# "hi"/"chào" alone (word-boundary, not "hiện"/"chào hàng"...) plus explicit
+# "giới thiệu"/"bạn là ai" phrasing, since a plain keyword list without
+# these missed exactly this case: "hi hãy giới thiệu về trang web này" has
+# no other topical content, so with the LLM call failing (quota exhausted)
+# it fell all the way through to the last-resort "business search" default
+# and returned a nonsensical "no company found" answer.
+DEGRADED_MODE_GREETING_KEYWORDS = [
+    'xin chào', 'hello', 'chào bạn', 'giới thiệu', 'gioi thieu', 'bạn là ai', 'ban la ai',
+]
+# Separate, word-boundary-anchored check for bare "hi" — a plain substring
+# match would false-positive inside "chi tiết" ("...c-h-i- -t..."), which is
+# a real, frequently-used follow-up phrase (see pipeline.py's button-action
+# fast path), not a greeting.
+DEGRADED_MODE_GREETING_RE = re.compile(r'\bhi\b', re.IGNORECASE)
+DEGRADED_MODE_JOB_KEYWORDS = [
+    'việc làm', 'viec lam', 'tuyển dụng', 'tuyen dung', 'công việc', 'cong viec',
+    'ứng tuyển', 'ung tuyen', 'tìm việc', 'tim viec', 'vị trí', 'vi tri',
+]
+# Follow-up/correction detection is normally an LLM-only judgment (there's
+# no keyword list for "this references what I said before") — but with the
+# LLM call failing entirely (quota exhausted), a message like "tôi đâu có
+# kêu khu vực phía bắc" (correcting something from the previous turn) had
+# NO degraded-mode path at all and fell through to the generic "business
+# search" default, which finds nothing and returns a nonsensical answer.
+# This is deliberately narrow — common correction/reference phrasings only,
+# not general follow-up understanding — good enough to at least route back
+# to the previous turn's topic instead of a wrong fresh search.
+DEGRADED_MODE_FOLLOWUP_KEYWORDS = [
+    'đâu có', 'dau co', 'tôi có nói', 'toi co noi', 'ai bảo', 'ai bao',
+    'trong đó', 'trong do', 'cái nào', 'cai nao', 'con nào', 'con nao',
+]
 
 # Values match businesses_demo.vung_mien exactly ('Bac'/'Trung'/'Nam',
 # no diacritics) — the legacy _extract_filters() in hybrid_chat_service.py
@@ -54,6 +105,35 @@ REGION_KEYWORDS = {
     'Trung': ['trung', 'đà nẵng', 'da nang', 'miền trung'],
     'Nam': ['nam', 'sài gòn', 'sai gon', 'tp.hcm', 'hcm', 'miền nam'],
 }
+
+
+def _last_context_from_history(history: List[Dict]) -> Dict:
+    """Same lookup as pipeline.LayeredChatPipeline._get_last_context — kept
+    as a separate small helper here so query_parser doesn't need to import
+    the pipeline module just for this."""
+    for msg in reversed(history or []):
+        if msg.get('role') == 'assistant' and msg.get('context'):
+            return msg['context']
+    return {}
+
+
+def _last_topic_from_history(history: List[Dict]) -> Optional[str]:
+    """Degraded-mode-only helper — maps the last assistant turn's
+    search_method (saved in its `context`, see app/api/chat.py) back to a
+    Topic, so a correction like "tôi đâu có kêu khu vực phía bắc" reuses
+    whatever the previous turn was actually about instead of guessing."""
+    for msg in reversed(history):
+        if msg.get('role') != 'assistant':
+            continue
+        method = (msg.get('context') or {}).get('search_method', '')
+        if 'job' in method:
+            return 'jobs'
+        if 'business' in method:
+            return 'business'
+        if 'news' in method:
+            return 'news'
+        return None
+    return None
 
 
 def _extract_region(message_lower: str) -> Optional[str]:
@@ -67,28 +147,51 @@ def _extract_region(message_lower: str) -> Optional[str]:
 
 
 class _LLMQueryUnderstanding(BaseModel):
-    """Flat schema for the Gemini structured-output call (kept flat, and
-    every field required-but-nullable, for compatibility with the genai
-    JSON-schema translator — it rejects fields with a "default" key)."""
-    topic: str  # business | news | conversation | mixed
-    operation: str  # search | recommend | compare | followup_reasoning | followup_lookup | smalltalk
-    industry: Optional[str]
-    location: Optional[str]
-    region: Optional[str]
-    company_name: Optional[str]
-    limit: int
-    is_followup: bool
+    """Flat schema for the structured-output call. Every field has a
+    default now — NOT required-but-nullable like the original Gemini-only
+    version (that shape existed because the genai JSON-schema translator
+    rejects fields carrying a "default" key). Now that QUERY_UNDERSTANDING_
+    PROVIDER can be a plain-JSON-object provider (OpenCode Zen, OpenAI,
+    DeepSeek — none of them enforce the schema server-side, they just see
+    it described in the prompt text), the model frequently omits fields
+    it considers irrelevant (e.g. "limit"). Without defaults, Pydantic
+    validation raised on every such response, silently discarding the
+    entire real classification and falling back to the coarse keyword
+    heuristic on EVERY message — not just when the LLM call itself failed.
+    NOTE: if QUERY_UNDERSTANDING_PROVIDER is ever set back to "gemini",
+    this schema needs the required-but-nullable shape again for that
+    translator; the two constraints are mutually exclusive."""
+    topic: str = "business"  # business | jobs | news | conversation | mixed
+    operation: str = "search"  # search | recommend | compare | followup_reasoning | followup_lookup | smalltalk
+    industry: Optional[str] = None
+    location: Optional[str] = None
+    region: Optional[str] = None
+    company_name: Optional[str] = None
+    # Only for operation="compare" — the two (or more) company names being
+    # compared, as one comma-separated string (kept flat/string like every
+    # other field here — see class docstring on why no lists/nesting).
+    company_names: Optional[str] = None
+    limit: int = 10
+    is_followup: bool = False
 
 
 LLM_PARSE_INSTRUCTIONS = """Bạn là bộ phân tích câu hỏi (query understanding), KHÔNG trả lời câu hỏi.
 Nhiệm vụ duy nhất: đọc câu hỏi người dùng (và lịch sử hội thoại nếu có) rồi trả về JSON mô tả ý định.
 
-topic: "business" (hỏi về doanh nghiệp), "news" (hỏi về tin tức), "conversation" (chào hỏi/xã giao), "mixed" (cả hai)
+topic: "business" (hỏi về doanh nghiệp/nhà tuyển dụng — công ty, quy mô, ngành nghề, độ tin cậy),
+  "jobs" (hỏi về VIỆC LÀM/vị trí tuyển dụng cụ thể — tìm việc, gợi ý công việc theo kỹ năng/vị trí,
+  ví dụ "giới thiệu việc làm backend", "có job frontend không", "tìm việc React ở Hà Nội"),
+  "news" (hỏi về tin tức), "conversation" (chào hỏi/xã giao/giới thiệu bản thân/hướng dẫn dùng web),
+  "mixed" (business + news cùng lúc)
 operation:
   - "lookup_exact": hỏi về MỘT công ty cụ thể đã biết rõ tên (không cần tìm kiếm/gợi ý)
-  - "search": tìm kiếm theo tiêu chí (ngành, khu vực, liệt kê danh sách...)
-  - "recommend": xin gợi ý/tư vấn nên chọn công ty nào
-  - "compare": so sánh nhiều lựa chọn cụ thể
+  - "search": tìm kiếm theo tiêu chí (ngành, khu vực, kỹ năng, vị trí, liệt kê danh sách...)
+  - "recommend": xin gợi ý/tư vấn nên chọn công ty hoặc công việc nào
+  - "compare": so sánh giữa các công ty CỤ THỂ đã được nêu tên trong câu hỏi (ví dụ "so sánh Techcombank
+    và FPT Software", "Vietcombank hay Vingroup tốt hơn"). Khi chọn operation này, BẮT BUỘC điền
+    company_names là các tên công ty đó, ngăn cách bởi dấu phẩy (ví dụ "Techcombank, FPT Software").
+    Nếu câu hỏi so sánh nhưng KHÔNG nêu tên công ty cụ thể nào (ví dụ "so sánh các công ty IT ở Hà Nội"),
+    dùng "search" hoặc "recommend" thay vì "compare".
   - "followup_reasoning": câu hỏi tiếp nối CẦN SUY LUẬN trên danh sách/công ty đã nhắc ở lượt trước
     (ví dụ "cái nào tốt nhất", "trong đó công ty nào ổn"). CHỈ chọn cái này khi câu hỏi rõ ràng
     tham chiếu tới thứ đã nói trước đó — câu hỏi tìm kiếm MỚI (có địa điểm/ngành nghề cụ thể,
@@ -100,7 +203,7 @@ operation:
 
 is_followup: true CHỈ KHI operation là followup_reasoning hoặc followup_lookup.
 
-Chỉ điền industry/location/region/company_name khi CÓ trong câu hỏi. Không suy diễn thêm."""
+Chỉ điền industry/location/region/company_name/company_names khi CÓ trong câu hỏi. Không suy diễn thêm."""
 
 
 class QueryParser:
@@ -123,12 +226,24 @@ class QueryParser:
         # keyword check for "topic" only (not full intent) is a much safer
         # degraded mode than guessing business for everything.
         message_lower = message.lower()
+        if history and any(kw in message_lower for kw in DEGRADED_MODE_FOLLOWUP_KEYWORDS):
+            last_topic = _last_topic_from_history(history)
+            if last_topic:
+                return QueryUnderstanding(
+                    raw_query=message, topic=last_topic, operation="followup_reasoning",
+                    is_followup=True, confidence=0.3, parsed_by="heuristic",
+                )
         if any(kw in message_lower for kw in DEGRADED_MODE_NEWS_KEYWORDS):
             return QueryUnderstanding(
                 raw_query=message, topic="news", operation="search",
                 confidence=0.3, parsed_by="heuristic",
             )
-        if any(kw in message_lower for kw in DEGRADED_MODE_GREETING_KEYWORDS):
+        if any(kw in message_lower for kw in DEGRADED_MODE_JOB_KEYWORDS):
+            return QueryUnderstanding(
+                raw_query=message, topic="jobs", operation="search",
+                confidence=0.3, parsed_by="heuristic",
+            )
+        if any(kw in message_lower for kw in DEGRADED_MODE_GREETING_KEYWORDS) or DEGRADED_MODE_GREETING_RE.search(message_lower):
             return QueryUnderstanding(
                 raw_query=message, topic="conversation", operation="smalltalk",
                 confidence=0.3, parsed_by="heuristic",
@@ -144,6 +259,18 @@ class QueryParser:
     def _heuristic_parse(self, message: str, history: Optional[List[Dict]]) -> Optional[QueryUnderstanding]:
         message_lower = message.lower()
 
+        # 0. "Give me more detail" referencing a job/business the previous
+        # turn actually suggested — see DETAIL_REQUEST_KEYWORDS above for why
+        # this bypasses the LLM's (unreliable) is_followup judgment entirely.
+        if history and any(kw in message_lower for kw in DETAIL_REQUEST_KEYWORDS):
+            last_context = _last_context_from_history(history)
+            if last_context.get('suggested_jobs') or last_context.get('suggested_businesses'):
+                topic = _last_topic_from_history(history) or 'business'
+                return QueryUnderstanding(
+                    raw_query=message, topic=topic, operation="followup_reasoning",
+                    is_followup=True, confidence=0.9, parsed_by="heuristic",
+                )
+
         # 1. Phone number → exact lookup
         phone_match = PHONE_PATTERN.search(message)
         if phone_match:
@@ -155,17 +282,24 @@ class QueryParser:
                 confidence=0.95,
             )
 
-        # 2. Exact company name patterns (structural regex, not keywords)
-        for pattern in SPECIFIC_COMPANY_PATTERNS:
-            match = re.search(pattern, message_lower)
-            if match:
-                return QueryUnderstanding(
-                    raw_query=message,
-                    topic="business",
-                    operation="lookup_exact",
-                    entities=Entities(company_name=match.group().strip()),
-                    confidence=0.95,
-                )
+        # 2. Exact company name patterns (structural regex, not keywords) —
+        # skipped when the message reads as a comparison ("so sánh X và Y",
+        # "X hay Y tốt hơn"). One of these patterns matches bare famous-
+        # company keywords (fpt/viettel/...), which would otherwise
+        # short-circuit straight to lookup_exact on the FIRST company
+        # mentioned and never reach the LLM's operation="compare" +
+        # company_names extraction below.
+        if not any(kw in message_lower for kw in COMPARE_KEYWORDS):
+            for pattern in SPECIFIC_COMPANY_PATTERNS:
+                match = re.search(pattern, message_lower)
+                if match:
+                    return QueryUnderstanding(
+                        raw_query=message,
+                        topic="business",
+                        operation="lookup_exact",
+                        entities=Entities(company_name=match.group().strip()),
+                        confidence=0.95,
+                    )
 
         # Everything else (greeting, news vs business, recommend/search/
         # compare, follow-up detection, industry/region extraction) goes
@@ -199,7 +333,7 @@ class QueryParser:
 
             return QueryUnderstanding(
                 raw_query=message,
-                topic=parsed.topic if parsed.topic in ("business", "news", "conversation", "mixed") else "business",
+                topic=parsed.topic if parsed.topic in ("business", "jobs", "news", "conversation", "mixed") else "business",
                 operation=parsed.operation if parsed.operation in (
                     "lookup_exact", "search", "recommend", "compare",
                     "followup_reasoning", "followup_lookup", "smalltalk",
@@ -215,6 +349,9 @@ class QueryParser:
                     # instead of trusting the LLM's raw string.
                     region=_extract_region(message.lower()) or parsed.region,
                     company_name=parsed.company_name,
+                    company_names=[
+                        name.strip() for name in (parsed.company_names or "").split(",") if name.strip()
+                    ],
                 ),
                 constraints=Constraints(limit=parsed.limit or 10),
                 is_followup=parsed.is_followup,

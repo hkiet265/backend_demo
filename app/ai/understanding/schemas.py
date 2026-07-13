@@ -9,7 +9,7 @@ the raw message.
 from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
 
-Topic = Literal["business", "news", "conversation", "mixed"]
+Topic = Literal["business", "jobs", "news", "conversation", "mixed"]
 
 Operation = Literal[
     "lookup_exact",       # exact company name / phone lookup
@@ -29,6 +29,11 @@ class Entities(BaseModel):
     region: Optional[str] = None  # Bắc / Trung / Nam
     company_name: Optional[str] = None
     phone: Optional[str] = None
+    # Populated for operation="compare" ("so sánh X và Y") — company_name
+    # alone can't hold two names, and generic semantic search over the raw
+    # question text isn't reliable for surfacing two SPECIFIC named
+    # companies (see retrieval_planner.py's compare branch).
+    company_names: List[str] = Field(default_factory=list)
 
 
 class Constraints(BaseModel):

@@ -107,6 +107,18 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
         raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
 
+async def get_current_admin(authorization: Optional[str] = Header(None)):
+    """
+    Require an authenticated user whose JWT role claim is 'admin'.
+    Every route under /api/admin previously had NO auth check at all —
+    this is the shared gate they should all depend on.
+    """
+    user = await get_current_user(authorization)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Yêu cầu quyền quản trị viên")
+    return user
+
+
 async def get_current_user_optional(authorization: Optional[str] = Header(None)):
     """
     Get current user if authenticated, None if not

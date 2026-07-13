@@ -19,6 +19,10 @@ groq>=0.4.0  # Ultra-fast LLM inference
 # OpenAI/Claude/DeepSeek providers use plain HTTP (requests, already listed
 # below) instead of their SDKs — no extra package/rebuild needed to enable them.
 numpy>=1.26.0  # Vector similarity for semantic business search
+pypdf>=4.0.0  # CV parser: extract text from uploaded PDF resumes
+pytesseract>=0.3.10  # CV parser OCR fallback: reads text from image-only/vector-graphic PDFs
+pdf2image>=1.17.0  # CV parser OCR fallback: renders PDF pages to images for pytesseract
+python-docx>=1.1.0  # CV parser: extract text from uploaded .docx resumes
 
 # Crawling & RSS
 feedparser>=6.0.10

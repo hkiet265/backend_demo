@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, Heart, MapPin, Phone, Globe, Mail, Users, Briefcase,
-  ShieldCheck, Building2, Trash2
+  ShieldCheck, Building2, Trash2, ListChecks, Gift
 } from 'lucide-react';
 import Spinner from './atoms/Spinner';
 import CountUp from './CountUp';
@@ -36,6 +36,26 @@ function DetailRow({ label, value }) {
   );
 }
 
+// tags/notes from the ITviec crawl are full requirement/benefit sentences
+// joined by "; " — rendering them as small pill badges (like short keyword
+// tags) would look broken, so they get their own bulleted-list card.
+function BulletListCard({ title, icon, text }) {
+  const items = (text || '').split(';').map(t => t.trim()).filter(Boolean);
+  if (items.length === 0) return null;
+  return (
+    <div style={{ ...CARD_STYLE, padding: '18px 20px' }}>
+      <h3 style={{ margin: '0 0 10px', fontSize: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {icon} {title}
+      </h3>
+      <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {items.map((item, i) => (
+          <li key={i} style={{ fontSize: '13px', lineHeight: 1.5, color: 'var(--text-main)' }}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function StatCard({ icon, color, bg, value, label }) {
   return (
     <div style={{ ...CARD_STYLE, padding: '14px 16px', flex: 1, minWidth: '120px' }}>
@@ -48,13 +68,15 @@ function StatCard({ icon, color, bg, value, label }) {
   );
 }
 
-function BusinessDetailView({ businessId, currentUser, onClose, onShowAuth, onDeleted }) {
+function BusinessDetailView({ businessId, currentUser, onClose, onShowAuth, onDeleted, onOpenJob }) {
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 900);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [jobs, setJobs] = useState([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 900);
@@ -79,6 +101,13 @@ function BusinessDetailView({ businessId, currentUser, onClose, onShowAuth, onDe
       .then(r => (r.ok ? r.json() : null))
       .then(data => setFavoriteCount(data?.favorite_count || 0))
       .catch(() => setFavoriteCount(0));
+
+    setJobsLoading(true);
+    fetch(`/api/jobs?business_id=${businessId}&page_size=50`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => setJobs(data?.data || []))
+      .catch(() => setJobs([]))
+      .finally(() => setJobsLoading(false));
 
     const token = localStorage.getItem('token');
     if (token) {
@@ -164,7 +193,6 @@ function BusinessDetailView({ businessId, currentUser, onClose, onShowAuth, onDe
   }
 
   const isVerified = (business.trust_score ?? 0) >= VERIFIED_THRESHOLD;
-  const tagList = (business.tags || '').split(',').map(t => t.trim()).filter(Boolean);
 
   return createPortal(
     <div className="modal-overlay" onClick={onClose}>
@@ -247,8 +275,45 @@ function BusinessDetailView({ businessId, currentUser, onClose, onShowAuth, onDe
 
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
         <StatCard icon={<Users size={17} />} color="#2563EB" bg="rgba(37,99,235,0.1)" value={business.nhan_su ?? '—'} label="Nhân sự" />
-        <StatCard icon={<Briefcase size={17} />} color="#16A34A" bg="rgba(22,163,74,0.1)" value={business.dang_tuyen ?? 0} label="Đang tuyển dụng" />
+        <StatCard icon={<Briefcase size={17} />} color="#16A34A" bg="rgba(22,163,74,0.1)" value={jobs.length} label="Đang tuyển dụng" />
         <StatCard icon={<Heart size={17} />} color="#DC2626" bg="rgba(220,38,38,0.1)" value={favoriteCount} label="Lượt yêu thích" />
+      </div>
+
+      <div style={{ ...CARD_STYLE, padding: '18px 20px' }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Briefcase size={17} color="var(--color-primary)" /> Vị trí đang tuyển ({jobs.length})
+        </h3>
+        {jobsLoading ? (
+          <p style={{ fontSize: '13px', color: 'var(--text-dim)' }}>Đang tải...</p>
+        ) : jobs.length === 0 ? (
+          <p style={{ fontSize: '13px', color: 'var(--text-dim)' }}>Doanh nghiệp này hiện chưa có tin tuyển dụng nào.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {jobs.map(job => (
+              <button
+                key={job.id}
+                onClick={() => { onOpenJob ? onOpenJob(job) : onClose(); }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+                  padding: '12px 14px', borderRadius: '8px', border: '2px solid var(--border-neon)',
+                  background: 'var(--bg-input)', cursor: 'pointer', textAlign: 'left', width: '100%',
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <strong style={{ fontSize: '13.5px', color: 'var(--text-main)' }}>{job.title}</strong>
+                  {job.location && (
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <MapPin size={11} /> {job.location}
+                    </p>
+                  )}
+                </div>
+                <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--color-primary)', flexShrink: 0 }}>
+                  Xem chi tiết
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ ...CARD_STYLE, padding: '18px 20px' }}>
@@ -280,30 +345,26 @@ function BusinessDetailView({ businessId, currentUser, onClose, onShowAuth, onDe
             </div>
           </div>
 
-          {tagList.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' }}>
-              {tagList.map(tag => (
-                <span key={tag} style={{ fontSize: '11.5px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px', background: 'var(--bg-input)', color: 'var(--text-dim)' }}>{tag}</span>
-              ))}
-            </div>
-          )}
-
-          {currentUser && business.created_by_user_id === currentUser.id && (
-            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-neon)' }}>
-              <button
-                onClick={handleDelete}
-                disabled={isDeleting}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px',
-                  border: 'none', background: '#DC2626', color: 'white', fontSize: '13px', fontWeight: 700,
-                  cursor: isDeleting ? 'not-allowed' : 'pointer', opacity: isDeleting ? 0.6 : 1
-                }}
-              >
-                <Trash2 size={14} /> {isDeleting ? 'Đang xóa...' : 'Xóa doanh nghiệp'}
-              </button>
-            </div>
-          )}
       </div>
+
+      <BulletListCard title="Yêu cầu công việc" icon={<ListChecks size={17} color="var(--color-primary)" />} text={business.tags} />
+      <BulletListCard title="Phúc lợi" icon={<Gift size={17} color="var(--color-primary)" />} text={business.notes} />
+
+      {currentUser && business.created_by_user_id === currentUser.id && (
+        <div style={{ ...CARD_STYLE, padding: '16px 20px' }}>
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px',
+              border: 'none', background: '#DC2626', color: 'white', fontSize: '13px', fontWeight: 700,
+              cursor: isDeleting ? 'not-allowed' : 'pointer', opacity: isDeleting ? 0.6 : 1
+            }}
+          >
+            <Trash2 size={14} /> {isDeleting ? 'Đang xóa...' : 'Xóa doanh nghiệp'}
+          </button>
+        </div>
+      )}
         </div>
       </div>
     </div>,

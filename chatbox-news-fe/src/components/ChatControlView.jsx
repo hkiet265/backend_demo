@@ -19,9 +19,11 @@ function ChatControlView({
   chatInput,
   setChatInput,
   handleSendChat,
+  sendChatMessage,
   clearConversation,
   onNewsClick,
-  onBusinessCardClick
+  onBusinessCardClick,
+  onActionButtonClick
 }) {
   const chatEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -64,7 +66,13 @@ function ChatControlView({
       handleSendChat(fakeEvent);
     }, 100);
   };
- 
+
+  const QUICK_START_SUGGESTIONS = [
+    'Giới thiệu về trang web',
+    'Gợi ý nhà tuyển dụng đang có việc phù hợp',
+    'Tin tức nghề nghiệp mới nhất',
+  ];
+
   return (
     <div className="full-chat-workspace fade-in-effect">
       <div className="chatbox-messages" ref={messagesContainerRef} onScroll={handleScroll}>
@@ -124,25 +132,38 @@ function ChatControlView({
                 </div>
               )}
 
-              {msg.followupSuggestions && msg.followupSuggestions.length > 0 && (
-                <div className="followup-suggestions">
-                  <p className="suggestions-label">💡 Bạn có thể hỏi:</p>
-                  <div className="suggestions-buttons">
-                    {msg.followupSuggestions.map((suggestion, idx) => (
-                      <button
-                        key={idx}
-                        className="suggestion-btn"
-                        onClick={() => handleQuickAction(suggestion)}
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
+              {msg.actionButtons && msg.actionButtons.length > 0 && (
+                <div className="action-buttons-container">
+                  {msg.actionButtons.map((btn) => (
+                    <button
+                      key={btn.id}
+                      className="chat-action-btn"
+                      onClick={() => onActionButtonClick && onActionButtonClick(btn)}
+                    >
+                      <span className="action-btn-emoji">{btn.emoji}</span>
+                      <span className="action-btn-text">{btn.label}</span>
+                    </button>
+                  ))}
                 </div>
               )}
+
             </div>
           </div>
         ))}
+
+        {messages.length === 1 && messages[0]?.sender === 'ai' && (
+          <div className="quick-start-suggestions">
+            {QUICK_START_SUGGESTIONS.map((text) => (
+              <button
+                key={text}
+                className="quick-start-bubble"
+                onClick={() => sendChatMessage(text)}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+        )}
  
         {isChatLoading && (
           messages[messages.length - 1]?.sender !== 'ai' || messages[messages.length - 1]?.text === ''

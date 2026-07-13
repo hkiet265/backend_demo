@@ -47,31 +47,31 @@ class EnhancedResponseGenerator:
             return self._generate_no_results_response(original_query)
         
         # Greeting
-        greeting = "Chào anh/chị! 👋\n\n"
+        greeting = "Chào bạn! 👋\n\n"
         
         # Context understanding
         query_lower = original_query.lower()
         context_line = ""
         
         if any(kw in query_lower for kw in ['gợi ý', 'tư vấn', 'giới thiệu']):
-            context_line = f"Em hiểu anh/chị đang tìm gợi ý công ty "
+            context_line = f"Em hiểu bạn đang tìm gợi ý công ty "
         elif any(kw in query_lower for kw in ['tốt', 'uy tín', 'chất lượng']):
             context_line = f"Em tìm thấy các công ty uy tín "
         elif any(kw in query_lower for kw in ['tìm', 'search', 'có']):
             context_line = f"Em tìm thấy "
         else:
-            context_line = f"Về câu hỏi của anh/chị, em tìm thấy "
+            context_line = f"Về câu hỏi của bạn, em tìm thấy "
         
         # Industry/location context
         industry_mentioned = self._extract_industry(original_query)
         location_mentioned = self._extract_location(original_query)
         
         if industry_mentioned and location_mentioned:
-            context_line += f"trong lĩnh vực **{industry_mentioned}** ở **{location_mentioned}**:\n\n"
+            context_line += f"trong lĩnh vực {industry_mentioned} ở {location_mentioned}:\n\n"
         elif industry_mentioned:
-            context_line += f"trong lĩnh vực **{industry_mentioned}**:\n\n"
+            context_line += f"trong lĩnh vực {industry_mentioned}:\n\n"
         elif location_mentioned:
-            context_line += f"tại **{location_mentioned}**:\n\n"
+            context_line += f"tại {location_mentioned}:\n\n"
         else:
             context_line += "phù hợp với yêu cầu:\n\n"
         
@@ -120,7 +120,7 @@ class EnhancedResponseGenerator:
         Returns:
             Formatted markdown string
         """
-        result = "📊 **Danh sách công ty:**\n\n"
+        result = "📊 Danh sách công ty:\n\n"
         
         for idx, biz in enumerate(businesses, 1):
             name = biz.get('name', 'N/A')
@@ -133,7 +133,7 @@ class EnhancedResponseGenerator:
             # Icon based on index
             icon = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}."
             
-            result += f"{icon} **{name}**\n"
+            result += f"{icon} {name}\n"
             
             # Industry
             if industry:
@@ -210,7 +210,7 @@ class EnhancedResponseGenerator:
         if len(businesses) < 2:
             return ""
         
-        analysis = "💡 **Phân tích của em:**\n\n"
+        analysis = "💡 Phân tích của em:\n\n"
         
         # Phân loại theo industry
         industries = {}
@@ -220,7 +220,7 @@ class EnhancedResponseGenerator:
         
         if len(industries) > 1:
             top_industry = max(industries, key=industries.get)
-            analysis += f"• Chủ yếu là các công ty **{top_industry}** ({industries[top_industry]} công ty)\n"
+            analysis += f"• Chủ yếu là các công ty {top_industry} ({industries[top_industry]} công ty)\n"
         
         # Phân loại theo region
         regions = {}
@@ -235,7 +235,7 @@ class EnhancedResponseGenerator:
         
         # Gợi ý công ty nổi bật
         if businesses[0]:
-            analysis += f"• **{businesses[0].get('name')}** nổi bật nhất trong danh sách\n"
+            analysis += f"• {businesses[0].get('name')} nổi bật nhất trong danh sách\n"
         
         return analysis
     
@@ -247,13 +247,13 @@ class EnhancedResponseGenerator:
         """
         Tạo phần gợi ý cho người dùng
         """
-        suggestions = "📌 **Gợi ý thêm:**\n\n"
+        suggestions = "📌 Gợi ý thêm:\n\n"
         
         query_lower = original_query.lower()
         
         # Suggest detail view
         if len(businesses) >= 1:
-            suggestions += f"• Xem chi tiết **{businesses[0].get('name')}**?\n"
+            suggestions += f"• Xem chi tiết {businesses[0].get('name')}?\n"
         
         # Suggest comparison
         if len(businesses) >= 2:
@@ -278,7 +278,7 @@ class EnhancedResponseGenerator:
         query_lower = original_query.lower()
         
         questions = [
-            "❓ **Anh/chị muốn:**",
+            "❓ Bạn muốn:",
         ]
         
         # Tailor questions based on query type
@@ -300,19 +300,19 @@ class EnhancedResponseGenerator:
         """
         Tạo câu trả lời khi không tìm thấy kết quả
         """
-        response = "Chào anh/chị! 👋\n\n"
+        response = "Chào bạn! 👋\n\n"
         response += "Em rất tiếc là chưa tìm thấy công ty phù hợp với yêu cầu. 😔\n\n"
         
-        response += "💡 **Em có thể giúp anh/chị:**\n\n"
-        response += "1. **Mở rộng tìm kiếm:**\n"
+        response += "💡 Em có thể giúp bạn:\n\n"
+        response += "1. Mở rộng tìm kiếm:\n"
         response += "   • Thử tìm ở khu vực khác?\n"
         response += "   • Tìm ngành nghề liên quan?\n\n"
         
-        response += "2. **Tìm theo cách khác:**\n"
+        response += "2. Tìm theo cách khác:\n"
         response += "   • Tìm theo tên công ty cụ thể?\n"
         response += "   • Tìm theo số điện thoại?\n\n"
         
-        response += "❓ **Anh/chị muốn em tìm kiếm theo hướng nào?**"
+        response += "❓ Bạn muốn em tìm kiếm theo hướng nào?"
         
         return response
     
@@ -373,17 +373,17 @@ class EnhancedResponseGenerator:
         """
         # If answer is already good (> 100 chars), just add greeting + followup
         if len(answer) > 100:
-            enhanced = f"Chào anh/chị! 📰\n\n{answer}\n\n"
+            enhanced = f"Chào bạn! 📰\n\n{answer}\n\n"
             
             # Add document links
             if documents:
-                enhanced += "📎 **Nguồn tin:**\n"
+                enhanced += "📎 Nguồn tin:\n"
                 for idx, doc in enumerate(documents[:3], 1):
                     enhanced += f"{idx}. {doc.get('title', 'N/A')} - {doc.get('source', 'N/A')}\n"
                 enhanced += "\n"
             
             # Add followup
-            enhanced += "❓ Anh/chị muốn tìm hiểu thêm về tin nào không?"
+            enhanced += "❓ Bạn muốn tìm hiểu thêm về tin nào không?"
             
             return enhanced
         
@@ -401,8 +401,8 @@ class EnhancedResponseGenerator:
         if not documents:
             return short_answer
         
-        response = "Chào anh/chị! 📰\n\n"
-        response += f"Em tìm thấy một số tin tức liên quan đến **\"{original_query}\"**:\n\n"
+        response = "Chào bạn! 📰\n\n"
+        response += f"Em tìm thấy một số tin tức liên quan đến \"{original_query}\":\n\n"
         
         # Summarize top 3 news
         for idx, doc in enumerate(documents[:3], 1):
@@ -410,12 +410,12 @@ class EnhancedResponseGenerator:
             summary = doc.get('summary', '')[:150]
             source = doc.get('source', 'N/A')
             
-            response += f"**{idx}. {title}**\n"
+            response += f"{idx}. {title}\n"
             if summary:
                 response += f"   {summary}...\n"
             response += f"   _(Nguồn: {source})_\n\n"
         
-        response += "💡 Anh/chị muốn xem chi tiết tin nào không?"
+        response += "💡 Bạn muốn xem chi tiết tin nào không?"
         
         return response
 

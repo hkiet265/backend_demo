@@ -4,7 +4,7 @@ import Toast from './Toast';
 import ConfirmDialog from './molecules/ConfirmDialog/ConfirmDialog';
 import Spinner from './atoms/Spinner';
 
-const CARD_STYLE = { background: 'white', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '18px 20px' };
+const CARD_STYLE = { background: 'var(--bg-panel)', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '18px 20px', color: 'var(--text-main)' };
 
 const STATUS_META = {
   Moi: { label: 'Mới', color: '#D97706', bg: '#FEF3C7' },
@@ -36,7 +36,7 @@ function DonutChart({ data }) {
     cum += pct;
     return seg;
   });
-  const gradient = total ? `conic-gradient(${segs.map(s => `${s.color} ${s.start}% ${s.end}%`).join(', ')})` : 'conic-gradient(#F1F5F9 0% 100%)';
+  const gradient = total ? `conic-gradient(${segs.map(s => `${s.color} ${s.start}% ${s.end}%`).join(', ')})` : 'conic-gradient(var(--bg-input) 0% 100%)';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
       <div style={{ width: '96px', height: '96px', borderRadius: '50%', background: gradient, flexShrink: 0 }} />
@@ -300,10 +300,10 @@ const AdminNewsView = () => {
           <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-dim)' }}>Quản lý tin tức trong hệ thống</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <button onClick={fetchNews} title="Làm mới" style={{ width: '38px', height: '38px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <button onClick={fetchNews} title="Làm mới" style={{ width: '38px', height: '38px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <RefreshCw size={16} className={loading ? 'spinning' : ''} />
           </button>
-          <button onClick={exportCsv} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'white', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={exportCsv} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             <Download size={14} /> Xuất dữ liệu
           </button>
         </div>
@@ -332,7 +332,7 @@ const AdminNewsView = () => {
         </select>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: '20px', alignItems: 'flex-start' }}>
+      <div className="admin-two-col-layout">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '14px' }}>
             <StatCard icon={<Newspaper size={18} />} color="#2563EB" bg="rgba(37,99,235,0.1)" value={total.toLocaleString()} label="Tổng số tin" />
@@ -349,24 +349,24 @@ const AdminNewsView = () => {
                   background: activeTab === key ? 'rgba(215,30,40,0.1)' : 'transparent', color: activeTab === key ? 'var(--color-primary)' : 'var(--text-dim)',
                   fontWeight: 700, fontSize: '12.5px', cursor: 'pointer', whiteSpace: 'nowrap'
                 }}>
-                  {label} <span style={{ fontSize: '10.5px', padding: '1px 7px', borderRadius: '999px', background: activeTab === key ? 'var(--color-primary)' : '#E2E8F0', color: activeTab === key ? 'white' : 'var(--text-dim)' }}>{count}</span>
+                  {label} <span style={{ fontSize: '10.5px', padding: '1px 7px', borderRadius: '999px', background: activeTab === key ? 'var(--color-primary)' : 'var(--bg-input)', color: activeTab === key ? 'white' : 'var(--text-dim)' }}>{count}</span>
                 </button>
               ))}
             </div>
 
             {selected.size > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', background: '#F8FAFC', borderBottom: '2px solid var(--border-neon)', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', background: 'var(--bg-input)', borderBottom: '2px solid var(--border-neon)', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '13px', fontWeight: 700 }}>Đã chọn {selected.size} tin</span>
-                <button onClick={() => setShowAssignCategory(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-neon)', background: 'white', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}><Plus size={13} /> Gán chuyên mục</button>
-                <button onClick={bulkApprove} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #16A34A', color: '#16A34A', background: 'white', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}><CheckCircle2 size={13} /> Duyệt</button>
-                <button onClick={bulkHide} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #D97706', color: '#D97706', background: 'white', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}><EyeOff size={13} /> Ẩn tin</button>
-                <button onClick={bulkDelete} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #DC2626', color: '#DC2626', background: 'white', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}><Trash2 size={13} /> Xóa</button>
+                <button onClick={() => setShowAssignCategory(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-neon)', background: 'var(--bg-panel)', color: 'var(--text-main)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}><Plus size={13} /> Gán chuyên mục</button>
+                <button onClick={bulkApprove} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #16A34A', color: '#16A34A', background: 'var(--bg-panel)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}><CheckCircle2 size={13} /> Duyệt</button>
+                <button onClick={bulkHide} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #D97706', color: '#D97706', background: 'var(--bg-panel)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}><EyeOff size={13} /> Ẩn tin</button>
+                <button onClick={bulkDelete} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid #DC2626', color: '#DC2626', background: 'var(--bg-panel)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}><Trash2 size={13} /> Xóa</button>
                 <button onClick={() => setSelected(new Set())} style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '12.5px' }}>Bỏ chọn ✕</button>
               </div>
             )}
 
             {showAssignCategory && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: '#FFFBEB', borderBottom: '2px solid var(--border-neon)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'var(--bg-input)', borderBottom: '2px solid var(--border-neon)' }}>
                 <input value={assignCategoryValue} onChange={e => setAssignCategoryValue(e.target.value)} placeholder="Nhập tên chuyên mục..." list="category-options" style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: '2px solid var(--border-neon)', fontSize: '12.5px' }} />
                 <datalist id="category-options">{categories.map(c => <option key={c} value={c} />)}</datalist>
                 <button onClick={bulkAssignCategory} style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', background: 'var(--color-primary)', color: 'white', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}>Gán</button>
@@ -377,7 +377,7 @@ const AdminNewsView = () => {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', minWidth: '980px', borderCollapse: 'collapse', fontSize: '12.5px' }}>
                 <thead>
-                  <tr style={{ background: '#F8FAFC', textAlign: 'left' }}>
+                  <tr style={{ background: 'var(--bg-input)', textAlign: 'left' }}>
                     <th style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}><input type="checkbox" checked={pageNews.length > 0 && selected.size === pageNews.length} onChange={toggleSelectAll} /></th>
                     <th style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>ID</th>
                     <th style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>Tiêu đề</th>
@@ -402,7 +402,7 @@ const AdminNewsView = () => {
                             {n.image ? (
                               <img src={n.image} alt="" style={{ width: '52px', height: '38px', objectFit: 'cover', borderRadius: '6px', flexShrink: 0 }} />
                             ) : (
-                              <div style={{ width: '52px', height: '38px', borderRadius: '6px', background: '#F1F5F9', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={16} color="#CBD5E1" /></div>
+                              <div style={{ width: '52px', height: '38px', borderRadius: '6px', background: 'var(--bg-input)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={16} color="var(--text-dim)" /></div>
                             )}
                             <div style={{ minWidth: 0 }}>
                               <div style={{ fontWeight: 700, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -459,9 +459,9 @@ const AdminNewsView = () => {
                 <span style={{ fontSize: '12.5px', color: 'var(--text-dim)' }}>tin mỗi trang</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} style={{ padding: '6px 12px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'white', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1 }}>‹</button>
+                <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} style={{ padding: '6px 12px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1 }}>‹</button>
                 <span style={{ fontSize: '12.5px', fontWeight: 700 }}>{page} / {totalPages}</span>
-                <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} style={{ padding: '6px 12px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'white', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.5 : 1 }}>›</button>
+                <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} style={{ padding: '6px 12px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.5 : 1 }}>›</button>
               </div>
               <div style={{ fontSize: '12.5px', color: 'var(--text-dim)' }}>
                 Hiển thị {filtered.length === 0 ? 0 : (page - 1) * pageSize + 1}-{Math.min(page * pageSize, filtered.length)} trong tổng số {filtered.length} tin
@@ -482,7 +482,7 @@ const AdminNewsView = () => {
                       <span>{s.label}</span>
                       <strong>{s.count.toLocaleString()} ({((s.count / news.length) * 100).toFixed(0)}%)</strong>
                     </div>
-                    <div style={{ height: '6px', borderRadius: '3px', background: '#F1F5F9', overflow: 'hidden' }}>
+                    <div style={{ height: '6px', borderRadius: '3px', background: 'var(--bg-input)', overflow: 'hidden' }}>
                       <div style={{ width: `${(s.count / max) * 100}%`, height: '100%', background: '#DC2626', borderRadius: '3px' }} />
                     </div>
                   </div>

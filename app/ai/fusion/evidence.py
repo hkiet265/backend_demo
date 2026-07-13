@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 class Evidence(BaseModel):
     businesses: List[Dict] = Field(default_factory=list)
+    jobs: List[Dict] = Field(default_factory=list)
     news: List[Dict] = Field(default_factory=list)
     source_methods: List[str] = Field(default_factory=list)
 
@@ -17,9 +18,13 @@ class Evidence(BaseModel):
         return len(self.businesses) > 0
 
     @property
+    def has_jobs(self) -> bool:
+        return len(self.jobs) > 0
+
+    @property
     def has_news(self) -> bool:
         return len(self.news) > 0
 
     @property
     def is_empty(self) -> bool:
-        return not self.has_business and not self.has_news
+        return not self.has_business and not self.has_jobs and not self.has_news

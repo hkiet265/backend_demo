@@ -79,11 +79,12 @@ async def send_message(
             user_id=user_id  # ← Can be None for anonymous
         )
         
-        # Get conversation history for context
-        history = conv_service.get_conversation_history(
+        # Get conversation history for context. Past 20 turns, older messages
+        # are collapsed into a cached summary instead of just falling off the
+        # window entirely — see ConversationService.get_effective_history.
+        history = conv_service.get_effective_history(
             session_id=session_id,
             user_id=user_id,  # ← Can be None
-            max_messages=10
         )
         
         # Process with HYBRID Chat Service
@@ -105,7 +106,9 @@ async def send_message(
             context={
                 'documents': result.get('documents', []),
                 'suggested_businesses': result.get('suggested_businesses', []),
+                'suggested_jobs': result.get('suggested_jobs', []),
                 'complexity': result.get('complexity'),
+                'search_method': result.get('search_method'),
                 'hybrid_powered': True
             },
             complexity=result.get('complexity'),
@@ -130,6 +133,7 @@ async def send_message(
                 for doc in result.get('documents', [])
             ],
             suggested_businesses=result.get('suggested_businesses', []),
+            suggested_jobs=result.get('suggested_jobs', []),
             followup_suggestions=result.get('followup_suggestions', [
                 'Tìm công ty khác',
                 'Thông tin chi tiết',

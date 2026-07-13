@@ -5,8 +5,10 @@ import AdminUsersView from '../components/AdminUsersView';
 import LogfireView from '../components/LogfireView';
 import AdminNewsView from '../components/AdminNewsView';
 import AdminBusinessView from '../components/AdminBusinessView';
+import AdminJobsView from '../components/AdminJobsView';
+import AdminJobReportsView from '../components/AdminJobReportsView';
 import ChatbotAvatar from '../components/ChatbotAvatar';
-import { BarChart3, LogOut, Home, Users, Activity, Newspaper, Building2, Menu, X } from 'lucide-react';
+import { BarChart3, LogOut, Home, Users, Activity, Newspaper, Building2, Briefcase, Flag, Menu, X } from 'lucide-react';
 
 const AdminPortal = ({ currentUser, onLogout }) => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -96,6 +98,22 @@ const AdminPortal = ({ currentUser, onLogout }) => {
           </button>
           
           <button
+            className={`admin-nav-item ${activeSection === 'jobs' ? 'active' : ''}`}
+            onClick={() => handleNavClick('jobs')}
+          >
+            <Briefcase size={20} />
+            <span>Duyệt Tin Tuyển Dụng</span>
+          </button>
+
+          <button
+            className={`admin-nav-item ${activeSection === 'job-reports' ? 'active' : ''}`}
+            onClick={() => handleNavClick('job-reports')}
+          >
+            <Flag size={20} />
+            <span>Báo Cáo Tin Tuyển Dụng</span>
+          </button>
+
+          <button
             className={`admin-nav-item ${activeSection === 'logfire' ? 'active' : ''}`}
             onClick={() => handleNavClick('logfire')}
           >
@@ -121,6 +139,8 @@ const AdminPortal = ({ currentUser, onLogout }) => {
         {activeSection === 'users' && <AdminUsersView />}
         {activeSection === 'news' && <AdminNewsView />}
         {activeSection === 'business' && <AdminBusinessView />}
+        {activeSection === 'jobs' && <AdminJobsView />}
+        {activeSection === 'job-reports' && <AdminJobReportsView />}
         {activeSection === 'logfire' && <LogfireView />}
       </main>
     </div>

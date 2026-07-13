@@ -143,6 +143,15 @@ class EncryptionService:
         """
         return self.decrypt(encrypted_email)
     
+    def encrypt_bytes(self, data: bytes) -> bytes:
+        """Encrypt raw binary data (e.g. an uploaded CV file) — the
+        string-based encrypt() above assumes UTF-8 text and would raise on
+        arbitrary binary content."""
+        return self.cipher.encrypt(data)
+
+    def decrypt_bytes(self, token: bytes) -> bytes:
+        return self.cipher.decrypt(token)
+
     def hash_for_search(self, value: str) -> str:
         """
         Create one-way hash for search/deduplication

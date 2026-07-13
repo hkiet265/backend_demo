@@ -5,7 +5,7 @@ import Toast from './Toast';
 import ConfirmDialog from './molecules/ConfirmDialog/ConfirmDialog';
 
 const CARD_STYLE = {
-  background: 'white', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '18px 20px'
+  background: 'var(--bg-panel)', border: '2px solid var(--border-neon)', borderRadius: 'var(--radius-md)', padding: '18px 20px', color: 'var(--text-main)'
 };
 
 const AVATAR_COLORS = ['#2563EB', '#16A34A', '#D97706', '#7C3AED', '#DB2777', '#0891B2', '#DC2626'];
@@ -40,6 +40,11 @@ function StatCard({ icon, color, bg, value, label }) {
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 const EMPTY_CREATE_FORM = { email: '', full_name: '', phone: '', role: 'user' };
 
+function authHeaders() {
+  const token = localStorage.getItem('token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
 const AdminUsersView = () => {
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
@@ -68,7 +73,7 @@ const AdminUsersView = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/users');
+      const response = await fetch('/api/admin/users', { headers: authHeaders() });
       const data = await response.json();
       if (data.status === 'success') {
         setUsers(data.data.users);
@@ -141,7 +146,7 @@ const AdminUsersView = () => {
     try {
       const response = await fetch(`/api/admin/users/${editForm.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ full_name: editForm.full_name, phone: editForm.phone, role: editForm.role })
       });
       if (response.ok) {
@@ -166,7 +171,7 @@ const AdminUsersView = () => {
     try {
       const response = await fetch(`/api/admin/users/${user.id}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ status: newStatus })
       });
       if (response.ok) {
@@ -192,7 +197,7 @@ const AdminUsersView = () => {
     }
     await Promise.all(ids.map(id =>
       fetch(`/api/admin/users/${id}/status`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status })
+        method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify({ status })
       })
     ));
     showToast(`Đã đổi trạng thái ${ids.length} user`, 'success');
@@ -211,7 +216,7 @@ const AdminUsersView = () => {
     setConfirmDelete(null);
     const ids = target.bulk ? target.ids : [target.id];
     try {
-      await Promise.all(ids.map(id => fetch(`/api/admin/users/${id}`, { method: 'DELETE' })));
+      await Promise.all(ids.map(id => fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers: authHeaders() })));
       showToast(`Đã xóa ${ids.length} user`, 'success');
       setSelected(new Set());
       fetchUsers();
@@ -229,7 +234,7 @@ const AdminUsersView = () => {
     try {
       const response = await fetch('/api/admin/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(createForm)
       });
       const data = await response.json();
@@ -302,13 +307,13 @@ const AdminUsersView = () => {
               style={{ padding: '9px 12px 9px 32px', borderRadius: '10px', border: '2px solid var(--border-neon)', fontSize: '13px', minWidth: '220px' }}
             />
           </div>
-          <button onClick={resetFilters} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'white', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={resetFilters} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             <RotateCcw size={14} /> Reset filter
           </button>
           <button onClick={() => { setCreateForm(EMPTY_CREATE_FORM); setCreatedCredentials(null); setShowCreateModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: 'none', background: 'var(--color-primary)', color: 'white', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
             <UserPlus size={15} /> Thêm user mới
           </button>
-          <button onClick={exportCsv} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'white', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={exportCsv} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             <Download size={14} /> Export
           </button>
         </div>
@@ -342,24 +347,24 @@ const AdminUsersView = () => {
               background: activeTab === key ? 'rgba(215,30,40,0.1)' : 'transparent', color: activeTab === key ? 'var(--color-primary)' : 'var(--text-dim)',
               fontWeight: 700, fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap'
             }}>
-              {label} <span style={{ fontSize: '11px', padding: '1px 7px', borderRadius: '999px', background: activeTab === key ? 'var(--color-primary)' : '#E2E8F0', color: activeTab === key ? 'white' : 'var(--text-dim)' }}>{count}</span>
+              {label} <span style={{ fontSize: '11px', padding: '1px 7px', borderRadius: '999px', background: activeTab === key ? 'var(--color-primary)' : 'var(--bg-input)', color: activeTab === key ? 'white' : 'var(--text-dim)' }}>{count}</span>
             </button>
           ))}
         </div>
 
         {selected.size > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', background: '#F8FAFC', borderBottom: '2px solid var(--border-neon)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', background: 'var(--bg-input)', borderBottom: '2px solid var(--border-neon)', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '13px', fontWeight: 700 }}>Đã chọn {selected.size} user</span>
-            <button onClick={() => bulkSetStatus('active')} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #16A34A', color: '#16A34A', background: 'white', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>Mở khóa</button>
-            <button onClick={() => bulkSetStatus('locked')} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #DC2626', color: '#DC2626', background: 'white', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>Khóa</button>
-            <button onClick={bulkDelete} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #DC2626', color: '#DC2626', background: 'white', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>Xóa đã chọn</button>
+            <button onClick={() => bulkSetStatus('active')} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #16A34A', color: '#16A34A', background: 'var(--bg-panel)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>Mở khóa</button>
+            <button onClick={() => bulkSetStatus('locked')} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #DC2626', color: '#DC2626', background: 'var(--bg-panel)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>Khóa</button>
+            <button onClick={bulkDelete} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #DC2626', color: '#DC2626', background: 'var(--bg-panel)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}>Xóa đã chọn</button>
           </div>
         )}
 
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead>
-              <tr style={{ background: '#F8FAFC', textAlign: 'left' }}>
+              <tr style={{ background: 'var(--bg-input)', textAlign: 'left' }}>
                 <th style={{ padding: '10px 12px' }}><input type="checkbox" checked={pageUsers.length > 0 && selected.size === pageUsers.length} onChange={toggleSelectAll} /></th>
                 <th style={{ padding: '10px 12px' }}>Người dùng</th>
                 <th style={{ padding: '10px 12px' }}>Email</th>
@@ -439,16 +444,16 @@ const AdminUsersView = () => {
             <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ padding: '6px 8px', borderRadius: '8px', border: '2px solid var(--border-neon)', fontSize: '12.5px' }}>
               {PAGE_SIZE_OPTIONS.map(n => <option key={n} value={n}>{n} dòng</option>)}
             </select>
-            <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} style={{ padding: '6px 12px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'white', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1 }}>‹</button>
+            <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} style={{ padding: '6px 12px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1 }}>‹</button>
             <span style={{ fontSize: '12.5px', fontWeight: 700 }}>{page} / {totalPages}</span>
-            <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} style={{ padding: '6px 12px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'white', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.5 : 1 }}>›</button>
+            <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} style={{ padding: '6px 12px', borderRadius: '8px', border: '2px solid var(--border-neon)', background: 'var(--bg-input)', color: 'var(--text-main)', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.5 : 1 }}>›</button>
           </div>
         </div>
       </div>
 
       {viewUser && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setViewUser(null)}>
-          <div style={{ background: 'white', borderRadius: 'var(--radius-md)', padding: '24px', width: '380px', maxWidth: '92vw' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'var(--bg-panel)', border: '2px solid var(--border-neon)', color: 'var(--text-main)', borderRadius: 'var(--radius-md)', padding: '24px', width: '380px', maxWidth: '92vw' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>Chi tiết user</h3>
               <button onClick={() => setViewUser(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}><X size={18} /></button>
@@ -514,7 +519,7 @@ const AdminUsersView = () => {
               {createdCredentials ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <p style={{ fontSize: '13px' }}>Đã tạo user <strong>{createdCredentials.email}</strong> thành công. Mật khẩu tạm thời (chỉ hiển thị một lần, do hệ thống chưa cấu hình SMTP để gửi email tự động):</p>
-                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#F1F5F9', fontFamily: 'monospace', fontWeight: 700, fontSize: '15px' }}>{createdCredentials.temp_password}</div>
+                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-input)', color: 'var(--text-main)', fontFamily: 'monospace', fontWeight: 700, fontSize: '15px' }}>{createdCredentials.temp_password}</div>
                   <button className="btn-primary" onClick={() => { setShowCreateModal(false); setCreatedCredentials(null); }}>Đóng</button>
                 </div>
               ) : (
