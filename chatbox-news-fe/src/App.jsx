@@ -121,15 +121,22 @@ function App() {
 }
 
 const SPLASH_SEEN_KEY = 'hyperspaceBackgroundSeen';
+// Splash re-appears once this long has passed since it was last shown.
+const SPLASH_SEEN_TTL_MS = 10 * 60 * 1000;
 // Past this many px of scroll, the navbar switches to its compact style.
 const HEADER_COMPACT_THRESHOLD = 80;
 
+function hasRecentlySeenSplash() {
+  const seenAt = Number(localStorage.getItem(SPLASH_SEEN_KEY));
+  return Boolean(seenAt) && Date.now() - seenAt < SPLASH_SEEN_TTL_MS;
+}
+
 function MainApp({ currentUser, onLogout, onShowAuth, onShowEditProfile }) {
 
-  const [showSplash, setShowSplash] = useState(() => !localStorage.getItem(SPLASH_SEEN_KEY));
+  const [showSplash, setShowSplash] = useState(() => !hasRecentlySeenSplash());
 
   const handleSplashFinish = () => {
-    localStorage.setItem(SPLASH_SEEN_KEY, '1');
+    localStorage.setItem(SPLASH_SEEN_KEY, String(Date.now()));
     setShowSplash(false);
   };
 
